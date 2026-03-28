@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 106 - HTTP Status Code Simulator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 1024px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .select-group {
+            margin-bottom: 1rem;
+        }
+        .select-label {
+            display: block;
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+        }
+        .code-select {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            outline: none;
+        }
+        .code-select:focus { border-color: #56b6c2; }
+
+        .btn-action {
+            background: #56b6c2;
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-action:hover { background: #6ad0dc; }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #333;
+        }
+        .status-badge {
+            font-size: 2rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            background: #222;
+        }
+        .status-badge.type-2xx { color: #98c379; background: rgba(152, 195, 121, 0.1); border: 2px solid #98c379; }
+        .status-badge.type-3xx { color: #61afef; background: rgba(97, 175, 239, 0.1); border: 2px solid #61afef; }
+        .status-badge.type-4xx { color: #e5c07b; background: rgba(229, 192, 123, 0.1); border: 2px solid #e5c07b;}
+        .status-badge.type-5xx { color: #e06c75; background: rgba(224, 108, 117, 0.1); border: 2px solid #e06c75;}
+        
+        .status-title { font-size: 1.5rem; font-weight: bold; color: #fff;}
+        .status-desc { color: #aaa; font-size: 0.9rem; line-height: 1.5;}
+
+        .section-title {
+            font-size: 1rem;
+            color: #56b6c2;
+            margin: 1.5rem 0 0.5rem 0;
+            border-bottom: 1px dashed #333;
+            padding-bottom: 0.3rem;
+        }
+
+        .code-block {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #e5c07b;
+            white-space: pre-wrap;
+            position: relative;
+        }
+        .code-block.req { color: #61afef; }
+        .code-block.res { color: #98c379; }
+        .codeLabel { position:absolute; top:0; right:0; background:#333; color:#aaa; font-size:0.7rem; padding:0.2rem 0.5rem; border-bottom-left-radius:4px; }
+
+        .browser-behavior {
+            background: rgba(198, 120, 221, 0.1);
+            border-left: 4px solid #c678dd;
+            padding: 1rem;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9rem;
+            color: #e6e6e6;
+            line-height: 1.5;
+        }
+
+        .sim-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #000;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: #fff;
+        }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>106. HTTP Status Code Simulator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <h3>Select Status Code</h3>
+                    
+                    <div class="select-group">
+                        <label class="select-label">Success (2xx)</label>
+                        <select class="code-select" id="sel-2xx">
+                            <option value="200">200 OK</option>
+                            <option value="201">201 Created</option>
+                            <option value="204">204 No Content</option>
+                            <option value="205">205 Reset Content</option>
+                            <option value="206">206 Partial Content</option>
+                        </select>
+                    </div>
+
+                    <div class="select-group">
+                        <label class="select-label">Redirection (3xx)</label>
+                        <select class="code-select" id="sel-3xx">
+                            <option value="" disabled selected>Select 3xx...</option>
+                            <option value="301">301 Moved Permanently</option>
+                            <option value="302">302 Found (Temporary)</option>
+                            <option value="304">304 Not Modified</option>
+                            <option value="307">307 Temporary Redirect</option>
+                            <option value="308">308 Permanent Redirect</option>
+                        </select>
+                    </div>
+
+                    <div class="select-group">
+                        <label class="select-label">Client Error (4xx)</label>
+                        <select class="code-select" id="sel-4xx">
+                            <option value="" disabled selected>Select 4xx...</option>
+                            <option value="400">400 Bad Request</option>
+                            <option value="401">401 Unauthorized</option>
+                            <option value="403">403 Forbidden</option>
+                            <option value="404">404 Not Found</option>
+                            <option value="408">408 Request Timeout</option>
+                            <option value="409">409 Conflict</option>
+                            <option value="418">418 I'm a teapot</option>
+                            <option value="429">429 Too Many Requests</option>
+                        </select>
+                    </div>
+
+                    <div class="select-group">
+                        <label class="select-label">Server Error (5xx)</label>
+                        <select class="code-select" id="sel-5xx">
+                            <option value="" disabled selected>Select 5xx...</option>
+                            <option value="500">500 Internal Server Error</option>
+                            <option value="502">502 Bad Gateway</option>
+                            <option value="503">503 Service Unavailable</option>
+                            <option value="504">504 Gateway Timeout</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-action" id="btn-simulate" style="margin-top:auto;">Run fetch() Simulation</button>
+                    
+                    <div class="sim-result" id="sim-result">
+                        <em>Awaiting simulation...</em>
+                    </div>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="panel">
+                    <div class="status-header">
+                        <div class="status-badge type-2xx" id="out-badge">200</div>
+                        <div>
+                            <div class="status-title" id="out-title">OK</div>
+                            <div class="status-desc" id="out-desc">The request succeeded. The result meaning of "success" depends on the HTTP method.</div>
+                        </div>
+                    </div>
+
+                    <h4 class="section-title">Browser Behavior</h4>
+                    <div class="browser-behavior" id="out-behavior">
+                        Standard successful response. Forms complete submission, fetch resolves successfully. Body is rendered or parsed depending on content type.
+                    </div>
+
+                    <h4 class="section-title">Simulated Response Preview</h4>
+                    <div class="code-block res" id="out-response">
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Mon, 01 Jan 2026 12:00:00 GMT
+
+{
+  "success": true,
+  "data": { "id": 1 }
+}</div>
+
+                    <h4 class="section-title">fetch() Handling Example</h4>
+                    <div class="code-block" id="out-code">
+<div class="codeLabel">JavaScript</div>
+fetch('/api/data')
+  .then(res => {
+    if (res.ok) return res.json();
+    throw new Error('Not OK');
+  });
+</div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        // Data Dictionary
+        const statusData = {
+            200: { title: "OK", desc: "The request succeeded. Result meaning depends on HTTP method.", behavior: "Forms complete submission, fetch resolves successfully. Cached by default if headers permit.", res: "HTTP/1.1 200 OK\nContent-Type: application/json\n\n{\n  \"success\": true\n}", code: "fetch('/api').then(res => res.json());" },
+            201: { title: "Created", desc: "The request succeeded, and a new resource was created as a result.", behavior: "Often returns a Location header indicating the URL of the newly created resource.", res: "HTTP/1.1 201 Created\nLocation: /api/users/123\nContent-Type: application/json\n\n{\n  \"id\": 123\n}", code: "if(res.status === 201) {\n  let newLocation = res.headers.get('Location');\n}" },
+            204: { title: "No Content", desc: "There is no content to send for this request, but the headers may be useful.", behavior: "If received after navigating to a link, the browser STAYS on the current page. fetch() completes but res.json() will throw an error since body is empty.", res: "HTTP/1.1 204 No Content\nDate: Mon, 01 Jan 2026", code: "if(res.status === 204) {\n  // Do not try to parse body!\n  console.log('Deleted successfully');\n}" },
+            205: { title: "Reset Content", desc: "Tells the user agent to reset the document which sent this request.", behavior: "Browsers that support this will clear the form that initiated the submission.", res: "HTTP/1.1 205 Reset Content", code: "// Used by browsers natively for forms.\n// In SPA land, you clear the form state manually." },
+            206: { title: "Partial Content", desc: "Used when the Range header is sent from the client to request only part of a resource.", behavior: "Crucial for video/audio streaming and resuming interrupted downloads.", res: "HTTP/1.1 206 Partial Content\nContent-Range: bytes 21010-47021/47022\nContent-Length: 26012\n\n[...binary data...]", code: "fetch('/video.mp4', {\n  headers: { 'Range': 'bytes=0-1024' }\n})" },
+
+            301: { title: "Moved Permanently", desc: "The URL of the requested resource has been changed permanently.", behavior: "Browsers AGGRESSIVELY cache this! They will intercept future requests to the old URL and redirect without network request. fetch() transparently follows it unless redirect: 'manual'.", res: "HTTP/1.1 301 Moved Permanently\nLocation: https://new-site.com/target", code: "// fetch follows 301 automatically.\n// To prevent: \nfetch(url, { redirect: 'manual' })" },
+            302: { title: "Found (Temporary)", desc: "The URI of requested resource has been changed temporarily.", behavior: "Browsers follow this but do not cache it natively (unless Cache-Control says so). Usually used for auth flow redirects.", res: "HTTP/1.1 302 Found\nLocation: /login\nCache-Control: no-cache", code: "// Common for OAuth flows or requiring login." },
+            304: { title: "Not Modified", desc: "Tells client the response has not been modified and client can continue to use the cached version.", behavior: "Sent in response to an If-None-Match (ETag) or If-Modified-Since request. Browser seamlessly returns the cached body to fetch().", res: "HTTP/1.1 304 Not Modified\nETag: \"33a64df5\"", code: "// Handled automatically by browser cache.\n// fetch receives 200 OK from local cache!" },
+            307: { title: "Temporary Redirect", desc: "Same as 302, but guarantees the HTTP method will not change (e.g. POST remains POST).", behavior: "Unlike 302 (which historically often turned POST into GET for redirects), 307 STRICTLY maintains the method and body.", res: "HTTP/1.1 307 Temporary Redirect\nLocation: /new-temp-endpoint", code: "// Good for temporarily maintaining POST payloads." },
+            308: { title: "Permanent Redirect", desc: "Same as 301, but guarantees the HTTP method will not change.", behavior: "Aggressively cached, and strictly maintains methods (POST remains POST).", res: "HTTP/1.1 308 Permanent Redirect\nLocation: /new-permanent-endpoint", code: "// Modern replacement for 301 for APIs." },
+
+            400: { title: "Bad Request", desc: "Server cannot or will not process the request due to client error (e.g., malformed syntax).", behavior: "fetch() resolves normally (res.ok is false). Browser shows it in network tab as red.", res: "HTTP/1.1 400 Bad Request\n\n{\n  \"error\": \"Invalid JSON payload. Missing 'email'\"\n}", code: "if(res.status === 400) {\n  const err = await res.json();\n  showFormErrors(err);\n}" },
+            401: { title: "Unauthorized", desc: "Client must authenticate itself to get the requested response.", behavior: "If accompanied by 'WWW-Authenticate: Basic ...', the browser will aggressively pop up a native username/password dialog unless handled via AJAX.", res: "HTTP/1.1 401 Unauthorized\nWWW-Authenticate: Basic realm=\"Access\"\n\n{\"error\": \"Unauthenticated\"}", code: "if(res.status === 401) {\n  // Redirect to login page\n  window.location = '/login';\n}" },
+            403: { title: "Forbidden", desc: "Client authenticated, but does not have access rights to the content.", behavior: "fetch() resolves. Browser just treats it as a failed request. Indicates auth identity is known but insufficient.", res: "HTTP/1.1 403 Forbidden\n\n{\"error\": \"Insufficient Permissions\"}", code: "if(res.status === 403) {\n  alert('You lack admin privileges');\n}" },
+            404: { title: "Not Found", desc: "The server can not find the requested resource.", behavior: "Browser displays a 404 page if navigated directly. fetch() resolves normally (res.ok is false).", res: "HTTP/1.1 404 Not Found\n\n{\"error\": \"User not found\"}", code: "if(res.status === 404) {\n  console.log('Item does not exist');\n}" },
+            408: { title: "Request Timeout", desc: "Server would like to shut down this unused connection.", behavior: "Chrome/Safari may silently retry requests if they receive a 408 in certain Keep-Alive situations.", res: "HTTP/1.1 408 Request Timeout\nConnection: close", code: "// Often implemented via client-side abort:\nconst ctrl = new AbortController();\nsetTimeout(()=> ctrl.abort(), 5000);\nfetch(url, { signal: ctrl.signal })" },
+            409: { title: "Conflict", desc: "Request conflicts with the current state of the server.", behavior: "Commonly used for version control (optimistic locking) or trying to create a resource that already exists.", res: "HTTP/1.1 409 Conflict\n\n{\"error\": \"Email already registered\"}", code: "if(res.status === 409) {\n  showError('Username taken, please choose another');\n}" },
+            418: { title: "I'm a teapot", desc: "The server refuses the attempt to brew coffee with a teapot.", behavior: "An April Fools' joke from 1998 (RFC 2324). Some IoT teapots actually use it.", res: "HTTP/1.1 418 I'm a teapot\n\nshort and stout", code: "if(res.status === 418) {\n  pourTea();\n}" },
+            429: { title: "Too Many Requests", desc: "User has sent too many requests in a given amount of time (rate limiting).", behavior: "Usually accompanied by 'Retry-After' header. The client should wait before making more requests.", res: "HTTP/1.1 429 Too Many Requests\nRetry-After: 3600\n\n{\"error\": \"Rate limit exceeded\"}", code: "if(res.status === 429) {\n  let wait = res.headers.get('Retry-After');\n  console.log(`Please wait ${wait} seconds`);\n}" },
+
+            500: { title: "Internal Server Error", desc: "The server has encountered a situation it doesn't know how to handle.", behavior: "Standard generic server crash. fetch() resolves normally with res.ok false.", res: "HTTP/1.1 500 Internal Server Error\n\n{\"error\": \"Exception thrown at line 42\"}", code: "if(res.status >= 500) {\n  alert('Server is experiencing issues');\n}" },
+            502: { title: "Bad Gateway", desc: "The server, while acting as a gateway or proxy, received an invalid response.", behavior: "Usually means the load balancer or reverse proxy (Nginx) cannot reach the backend application server.", res: "HTTP/1.1 502 Bad Gateway\n\n<center>nginx</center>", code: "// Indicates backend node is down." },
+            503: { title: "Service Unavailable", desc: "The server is not ready to handle the request. Common causes are down for maintenance or overloaded.", behavior: "Like 429, may include a Retry-After header. Bots/crawlers understand this means 'come back later' rather than 'remove from index'.", res: "HTTP/1.1 503 Service Unavailable\nRetry-After: 3600\n\nService down for scheduled maintenance", code: "// Graceful degraded experience" },
+            504: { title: "Gateway Timeout", desc: "The server, acting as a gateway, did not get a response in time.", behavior: "The reverse proxy timed out waiting for the backend application to respond. The backend might still be processing it!", res: "HTTP/1.1 504 Gateway Timeout\n\nTask took too long", code: "// Warning: If this was a POST, the backend \n// might still process the action!" },
+        };
+
+        const selects = document.querySelectorAll('.code-select');
+        const badge = document.getElementById('out-badge');
+        const titleEl = document.getElementById('out-title');
+        const descEl = document.getElementById('out-desc');
+        const behaviorEl = document.getElementById('out-behavior');
+        const responseEl = document.getElementById('out-response');
+        const codeEl = document.getElementById('out-code');
+        
+        const btnSimulate = document.getElementById('btn-simulate');
+        const simResult = document.getElementById('sim-result');
+
+        let currentCode = "200";
+
+        selects.forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                // reset others
+                selects.forEach(s => { if(s !== e.target) s.selectedIndex = 0; });
+                currentCode = e.target.value;
+                updateView();
+                simResult.innerHTML = "<em>Awaiting simulation...</em>";
+                change3DSign(currentCode);
+            });
+        });
+
+        function updateView() {
+            const data = statusData[currentCode];
+            if(!data) return;
+
+            badge.textContent = currentCode;
+            badge.className = `status-badge type-${currentCode[0]}xx`;
+
+            titleEl.textContent = data.title;
+            descEl.textContent = data.desc;
+            behaviorEl.textContent = data.behavior;
+            
+            responseEl.textContent = data.res;
+            
+            codeEl.innerHTML = `<div class="codeLabel">JavaScript</div>${data.code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}`;
+        }
+
+        btnSimulate.addEventListener('click', () => {
+            simResult.innerHTML = `<span style="color:#aaa;">Simulating fetch() for ${currentCode}...</span>`;
+            
+            // Mock a response object locally using JS Response API
+            setTimeout(() => {
+                try {
+                    // Extract body from mock res text (everything after \n\n)
+                    let bodyStr = "";
+                    let headersPart = statusData[currentCode].res;
+                    if(headersPart.includes('\n\n')) {
+                        let parts = headersPart.split('\n\n');
+                        bodyStr = parts[1];
+                    }
+
+                    const mockResponse = new Response(bodyStr || null, {
+                        status: parseInt(currentCode),
+                        statusText: statusData[currentCode].title,
+                        headers: { 'X-Simulated': 'true' }
+                    });
+
+                    let outcome = "✅ <strong>fetch() Promise resolved!</strong><br>";
+                    outcome += `<code>res.ok</code> is <strong>${mockResponse.ok ? '<span style="color:#7ee787;">true</span>' : '<span style="color:#ff5555;">false</span>'}</strong><br>`;
+                    outcome += `<code>res.status</code> is <strong>${mockResponse.status}</strong><br>`;
+                    
+                    if(mockResponse.status >= 300 && mockResponse.status < 400) {
+                        outcome += `<span style="color:#c678dd;">Note: In reality, fetch() transparently follows redirects, so you rarely see a 3xx status directly. You see the final 200 OK.</span>`;
+                    }
+                    if(mockResponse.status === 204) {
+                        outcome += `<span style="color:#e5c07b;">Note: Trying to call res.json() on a 204 will throw a syntax error unless handled!</span>`;
+                    }
+
+                    simResult.innerHTML = outcome;
+
+                    // Trigger 3D interaction
+                    joltSign();
+
+                } catch(e) {
+                    simResult.innerHTML = `<span style="color:#ff5555;">Simulation Error: ${e.message}</span>`;
+                }
+            }, 500);
+        });
+
+        // 3D Scene setup: "A signpost with different coloured signs"
+        let scene, camera, renderer;
+        let signpost, mainSign, textMesh;
+        let cType = '2'; // 2, 3, 4, 5
+        let font;
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 25;
+            camera.position.y = 5;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 15, 10);
+            scene.add(dirLight);
+
+            // Group
+            signpost = new THREE.Group();
+            scene.add(signpost);
+
+            // Pole
+            const poleGeo = new THREE.CylinderGeometry(0.3, 0.3, 15, 16);
+            const poleMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.y = 0;
+            signpost.add(pole);
+
+            // Base
+            const baseGeo = new THREE.CylinderGeometry(2, 2.5, 0.5, 16);
+            const base = new THREE.Mesh(baseGeo, poleMat);
+            base.position.y = -7.5;
+            signpost.add(base);
+
+            // Sign Box
+            const signGeo = new THREE.BoxGeometry(8, 3, 0.5);
+            mainSign = new THREE.Mesh(signGeo, new THREE.MeshPhongMaterial({ color: 0x98c379 }));
+            mainSign.position.y = 4;
+            mainSign.position.z = 0.5;
+            signpost.add(mainSign);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate3D();
+        }
+
+        function change3DSign(code) {
+            if(!mainSign) return;
+            
+            const firstChar = code[0];
+            let colorHex = 0x98c379; // 2xx
+            if(firstChar === '3') colorHex = 0x61afef;
+            if(firstChar === '4') colorHex = 0xe5c07b;
+            if(firstChar === '5') colorHex = 0xe06c75;
+
+            // Transition color
+            mainSign.material.color.setHex(colorHex);
+            
+            // Spin it
+            mainSign.rotation.x = Math.PI * 2; // full flip
+        }
+
+        function joltSign() {
+            if(mainSign) {
+                mainSign.position.z = 1.5; // bump forward
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            if(signpost) {
+                // gentle sway
+                signpost.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2 + 0.3; // Angle towards camera
+                
+                // Spin decay
+                if(mainSign.rotation.x > 0) {
+                    mainSign.rotation.x -= 0.1;
+                    if(mainSign.rotation.x < 0) mainSign.rotation.x = 0;
+                }
+
+                // Bump decay
+                if(mainSign.position.z > 0.5) {
+                    mainSign.position.z -= 0.05;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            updateView();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 102 - CSS Custom Property Organizer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 1024px) {
+            .split-view { grid-template-columns: 400px 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .code-input {
+            width: 100%;
+            height: 300px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            color: #e6e6e6;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+        }
+        .code-input:focus { border-color: #56b6c2; }
+
+        .btn-analyze {
+            background: #56b6c2;
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-analyze:hover { background: #6ad0dc; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            border: 1px solid #333;
+        }
+        .stat-val { font-size: 1.5rem; font-weight: bold; font-family: var(--font-mono); color: #56b6c2; }
+        .stat-lbl { font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin-top:0.3rem;}
+
+        .tabs {
+            display: flex;
+            gap: 0.2rem;
+            border-bottom: 1px solid #333;
+            margin-bottom: 1rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            color: #aaa;
+            border: 1px solid transparent;
+            border-bottom: none;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .tab-btn.active {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-color: #444;
+            border-bottom-color: transparent;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .var-list {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: var(--radius-sm);
+            background: #111;
+        }
+
+        .var-item {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .var-item:last-child { border-bottom: none; }
+
+        .var-name {
+            font-family: var(--font-mono);
+            color: #e06c75;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .var-val {
+            font-family: var(--font-mono);
+            color: #98c379;
+            font-size: 0.8rem;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .badge {
+            font-size: 0.65rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .badge.unused { background: rgba(255, 85, 85, 0.2); color: #ff5555; border: 1px solid #ff5555;}
+        .badge.used { background: rgba(126, 231, 135, 0.2); color: #7ee787; border: 1px solid #7ee787;}
+        .badge.dep { background: rgba(198, 120, 221, 0.2); color: #c678dd; border: 1px solid #c678dd;}
+
+        .graph-view {
+            width: 100%;
+            height: 400px;
+            background: #0a0a0a;
+            border-radius: var(--radius-sm);
+            border: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>102. CSS Custom Property Organizer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <h3>Input CSS</h3>
+                    <p style="font-size:0.8rem; color:#aaa; margin-top:-0.5rem;">Paste CSS containing variables (--var-name: value) and var() usages.</p>
+                    
+                    <textarea class="code-input" id="css-input" spellcheck="false">:root {
+  --primary-color: #56b6c2;
+  --secondary-color: #e06c75;
+  --bg-color: #1e1e1e;
+  --text-color: #efefef;
+  
+  /* Missing definitions (Unused) */
+  --unused-var: 10px;
+  
+  /* Dependencies */
+  --btn-bg: var(--primary-color);
+  --btn-text: var(--bg-color);
+  
+  --spacing-sm: 8px;
+  --spacing-md: calc(var(--spacing-sm) * 2);
+}
+
+.button {
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--secondary-color);
+}
+
+.card {
+  background: var(--bg-color);
+  color: var(--text-color);
+  padding: var(--spacing-md);
+  box-shadow: 0 4px 6px var(--shadow-color); /* Undefined dependency */
+}</textarea>
+                    
+                    <button class="btn-analyze" id="btn-analyze">Analyze Variables</button>
+                    
+                    <div id="error-msg" style="color:#ff5555; font-size:0.8rem; display:none; margin-top:0.5rem;"></div>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="panel">
+                    <h3>Analysis Results</h3>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-val" id="stat-total">0</div>
+                            <div class="stat-lbl">Declared</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-val" id="stat-used" style="color:#7ee787;">0</div>
+                            <div class="stat-lbl">Used</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-val" id="stat-unused" style="color:#ff5555;">0</div>
+                            <div class="stat-lbl">Unused</div>
+                        </div>
+                    </div>
+
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="tab-list">Variable List</button>
+                        <button class="tab-btn" data-tab="tab-graph">Dependency Graph</button>
+                        <button class="tab-btn" data-tab="tab-undefined">Undefined Uses</button>
+                    </div>
+
+                    <div id="tab-list" class="tab-content active">
+                        <ul class="var-list" id="var-list">
+                            <li style="padding:2rem; text-align:center; color:#666;">Click Analyze to view variables.</li>
+                        </ul>
+                    </div>
+
+                    <div id="tab-graph" class="tab-content">
+                        <p style="font-size:0.8rem; color:#aaa; margin-bottom:1rem;">Visual representation of variable references (var(--x) depends on --x).</p>
+                        <!-- D3/Canvas Graph placeholder -->
+                        <div class="graph-view" id="graph-view"></div>
+                        <p style="font-size:0.75rem; color:#666; text-align:center; margin-top:0.5rem;">Hover nodes to see connections.</p>
+                    </div>
+
+                    <div id="tab-undefined" class="tab-content">
+                        <p style="font-size:0.8rem; color:#aaa; margin-bottom:1rem;">Variables that are referenced via var() but never declared.</p>
+                        <ul class="var-list" id="undef-list"></ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        // DOM Elements
+        const cssInput = document.getElementById('css-input');
+        const btnAnalyze = document.getElementById('btn-analyze');
+        const errorMsg = document.getElementById('error-msg');
+        
+        const statTotal = document.getElementById('stat-total');
+        const statUsed = document.getElementById('stat-used');
+        const statUnused = document.getElementById('stat-unused');
+        
+        const varList = document.getElementById('var-list');
+        const undefList = document.getElementById('undef-list');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        const graphView = document.getElementById('graph-view');
+
+        // Logic
+        let currentAnalysis = {
+            declared: new Map(), // name -> { value, usedBy: set }
+            used: new Set(),     // names of variables used somewhere
+            undefinedUses: new Set(), // names used but not declared
+            dependencies: [] // { source: use, target: definition }
+        };
+
+        function analyzeCss() {
+            const css = cssInput.value;
+            errorMsg.style.display = 'none';
+
+            // Reset
+            currentAnalysis = {
+                declared: new Map(),
+                used: new Set(),
+                undefinedUses: new Set(),
+                dependencies: []
+            };
+
+            // 1. Find all custom property declarations: --var-name: value;
+            // Handle newlines in values reasonably well, stop at semicolon or closing brace
+            const declRegex = /(--[a-zA-Z0-9_\-]+)\s*:\s*([^;]+)(?:;|\})*/g;
+            let match;
+            while ((match = declRegex.exec(css)) !== null) {
+                const name = match[1].trim();
+                const val = match[2].trim().replace(/\}$/, '').trim();
+                
+                if(!currentAnalysis.declared.has(name)) {
+                    currentAnalysis.declared.set(name, {
+                        value: val,
+                        references: [] // variables this one depends on
+                    });
+                }
+            }
+
+            // 2. Find all var(--var-name) usages
+            // Can be inside selectors or inside other variable declarations
+            const varRegex = /var\(\s*(--[a-zA-Z0-9_\-]+)[^)]*\)/g;
+            
+            // To track dependencies between variables, we need context.
+            // Split into statements/blocks roughly to determine scope
+            
+            // Simple approach for global dependency graph:
+            // Just find ALL var() usages globally.
+            let varMatch;
+            while ((varMatch = varRegex.exec(css)) !== null) {
+                const usedName = varMatch[1].trim();
+                currentAnalysis.used.add(usedName);
+                
+                if (!currentAnalysis.declared.has(usedName)) {
+                    currentAnalysis.undefinedUses.add(usedName);
+                }
+            }
+
+            // Heuristic for variable-to-variable dependency
+            // Re-parse the values of the declared variables to see if they contain var()
+            currentAnalysis.declared.forEach((data, name) => {
+                const valRegex = /var\(\s*(--[a-zA-Z0-9_\-]+)[^)]*\)/g;
+                let vMatch;
+                while ((vMatch = valRegex.exec(data.value)) !== null) {
+                    const depName = vMatch[1].trim();
+                    data.references.push(depName);
+                    
+                    currentAnalysis.dependencies.push({
+                        source: name, // --btn-bg
+                        target: depName // depends on --primary-color
+                    });
+                }
+            });
+
+            renderResults();
+        }
+
+        function renderResults() {
+            const total = currentAnalysis.declared.size;
+            let usedCount = 0;
+            let unusedCount = 0;
+
+            const listHtml = [];
+            
+            if(total === 0) {
+                listHtml.push('<li style="padding:2rem; text-align:center; color:#aaa;">No CSS custom properties found.</li>');
+            }
+
+            currentAnalysis.declared.forEach((data, name) => {
+                const isUsed = currentAnalysis.used.has(name);
+                if (isUsed) usedCount++;
+                else unusedCount++;
+
+                const statusClass = isUsed ? 'used' : 'unused';
+                const statusText = isUsed ? 'Used' : 'Unused';
+                const hasDeps = data.references.length > 0;
+
+                listHtml.push(`
+                    <li class="var-item">
+                        <div>
+                            <div class="var-name">${name}</div>
+                            <div class="var-val" title="${data.value}">${data.value}</div>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            ${hasDeps ? `<span class="badge dep">Composite</span>` : ''}
+                            <span class="badge ${statusClass}">${statusText}</span>
+                        </div>
+                    </li>
+                `);
+            });
+
+            varList.innerHTML = listHtml.join('');
+
+            // Undefined
+            const undefHtml = [];
+            if(currentAnalysis.undefinedUses.size === 0) {
+                undefHtml.push('<li style="padding:2rem; text-align:center; color:#aaa;">No undefined properties used!</li>');
+            } else {
+                currentAnalysis.undefinedUses.forEach(name => {
+                    undefHtml.push(`
+                        <li class="var-item">
+                            <div class="var-name" style="color:#e5c07b;">${name}</div>
+                            <span class="badge unused">Missing Definition</span>
+                        </li>
+                    `);
+                });
+            }
+            undefList.innerHTML = undefHtml.join('');
+
+            // Stats
+            statTotal.textContent = total;
+            statUsed.textContent = usedCount;
+            statUnused.textContent = unusedCount;
+
+            // Trigger 3D graph (simulated D3 graph inside canvas via ThreeJS or plain 2D DOM)
+            // We'll use our built-in Three.js scene as the visualization for the graph if we can, 
+            // but the background canvas handles the cool 3D aesthetic. We'll build a simplified 2D DOM graph for the panel.
+            renderDomGraph();
+
+            // Trigger global 3D reaction
+            triggerNetworkPulse();
+        }
+
+        // Simple DOM based force-directed-like graph
+        function renderDomGraph() {
+            graphView.innerHTML = '';
+            
+            if(currentAnalysis.declared.size === 0) {
+                graphView.innerHTML = '<div style="padding:2rem; text-align:center; color:#666; margin-top:100px;">Graph requires variables</div>';
+                return;
+            }
+
+            // Gather nodes
+            const nodes = [];
+            const nodeMap = new Map();
+            
+            // Add declared
+            currentAnalysis.declared.forEach((_, name) => {
+                const node = { id: name, type: 'declared', x: Math.random()*300+50, y: Math.random()*300+50, vx:0, vy:0, links:0 };
+                nodes.push(node);
+                nodeMap.set(name, node);
+            });
+
+            // Add undefined that are referenced by other vars (we only track var->var deps here for simplicity)
+            currentAnalysis.dependencies.forEach(dep => {
+                if(!nodeMap.has(dep.target)) {
+                    const node = { id: dep.target, type: 'undef', x: Math.random()*300+50, y: Math.random()*300+50, vx:0, vy:0, links:0 };
+                    nodes.push(node);
+                    nodeMap.set(dep.target, node);
+                }
+                nodeMap.get(dep.source).links++;
+                nodeMap.get(dep.target).links++;
+            });
+
+            // Create DOM elements
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.style.position = 'absolute';
+            graphView.appendChild(svg);
+
+            const lines = [];
+            currentAnalysis.dependencies.forEach(dep => {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute('stroke', '#444');
+                line.setAttribute('stroke-width', '2');
+                svg.appendChild(line);
+                lines.push({ line, source: nodeMap.get(dep.source), target: nodeMap.get(dep.target) });
+            });
+
+            const labels = [];
+            nodes.forEach(n => {
+                const el = document.createElement('div');
+                el.style.position = 'absolute';
+                el.style.transform = 'translate(-50%, -50%)';
+                el.style.background = n.type === 'undef' ? '#e5c07b' : (currentAnalysis.used.has(n.id) ? '#7ee787' : '#ff5555');
+                el.style.color = '#000';
+                el.style.padding = '0.2rem 0.5rem';
+                el.style.borderRadius = '12px';
+                el.style.fontFamily = 'monospace';
+                el.style.fontSize = '10px';
+                el.style.fontWeight = 'bold';
+                el.style.whiteSpace = 'nowrap';
+                el.style.cursor = 'pointer';
+                el.textContent = n.id.replace('--', '');
+                
+                // Highlight connected on hover
+                el.onmouseenter = () => {
+                    lines.forEach(l => {
+                        if(l.source === n || l.target === n) {
+                            l.line.setAttribute('stroke', '#56b6c2');
+                            l.line.setAttribute('stroke-width', '3');
+                        } else {
+                            l.line.setAttribute('stroke', 'transparent');
+                        }
+                    });
+                };
+                el.onmouseleave = () => {
+                    lines.forEach(l => {
+                        l.line.setAttribute('stroke', '#444');
+                        l.line.setAttribute('stroke-width', '2');
+                    });
+                };
+
+                graphView.appendChild(el);
+                labels.push({ el, node: n });
+            });
+
+            // Simple layout simulation
+            const width = graphView.clientWidth || 400;
+            const height = graphView.clientHeight || 400;
+            
+            // Fruchterman-Reingold inspired quick layout
+            let iterations = 100;
+            const k = Math.sqrt((width*height) / (nodes.length+1));
+            
+            function tick() {
+                // Repulsion
+                for(let i=0; i<nodes.length; i++) {
+                    const v = nodes[i];
+                    v.vx = 0; v.vy = 0;
+                    for(let j=0; j<nodes.length; j++) {
+                        if(i===j) continue;
+                        const u = nodes[j];
+                        const dx = v.x - u.x;
+                        const dy = v.y - u.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy) || 0.1;
+                        if(dist < k * 2) {
+                            const force = (k*k) / dist;
+                            v.vx += (dx/dist) * force;
+                            v.vy += (dy/dist) * force;
+                        }
+                    }
+                }
+
+                // Attraction
+                lines.forEach(l => {
+                    const dx = l.target.x - l.source.x;
+                    const dy = l.target.y - l.source.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy) || 0.1;
+                    const force = (dist*dist) / k;
+                    const fx = (dx/dist) * force * 0.05;
+                    const fy = (dy/dist) * force * 0.05;
+                    
+                    l.source.vx += fx; l.source.vy += fy;
+                    l.target.vx -= fx; l.target.vy -= fy;
+                });
+
+                // Update positions
+                nodes.forEach(n => {
+                    n.x += Math.max(-10, Math.min(10, n.vx));
+                    n.y += Math.max(-10, Math.min(10, n.vy));
+                    
+                    // Bounds
+                    n.x = Math.max(20, Math.min(width-20, n.x));
+                    n.y = Math.max(20, Math.min(height-20, n.y));
+                });
+            }
+
+            // Run simulation fast
+            for(let i=0; i<iterations; i++) tick();
+
+            // Render
+            lines.forEach(l => {
+                l.line.setAttribute('x1', l.source.x);
+                l.line.setAttribute('y1', l.source.y);
+                l.line.setAttribute('x2', l.target.x);
+                l.line.setAttribute('y2', l.target.y);
+            });
+            labels.forEach(l => {
+                l.el.style.left = l.node.x + 'px';
+                l.el.style.top = l.node.y + 'px';
+            });
+        }
+
+
+        // Tabs
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+                
+                if(btn.dataset.tab === 'tab-graph') {
+                    renderDomGraph(); // ensure physical dimensions exist
+                }
+            });
+        });
+
+        btnAnalyze.addEventListener('click', analyzeCss);
+
+
+        // 3D Scene setup: "A web of interconnected nodes"
+        let scene, camera, renderer, nodesGrp, linesGrp;
+        let pNodes = [];
+        let pLines = [];
+        let isPulsing = false;
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 50;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            nodesGrp = new THREE.Group();
+            linesGrp = new THREE.Group();
+            scene.add(nodesGrp);
+            scene.add(linesGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // Generate random web
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x56b6c2, transparent: true, opacity: 0.15 });
+            const nodeGeo = new THREE.SphereGeometry(0.8, 16, 16);
+            const nodeMat = new THREE.MeshPhongMaterial({ color: 0x333333, emissive: 0x000000, shininess: 90 });
+
+            for(let i=0; i<40; i++) {
+                const mesh = new THREE.Mesh(nodeGeo, nodeMat.clone());
+                mesh.position.set(
+                    (Math.random()-0.5) * 60,
+                    (Math.random()-0.5) * 60,
+                    (Math.random()-0.5) * 20
+                );
+                mesh.userData = {
+                    vx: (Math.random()-0.5)*0.02,
+                    vy: (Math.random()-0.5)*0.02,
+                    homeZ: mesh.position.z
+                }
+                nodesGrp.add(mesh);
+                pNodes.push(mesh);
+            }
+
+            // Connect nearby
+            pNodes.forEach((n1, i) => {
+                pNodes.forEach((n2, j) => {
+                    if(i < j && n1.position.distanceTo(n2.position) < 15) {
+                        const geo = new THREE.BufferGeometry().setFromPoints([n1.position, n2.position]);
+                        const line = new THREE.Line(geo, lineMat);
+                        linesGrp.add(line);
+                        pLines.push({ line, n1, n2 });
+                    }
+                });
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate3D();
+        }
+
+        function triggerNetworkPulse() {
+            // Flash random nodes
+            isPulsing = true;
+            
+            pNodes.forEach(n => {
+                if(Math.random() > 0.7) {
+                    n.material.emissive.setHex(0x56b6c2);
+                }
+            });
+
+            setTimeout(() => {
+                isPulsing = false;
+            }, 500);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            nodesGrp.rotation.y += 0.001;
+            nodesGrp.rotation.x = Math.sin(Date.now()*0.0005) * 0.1;
+            linesGrp.rotation.copy(nodesGrp.rotation);
+
+            // Drift
+            pNodes.forEach(n => {
+                n.position.x += n.userData.vx;
+                n.position.y += n.userData.vy;
+                
+                // Float up/down
+                n.position.z = n.userData.homeZ + Math.sin(Date.now()*0.001 + n.position.x) * 2;
+
+                if(!isPulsing && n.material.emissive.getHex() > 0) {
+                    n.material.emissive.lerp(new THREE.Color(0x000000), 0.05);
+                }
+            });
+
+            // Update lines
+            pLines.forEach(pl => {
+                const posattr = pl.line.geometry.attributes.position;
+                posattr.setXYZ(0, pl.n1.position.x, pl.n1.position.y, pl.n1.position.z);
+                posattr.setXYZ(1, pl.n2.position.x, pl.n2.position.y, pl.n2.position.z);
+                posattr.needsUpdate = true;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            analyzeCss(); // run initial analysis
+        });
+    </script>
+</body>
+</html>

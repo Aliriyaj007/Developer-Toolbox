@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 105 - Monorepo Dependency Visualizer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 1024px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .upload-zone {
+            border: 2px dashed #444;
+            border-radius: var(--radius-md);
+            padding: 2rem 1rem;
+            text-align: center;
+            background: rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #56b6c2;
+            background: rgba(86, 182, 194, 0.1);
+        }
+        .upload-zone h4 { margin: 0 0 0.5rem 0; color: #56b6c2; }
+        .upload-zone p { margin: 0; font-size: 0.85rem; color: #aaa; }
+        
+        #file-input { display: none; }
+
+        .btn-action {
+            background: #56b6c2;
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-action:hover { background: #6ad0dc; }
+        .btn-outline {
+            background: transparent;
+            color: #fff;
+            border: 1px solid #444;
+        }
+        .btn-outline:hover { background: rgba(255,255,255,0.05); }
+
+        .pkg-list {
+            list-style: none;
+            margin: 0; padding: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #111;
+        }
+        .pkg-item {
+            padding: 0.8rem;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .pkg-item:last-child { border-bottom: none; }
+        .pkg-name { font-weight: bold; color: #e5c07b; font-family: var(--font-mono); }
+        .pkg-version { color: #aaa; font-family: var(--font-mono); font-size: 0.75rem;}
+
+        .tabs {
+            display: flex;
+            gap: 0.2rem;
+            border-bottom: 1px solid #333;
+            margin-bottom: 1rem;
+        }
+        .tab-btn {
+            background: transparent;
+            color: #aaa;
+            border: 1px solid transparent;
+            border-bottom: none;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .tab-btn.active {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-color: #444;
+            border-bottom-color: transparent;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; flex: 1; display:flex; flex-direction:column; }
+
+        .graph-view {
+            width: 100%;
+            flex: 1;
+            min-height: 400px;
+            background: #0a0a0a;
+            border-radius: var(--radius-sm);
+            border: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+            border-top-left-radius: 0;
+        }
+
+        .alert-box {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .alert-box.warning { background: rgba(229, 192, 123, 0.2); border: 1px solid #e5c07b; color: #e5c07b; display: block;}
+        .alert-box.danger { background: rgba(255, 85, 85, 0.2); border: 1px solid #ff5555; color: #ff5555; display: block;}
+        .alert-box.success { background: rgba(126, 231, 135, 0.2); border: 1px solid #7ee787; color: #7ee787; display: block;}
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+        }
+        .matrix-table th, .matrix-table td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid #222;
+        }
+        .matrix-table th { background: #111; position: sticky; top: 0; color: #aaa;}
+        .version-mismatch { color: #e06c75; font-weight: bold; }
+        .version-match { color: #98c379; }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.2;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>105. Monorepo Dependency Visualizer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <h3>Upload Packages</h3>
+                    <p style="font-size:0.8rem; color:#aaa; margin-top:-0.5rem;">Select multiple <code>package.json</code> files from your monorepo workspaces.</p>
+                    
+                    <div class="upload-zone" id="upload-zone">
+                        <h4>Drop package.json files here</h4>
+                        <p>or click to browse</p>
+                        <input type="file" id="file-input" multiple accept=".json">
+                    </div>
+
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="btn-action btn-outline" id="btn-mock">Load Demo Monorepo</button>
+                        <button class="btn-action" id="btn-clear" style="background:#ff5555; display:none;">Clear</button>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <h4 style="margin:0;">Parsed Packages (<span id="pkg-count">0</span>)</h4>
+                    </div>
+                    
+                    <ul class="pkg-list" id="pkg-list">
+                        <li style="padding:2rem; text-align:center; color:#666;">No packages loaded.</li>
+                    </ul>
+                </div>
+
+                <!-- Visualization Panel -->
+                <div class="panel" style="padding:0; background:transparent; border:none;">
+                    <div class="tabs" style="margin-bottom:0; background:rgba(0,0,0,0.6); padding:1rem 1rem 0 1rem; border: 1px solid var(--border-color); border-bottom:none; border-radius:var(--radius-md) var(--radius-md) 0 0;">
+                        <button class="tab-btn active" data-tab="tab-graph">Dependency Graph</button>
+                        <button class="tab-btn" data-tab="tab-matrix">Version Alignment</button>
+                        <button class="tab-btn" data-tab="tab-circular">Circular Dependencies</button>
+                    </div>
+
+                    <div class="panel" style="border-top-left-radius:0; border-top-right-radius:0; flex:1;">
+                        
+                        <div id="tab-graph" class="tab-content active" style="display:flex;">
+                            <p style="font-size:0.8rem; color:#aaa; margin-bottom:1rem; margin-top:-0.5rem;">Visual representation of internal dependencies across workspaces. Nodes are packages, directed edges are dependencies.</p>
+                            <div class="graph-view" id="graph-view">
+                                <div style="padding:2rem; text-align:center; color:#666; margin-top:100px;">Load packages to view graph</div>
+                            </div>
+                        </div>
+
+                        <div id="tab-matrix" class="tab-content">
+                            <p style="font-size:0.8rem; color:#aaa; margin-bottom:1rem; margin-top:-0.5rem;">Detects mismatched versions of external dependencies used across your internal packages.</p>
+                            
+                            <div id="matrix-alert" class="alert-box"></div>
+                            
+                            <div style="overflow-x:auto; overflow-y:auto; max-height:400px; border:1px solid #333; border-radius:4px;">
+                                <table class="matrix-table" id="matrix-table">
+                                    <thead><tr><th>Dependency</th><th>Versions Found</th><th>Used By</th></tr></thead>
+                                    <tbody id="matrix-body">
+                                        <tr><td colspan="3" style="text-align:center; color:#666; padding:2rem;">Load packages to view alignment.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="tab-circular" class="tab-content">
+                            <p style="font-size:0.8rem; color:#aaa; margin-bottom:1rem; margin-top:-0.5rem;">Detects dependency cycles between internal packages (A -> B -> A) which can cause build issues.</p>
+                            <div id="circular-alert" class="alert-box"></div>
+                            <ul class="pkg-list" id="circular-list" style="max-height:400px;">
+                                <li style="padding:2rem; text-align:center; color:#666;">Load packages to detect cycles.</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        // DOM Elements
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const btnMock = document.getElementById('btn-mock');
+        const btnClear = document.getElementById('btn-clear');
+        
+        const pkgCountList = document.getElementById('pkg-count');
+        const pkgListEl = document.getElementById('pkg-list');
+        
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        const graphView = document.getElementById('graph-view');
+        
+        const matrixBody = document.getElementById('matrix-body');
+        const matrixAlert = document.getElementById('matrix-alert');
+        
+        const circularAlert = document.getElementById('circular-alert');
+        const circularList = document.getElementById('circular-list');
+
+        // State
+        let packages = []; // array of { name, version, dependencies, devDependencies }
+        let internalPackageNames = new Set();
+        let internalLinks = []; // { source: name, target: name, type: 'dep' | 'devDep' }
+
+        // Tabs
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                btn.classList.add('active');
+                const target = document.getElementById(btn.dataset.tab);
+                target.classList.add('active');
+                
+                if(btn.dataset.tab === 'tab-graph') {
+                    target.style.display = 'flex'; // override for flex layout
+                    if(packages.length > 0) renderDOMGraph(); 
+                }
+            });
+        });
+
+        // File Upload Handling
+        uploadZone.addEventListener('click', () => fileInput.click());
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        async function handleFiles(files) {
+            const promises = Array.from(files).map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const json = JSON.parse(e.target.result);
+                            if(json.name) {
+                                resolve({
+                                    name: json.name,
+                                    version: json.version || '0.0.0',
+                                    dependencies: json.dependencies || {},
+                                    devDependencies: json.devDependencies || {}
+                                });
+                            } else {
+                                resolve(null); // not a valid pkg json
+                            }
+                        } catch(err) {
+                            resolve(null);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            });
+
+            const results = await Promise.all(promises);
+            const validPkgs = results.filter(p => p !== null);
+            
+            if(validPkgs.length > 0) {
+                // Merge/add
+                validPkgs.forEach(vp => {
+                    if(!packages.find(p => p.name === vp.name)) {
+                        packages.push(vp);
+                    }
+                });
+                processPackages();
+            }
+        }
+
+        btnMock.addEventListener('click', () => {
+            packages = [
+                { name: '@monorepo/core', version: '1.0.0', dependencies: { 'lodash': '^4.17.21' }, devDependencies: {} },
+                { name: '@monorepo/ui', version: '1.0.0', dependencies: { 'react': '^18.0.0', '@monorepo/core': 'workspace:*' }, devDependencies: {} },
+                { name: '@monorepo/utils', version: '1.0.0', dependencies: { 'lodash': '^4.17.20' }, devDependencies: {} }, // Version mismatch
+                { name: '@monorepo/app', version: '1.0.0', dependencies: { 'react': '^18.0.0', '@monorepo/ui': 'workspace:*', '@monorepo/utils': 'workspace:*' }, devDependencies: {} },
+                { name: '@monorepo/plugin-a', version: '1.0.0', dependencies: { '@monorepo/core': 'workspace:*', '@monorepo/plugin-b': 'workspace:*' }, devDependencies: {} },
+                { name: '@monorepo/plugin-b', version: '1.0.0', dependencies: { '@monorepo/plugin-a': 'workspace:*' }, devDependencies: {} }, // Circular Dep
+            ];
+            processPackages();
+        });
+
+        btnClear.addEventListener('click', () => {
+            packages = [];
+            processPackages();
+        });
+
+        function processPackages() {
+            btnClear.style.display = packages.length > 0 ? 'block' : 'none';
+            btnMock.style.display = packages.length > 0 ? 'none' : 'block';
+            pkgCountList.textContent = packages.length;
+            
+            internalPackageNames = new Set(packages.map(p => p.name));
+            
+            // Build internal links list
+            internalLinks = [];
+            packages.forEach(pkg => {
+                // Check deps
+                Object.keys(pkg.dependencies).forEach(dep => {
+                    if(internalPackageNames.has(dep)) {
+                        internalLinks.push({ source: pkg.name, target: dep, type: 'dep' });
+                    }
+                });
+                // Check devDeps
+                Object.keys(pkg.devDependencies).forEach(dep => {
+                    if(internalPackageNames.has(dep)) {
+                        internalLinks.push({ source: pkg.name, target: dep, type: 'devDep' });
+                    }
+                });
+            });
+
+            renderPackageList();
+            renderDOMGraph();
+            runMatrixAnalysis();
+            runCircularAnalysis();
+            
+            update3DWeb(); // update visual
+        }
+
+        function renderPackageList() {
+            if(packages.length === 0) {
+                pkgListEl.innerHTML = '<li style="padding:2rem; text-align:center; color:#666;">No packages loaded.</li>';
+                return;
+            }
+            
+            pkgListEl.innerHTML = packages.map(p => `
+                <li class="pkg-item">
+                    <span class="pkg-name">${p.name}</span>
+                    <span class="pkg-version">v${p.version}</span>
+                </li>
+            `).join('');
+        }
+
+        function renderDOMGraph() {
+            graphView.innerHTML = '';
+            if(packages.length === 0) {
+                graphView.innerHTML = '<div style="padding:2rem; text-align:center; color:#666; margin-top:100px;">Load packages to view graph</div>';
+                return;
+            }
+
+            const width = graphView.clientWidth || 600;
+            const height = graphView.clientHeight || 400;
+
+            const nodes = packages.map(p => ({ id: p.name, x: Math.random()*300+100, y: Math.random()*300+100, vx:0, vy:0 }));
+            const nodeMap = new Map(nodes.map(n => [n.id, n]));
+            
+            const links = internalLinks.map(l => ({
+                source: nodeMap.get(l.source),
+                target: nodeMap.get(l.target),
+                type: l.type
+            }));
+
+            // SVG Container
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+            svg.style.position = 'absolute';
+            
+            // Add marker for arrow
+            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+            defs.innerHTML = `
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#56b6c2" />
+                </marker>
+            `;
+            svg.appendChild(defs);
+            graphView.appendChild(svg);
+
+            const lineEls = links.map(l => {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute('stroke', l.type === 'dep' ? '#56b6c2' : '#c678dd');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke-dasharray', l.type === 'devDep' ? '5,5' : 'none');
+                line.setAttribute('marker-end', 'url(#arrowhead)');
+                svg.appendChild(line);
+                return { line, link: l };
+            });
+
+            const labelEls = nodes.map(n => {
+                const el = document.createElement('div');
+                el.style.position = 'absolute';
+                el.style.transform = 'translate(-50%, -50%)';
+                el.style.background = '#1e1e1e';
+                el.style.color = '#e5c07b';
+                el.style.padding = '0.3rem 0.8rem';
+                el.style.borderRadius = '20px';
+                el.style.fontFamily = 'monospace';
+                el.style.fontSize = '12px';
+                el.style.border = '1px solid #e5c07b';
+                el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
+                el.style.whiteSpace = 'nowrap';
+                el.style.zIndex = '10';
+                el.textContent = n.id.split('/').pop(); // shorter name
+                
+                graphView.appendChild(el);
+                return { el, node: n };
+            });
+
+            // Fast layout simulation
+            const k = Math.sqrt((width*height) / (nodes.length+1));
+            
+            for(let i=0; i<80; i++) {
+                // Repulsion
+                for(let a=0; a<nodes.length; a++) {
+                    const v = nodes[a]; v.vx = 0; v.vy = 0;
+                    for(let b=0; b<nodes.length; b++) {
+                        if(a===b) continue;
+                        const u = nodes[b];
+                        const dx = v.x - u.x; const dy = v.y - u.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy) || 0.1;
+                        if(dist < k * 2) {
+                            const force = (k*k) / dist;
+                            v.vx += (dx/dist) * force; v.vy += (dy/dist) * force;
+                        }
+                    }
+                }
+                // Attraction
+                links.forEach(l => {
+                    const dx = l.target.x - l.source.x; const dy = l.target.y - l.source.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy) || 0.1;
+                    const force = (dist*dist) / k;
+                    const fx = (dx/dist) * force * 0.1; const fy = (dy/dist) * force * 0.1;
+                    l.source.vx -= fx; l.source.vy -= fy;
+                    l.target.vx += fx; l.target.vy += fy;
+                });
+                // Center gravity
+                nodes.forEach(n => {
+                    n.vx += (width/2 - n.x) * 0.05;
+                    n.vy += (height/2 - n.y) * 0.05;
+                    n.x += n.vx; n.y += n.vy;
+                });
+            }
+
+            // Render positions
+            lineEls.forEach(le => {
+                // Start from edge of node for arrow visibility
+                const dx = le.link.target.x - le.link.source.x;
+                const dy = le.link.target.y - le.link.source.y;
+                const angle = Math.atan2(dy, dx);
+                const r = 25; // approx radius of div
+                
+                le.line.setAttribute('x1', le.link.source.x + Math.cos(angle)*r);
+                le.line.setAttribute('y1', le.link.source.y + Math.sin(angle)*r);
+                le.line.setAttribute('x2', le.link.target.x - Math.cos(angle)*(r+8));
+                le.line.setAttribute('y2', le.link.target.y - Math.sin(angle)*(r+8));
+            });
+            labelEls.forEach(le => {
+                le.el.style.left = le.node.x + 'px';
+                le.el.style.top = le.node.y + 'px';
+            });
+        }
+
+        function runMatrixAnalysis() {
+            if(packages.length === 0) {
+                matrixBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#666; padding:2rem;">Load packages to view alignment.</td></tr>';
+                matrixAlert.className = 'alert-box';
+                return;
+            }
+
+            // Group all external dependencies across all packages
+            const externalDeps = new Map(); // name -> baseDep -> [{ version, pkg }]
+            
+            packages.forEach(pkg => {
+                const checkDeps = (depObj) => {
+                    Object.entries(depObj).forEach(([depName, version]) => {
+                        if(internalPackageNames.has(depName)) return; // skip internals
+                        if(!externalDeps.has(depName)) externalDeps.set(depName, []);
+                        externalDeps.get(depName).push({ version, pkg: pkg.name });
+                    });
+                };
+                checkDeps(pkg.dependencies);
+                checkDeps(pkg.devDependencies);
+            });
+
+            const rowsHtml = [];
+            let mismatches = 0;
+
+            // Sort alphabetical
+            const sortedDeps = Array.from(externalDeps.keys()).sort();
+
+            sortedDeps.forEach(depName => {
+                const usages = externalDeps.get(depName);
+                
+                // Group by version
+                const versionGroups = {};
+                usages.forEach(u => {
+                    if(!versionGroups[u.version]) versionGroups[u.version] = [];
+                    versionGroups[u.version].push(u.pkg);
+                });
+
+                const numVersions = Object.keys(versionGroups).length;
+                const isMismatch = numVersions > 1;
+                if(isMismatch) mismatches++;
+
+                const versionHtml = Object.entries(versionGroups).map(([v, pkgs]) => {
+                    return `<div><strong class="${isMismatch ? 'version-mismatch' : 'version-match'}">${v}</strong> <span style="color:#666">(${pkgs.length} pkgs)</span></div>`;
+                }).join('');
+
+                const usedByHtml = Object.values(versionGroups).flat().slice(0, 3).map(p => p.split('/').pop()).join(', ') + 
+                                  (usages.length > 3 ? ` <span style="color:#666">... (+${usages.length-3})</span>` : '');
+
+                rowsHtml.push(`
+                    <tr style="background: ${isMismatch ? 'rgba(224, 108, 117, 0.05)' : ''};">
+                        <td style="font-weight:bold; color:${isMismatch ? '#e06c75' : '#fff'};">${depName}</td>
+                        <td>${versionHtml}</td>
+                        <td style="color:#aaa;">${usedByHtml}</td>
+                    </tr>
+                `);
+            });
+
+            matrixBody.innerHTML = rowsHtml.join('') || '<tr><td colspan="3" style="text-align:center; color:#666; padding:2rem;">No external dependencies found.</td></tr>';
+
+            if(mismatches > 0) {
+                matrixAlert.className = 'alert-box warning';
+                matrixAlert.innerHTML = `<strong>⚠️ Version Alignment Warning</strong><br>Found ${mismatches} external dependencies with mismatched versions across your workspaces.`;
+            } else if (sortedDeps.length > 0) {
+                matrixAlert.className = 'alert-box success';
+                matrixAlert.innerHTML = `<strong>✅ Perfect Alignment</strong><br>All external dependencies share exactly the same versions.`;
+            } else {
+                matrixAlert.className = 'alert-box';
+            }
+        }
+
+        function runCircularAnalysis() {
+            if(packages.length === 0) {
+                circularList.innerHTML = '<li style="padding:2rem; text-align:center; color:#666;">Load packages to detect cycles.</li>';
+                circularAlert.className = 'alert-box';
+                return;
+            }
+
+            // Simple DFS for cycle detection
+            const graph = {};
+            internalPackageNames.forEach(name => graph[name] = []);
+            internalLinks.forEach(l => graph[l.source].push(l.target));
+
+            const visited = {};
+            const recStack = {};
+            const cycles = [];
+
+            function dfs(node, path) {
+                if(!visited[node]) {
+                    visited[node] = true;
+                    recStack[node] = true;
+                    const newPath = [...path, node];
+
+                    for(let neighbor of graph[node]) {
+                        if(!visited[neighbor]) {
+                            dfs(neighbor, newPath);
+                        } else if (recStack[neighbor]) {
+                            // Cycle detected
+                            const cycleStartIdx = newPath.indexOf(neighbor);
+                            const cyclePath = newPath.slice(cycleStartIdx);
+                            cyclePath.push(neighbor); // show loop closing
+                            // Prevent duplicates of same cycle (simple heuristic array to string)
+                            const cycleStr = cyclePath.sort().join('->');
+                            if(!cycles.find(c => c.str === cycleStr)) {
+                                cycles.push({ path: cyclePath, str: cycleStr });
+                            }
+                        }
+                    }
+                }
+                recStack[node] = false;
+            }
+
+            Object.keys(graph).forEach(node => {
+                if(!visited[node]) dfs(node, []);
+            });
+
+            if(cycles.length > 0) {
+                circularAlert.className = 'alert-box danger';
+                circularAlert.innerHTML = `<strong>❌ Circular Dependencies Detected</strong><br>Found ${cycles.length} cycle(s) in your internal package imports.`;
+                
+                circularList.innerHTML = cycles.map(c => `
+                    <li class="pkg-item" style="display:block; border-color:#ff5555; background:rgba(255,85,85,0.05);">
+                        <div style="color:#ff5555; font-weight:bold; margin-bottom:0.5rem;">Cycle Path:</div>
+                        <div style="font-family:monospace; color:#e5c07b;">
+                            ${c.path.map(p => p.split('/').pop()).join(' <span style="color:#fff;">→</span> ')}
+                        </div>
+                    </li>
+                `).join('');
+            } else {
+                circularAlert.className = 'alert-box success';
+                circularAlert.innerHTML = `<strong>✅ Clean Architecture</strong><br>No circular dependency loops detected between workspaces.`;
+                circularList.innerHTML = '<li style="padding:2rem; text-align:center; color:#666;">No cycles to display.</li>';
+            }
+        }
+
+        // 3D Scene setup: "A 3D spider web of packages"
+        let scene, camera, renderer, nodesGrp, linesGrp;
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 40;
+            camera.position.y = 5;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            nodesGrp = new THREE.Group();
+            linesGrp = new THREE.Group();
+            scene.add(nodesGrp);
+            scene.add(linesGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Initial demo web
+            update3DWeb(true);
+            animate3D();
+        }
+
+        function update3DWeb(isInitial = false) {
+            if(!scene) return;
+            
+            // clear
+            while(nodesGrp.children.length > 0) nodesGrp.remove(nodesGrp.children[0]);
+            while(linesGrp.children.length > 0) linesGrp.remove(linesGrp.children[0]);
+
+            const numNodes = isInitial ? 20 : Math.max(5, packages.length);
+            const numLinks = isInitial ? 25 : internalLinks.length;
+
+            const nodeGeo = new THREE.IcosahedronGeometry(1 + (Math.random()*0.5), 1);
+            const nodeMat = new THREE.MeshPhongMaterial({ color: 0xe5c07b, emissive: 0x221100, wireframe: true });
+            
+            const points = [];
+            
+            // Create nodes in spherical distribution
+            for(let i=0; i<numNodes; i++) {
+                const mesh = new THREE.Mesh(nodeGeo, nodeMat);
+                
+                const phi = Math.acos( -1 + ( 2 * i ) / numNodes );
+                const theta = Math.sqrt( numNodes * Math.PI ) * phi;
+                const r = 15;
+
+                mesh.position.x = r * Math.cos(theta) * Math.sin(phi);
+                mesh.position.y = r * Math.sin(theta) * Math.sin(phi);
+                mesh.position.z = r * Math.cos(phi);
+                
+                mesh.userData = { 
+                    rx: (Math.random()-0.5)*0.05, 
+                    ry: (Math.random()-0.5)*0.05 
+                };
+                
+                nodesGrp.add(mesh);
+                points.push(mesh.position);
+            }
+
+            // Create connections (simulated or real if packages loaded)
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x56b6c2, transparent: true, opacity: 0.3 });
+            
+            if(isInitial || packages.length === 0) {
+                // random connections for spiderweb effect
+                for(let i=0; i<numLinks; i++) {
+                    const p1 = points[Math.floor(Math.random()*points.length)];
+                    const p2 = points[Math.floor(Math.random()*points.length)];
+                    const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                    const line = new THREE.Line(geo, lineMat);
+                    linesGrp.add(line);
+                }
+            } else {
+                // Match actual internalLinks count visually (just random mapping for aesthetic)
+                internalLinks.forEach((_, idx) => {
+                    const p1 = points[idx % points.length];
+                    const p2 = points[(idx+1) % points.length]; // Simple linkage just for visual flair corresponding to qty
+                    const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                    const line = new THREE.Line(geo, lineMat);
+                    linesGrp.add(line);
+                });
+            }
+
+            // Pulse effect trigger
+            if(!isInitial) {
+                nodesGrp.children.forEach(n => {
+                    n.material.emissive.setHex(0x56b6c2);
+                    n.scale.set(1.5, 1.5, 1.5);
+                });
+                setTimeout(() => {
+                    nodesGrp.children.forEach(n => {
+                        n.material.emissive.setHex(0x221100);
+                    });
+                }, 500);
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            nodesGrp.rotation.y += 0.002;
+            nodesGrp.rotation.x = Math.sin(Date.now()*0.0005) * 0.1;
+            linesGrp.rotation.copy(nodesGrp.rotation);
+
+            nodesGrp.children.forEach(n => {
+                n.rotation.x += n.userData.rx;
+                n.rotation.y += n.userData.ry;
+                
+                // Return to normal scale after pulse
+                if(n.scale.x > 1) {
+                    n.scale.lerp(new THREE.Vector3(1,1,1), 0.05);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 101 - Browser Feature Support Matrix - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+            min-height: 500px;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .search-box {
+            width: 100%;
+            background: var(--bg-main);
+            color: #fff;
+            border: 1px solid var(--border-color);
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .feature-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.8rem;
+            text-align: left;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+        .feature-btn:hover { background: rgba(255,255,255,0.05); }
+        .feature-btn.active { background: rgba(187, 134, 252, 0.2); border-color: var(--accent-primary); }
+
+        .matrix-panel {
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .browser-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .browser-card {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            transition: transform 0.3s;
+        }
+
+        .browser-card:hover { transform: translateY(-4px); }
+
+        .b-icon { font-size: 3rem; }
+        .b-name { font-weight: bold; font-size: 1.1rem; }
+        .b-ver { color: #aaa; font-size: 0.85rem; }
+
+        .status-badge {
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .status-y { background: rgba(80, 250, 123, 0.2); color: #50fa7b; border: 1px solid #50fa7b; }
+        .status-n { background: rgba(255, 85, 85, 0.2); color: #ff5555; border: 1px solid #ff5555; }
+        .status-p { background: rgba(241, 250, 140, 0.2); color: #f1fa8c; border: 1px solid #f1fa8c; }
+
+        /* 3D background wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>101. Browser Feature Support Matrix</h1>
+                    <p style="color:var(--text-secondary);">Instant compatibility checks for modern Web APIs, CSS, and JS features.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                <!-- Features List -->
+                <div class="controls-panel">
+                    <input type="text" id="search-input" class="search-box" placeholder="Search features (e.g., Grid, WebRTC)...">
+                    <div class="feature-list" id="feature-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Matrix View -->
+                <div class="matrix-panel">
+                    <div>
+                        <h2 id="feature-title" style="margin-bottom:0.5rem; color:var(--accent-primary);">Select a feature</h2>
+                        <p id="feature-desc" style="color:#aaa; font-size:0.9rem; margin-bottom:1.5rem;">Click a feature on the left to view browser support metrics.</p>
+                    </div>
+
+                    <div class="browser-grid" id="browser-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        const db = [
+            { id: 'css-grid', name: 'CSS Grid Layout', desc: 'Method of creating grid structures with CSS. Allows creating two-dimensional layouts.', cr: 'Y: 57+', ff: 'Y: 52+', sa: 'Y: 10.1+', ed: 'Y: 16+' },
+            { id: 'webrtc', name: 'WebRTC (Real-Time Communication)', desc: 'API allowing browser-to-browser voice/video/data transfers without plugins.', cr: 'Y: 23+', ff: 'Y: 22+', sa: 'Y: 11+', ed: 'Y: 15+' },
+            { id: 'webusb', name: 'WebUSB API', desc: 'API providing access to custom USB devices from the web.', cr: 'Y: 61+', ff: 'N: none', sa: 'N: none', ed: 'Y: 79+' },
+            { id: 'has', name: 'CSS :has() pseudo-class', desc: 'Relational pseudo-class that matches an element if any of the relative selectors match.', cr: 'Y: 105+', ff: 'Y: 121+', sa: 'Y: 15.4+', ed: 'Y: 105+' },
+            { id: 'view-transitions', name: 'View Transitions API', desc: 'Provides a mechanism for easily creating animated transitions between different DOM states.', cr: 'Y: 111+', ff: 'P: Behind Flag', sa: 'Y: 18+', ed: 'Y: 111+' },
+            { id: 'webgpu', name: 'WebGPU API', desc: 'Next-generation graphics and compute API tailored for the web.', cr: 'Y: 113+', ff: 'P: Behind Flag', sa: 'N: none', ed: 'Y: 113+' },
+            { id: 'wasm', name: 'WebAssembly', desc: 'Binary instruction format for a stack-based virtual machine, designed as a portable target.', cr: 'Y: 57+', ff: 'Y: 52+', sa: 'Y: 11+', ed: 'Y: 16+' },
+            { id: 'dialog', name: '<dialog> element', desc: 'Method of representing a dialog box or other interactive component, such as an inspector or window.', cr: 'Y: 37+', ff: 'Y: 98+', sa: 'Y: 15.4+', ed: 'Y: 79+' }
+        ];
+
+        const listEl = document.getElementById('feature-list');
+        const searchInput = document.getElementById('search-input');
+        const gridEl = document.getElementById('browser-grid');
+        const fTitle = document.getElementById('feature-title');
+        const fDesc = document.getElementById('feature-desc');
+
+        let activeId = 'css-grid';
+
+        function renderList(query = '') {
+            listEl.innerHTML = '';
+            const filtered = db.filter(f => f.name.toLowerCase().includes(query.toLowerCase()) || f.id.includes(query.toLowerCase()));
+            
+            filtered.forEach(f => {
+                const btn = document.createElement('button');
+                btn.className = `feature-btn ${f.id === activeId ? 'active' : ''}`;
+                btn.textContent = f.name;
+                btn.onclick = () => {
+                    activeId = f.id;
+                    renderList(searchInput.value);
+                    renderMatrix(f);
+                };
+                listEl.appendChild(btn);
+            });
+        }
+
+        searchInput.addEventListener('input', (e) => renderList(e.target.value));
+
+        function getStatusBadge(val) {
+            const code = val.charAt(0);
+            if(code === 'Y') return `<div class="status-badge status-y">Supported</div>`;
+            if(code === 'N') return `<div class="status-badge status-n">Not Supported</div>`;
+            if(code === 'P') return `<div class="status-badge status-p">Partial</div>`;
+            return `<div class="status-badge status-n">Unknown</div>`;
+        }
+
+        function renderMatrix(f) {
+            fTitle.textContent = f.name;
+            fDesc.textContent = f.desc;
+
+            gridEl.innerHTML = `
+                <div class="browser-card">
+                    <div class="b-icon">🌐</div>
+                    <div class="b-name">Chrome</div>
+                    <div class="b-ver">${f.cr.substring(3)}</div>
+                    ${getStatusBadge(f.cr)}
+                </div>
+                <div class="browser-card">
+                    <div class="b-icon">🦊</div>
+                    <div class="b-name">Firefox</div>
+                    <div class="b-ver">${f.ff.substring(3)}</div>
+                    ${getStatusBadge(f.ff)}
+                </div>
+                <div class="browser-card">
+                    <div class="b-icon">🧭</div>
+                    <div class="b-name">Safari</div>
+                    <div class="b-ver">${f.sa.substring(3)}</div>
+                    ${getStatusBadge(f.sa)}
+                </div>
+                <div class="browser-card">
+                    <div class="b-icon">🌊</div>
+                    <div class="b-name">Edge</div>
+                    <div class="b-ver">${f.ed.substring(3)}</div>
+                    ${getStatusBadge(f.ed)}
+                </div>
+            `;
+            
+            if(window.triggerAnim) window.triggerAnim();
+        }
+
+        renderList();
+        renderMatrix(db[0]);
+
+        // 3D Canvas
+        let scene, camera, renderer, globe;
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 20;
+            camera.position.x = 10;
+            camera.position.y = 5;
+            camera.lookAt(0,0,0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // Globe
+            const geo = new THREE.SphereGeometry(6, 32, 32);
+            
+            const style = getComputedStyle(document.body);
+            const aColor = style.getPropertyValue('--accent-primary').trim() || '#BB86FC';
+            
+            const mat = new THREE.MeshPhongMaterial({ color: aColor, wireframe: true, transparent: true, opacity: 0.3 });
+            globe = new THREE.Mesh(geo, mat);
+            scene.add(globe);
+
+            window.triggerAnim = () => {
+                // Pulse size
+                globe.scale.set(1.1, 1.1, 1.1);
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+                globe.rotation.y += 0.005;
+                if(globe.scale.x > 1) {
+                    globe.scale.addScalar(-0.01);
+                }
+                renderer.render(scene, camera);
+            };
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

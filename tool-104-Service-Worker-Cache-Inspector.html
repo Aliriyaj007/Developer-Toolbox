@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 104 - Service Worker Cache Inspector - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 1024px) {
+            .split-view { grid-template-columns: 350px 1fr 300px; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .cache-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .cache-item {
+            padding: 0.8rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cache-item:hover { background: rgba(86,182,194,0.1); border-color: #56b6c2; }
+        .cache-item.active { background: rgba(86,182,194,0.2); border-color: #56b6c2; border-left: 4px solid #56b6c2; }
+        
+        .cache-name { font-weight: bold; font-family: var(--font-mono); font-size: 0.9rem; }
+        .cache-badge { background: #333; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; color: #aaa; }
+
+        .btn-action {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: all 0.2s; 
+        }
+        .btn-primary { background: #56b6c2; color: #000; }
+        .btn-primary:hover { background: #6ad0dc; }
+        .btn-danger { background: rgba(255, 85, 85, 0.2); color: #ff5555; border: 1px solid #ff5555; }
+        .btn-danger:hover { background: #ff5555; color: #000; }
+
+        .entries-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            font-family: var(--font-mono);
+        }
+        .entries-table th, .entries-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid #222;
+        }
+        .entries-table th { color: #aaa; font-weight: normal; background: #111; position: sticky; top: 0;}
+        .entries-table tr:hover td { background: rgba(255,255,255,0.02); }
+        
+        .entry-url { color: #56b6c2; word-break: break-all; max-width: 300px; }
+        .entry-type { color: #e5c07b; }
+        
+        .btn-delete-entry {
+            background: transparent;
+            border: none;
+            color: #ff5555;
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+        .btn-delete-entry:hover { background: rgba(255,85,85,0.2); }
+
+        .viewer-box {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .code-preview {
+            color: #98c379;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .strat-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #222;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        .strat-title { color: #c678dd; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;}
+        .strat-desc { color: #aaa; font-size: 0.8rem; line-height: 1.4;}
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111;
+            padding: 0.8rem;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal {
+            background: #1e1e1e;
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid #333;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>104. Service Worker Cache Inspector</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Caches List Panel -->
+                <div class="panel">
+                    <h3>Origin Caches</h3>
+                    <p style="font-size:0.8rem; color:#aaa; margin-top:-0.5rem;">Caches stored under <code>window.caches</code> for this origin.</p>
+                    
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="btn-action btn-primary" id="btn-refresh" style="flex:1;">Refresh Caches</button>
+                        <button class="btn-action btn-primary" id="btn-mock" title="Populate Mock Data" style="background:#444; color:#fff;">Inject Mock Data</button>
+                    </div>
+
+                    <ul class="cache-list" id="cache-list">
+                        <!-- Populated by JS -->
+                    </ul>
+                    
+                    <button class="btn-action btn-danger" id="btn-clear-all" style="margin-top:auto;">Clear All Caches</button>
+                </div>
+
+                <!-- Cache Contents Panel -->
+                <div class="panel">
+                    <div class="toolbar">
+                        <h3 style="margin:0;" id="current-cache-title">Select a Cache</h3>
+                        <button class="btn-action btn-danger" id="btn-delete-cache" disabled>Delete Cache</button>
+                    </div>
+
+                    <div class="viewer-box" style="padding:0;">
+                        <table class="entries-table">
+                            <thead>
+                                <tr>
+                                    <th>URL</th>
+                                    <th>Content-Type</th>
+                                    <th style="width:100px;">Size / Status</th>
+                                    <th style="width:60px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="entries-body">
+                                <tr><td colspan="4" style="text-align:center; color:#666; padding:2rem;">No entries to display.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Strategy Simulator Panel -->
+                <div class="panel">
+                    <h3>Caching Strategies</h3>
+                    <p style="font-size:0.8rem; color:#aaa; margin-top:-0.5rem; margin-bottom:1rem;">Common Service Worker patterns.</p>
+                    
+                    <div class="strat-card">
+                        <div class="strat-title">Cache First</div>
+                        <div class="strat-desc">Checks cache before network. Excellent for static assets (images, fonts, stylesheets).</div>
+                    </div>
+                    
+                    <div class="strat-card">
+                        <div class="strat-title">Network First</div>
+                        <div class="strat-desc">Tries network, falls back to cache on failure. Good for frequently updating data (API requests).</div>
+                    </div>
+
+                    <div class="strat-card">
+                        <div class="strat-title">Stale-While-Revalidate</div>
+                        <div class="strat-desc">Returns cached response immediately if available, then fetches from network in background to update cache for next time.</div>
+                    </div>
+
+                    <div class="strat-card" style="margin-top:auto; border-color:#444; background:transparent;">
+                        <h4 style="margin:0 0 0.5rem 0; font-size:0.85rem; color:#fff;">Status</h4>
+                        <div style="font-size:0.8rem; color:#56b6c2; font-family:var(--font-mono);" id="sw-status">
+                            CacheStorage API: Supported ✔
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for viewing request/response -->
+    <div class="modal-overlay" id="inspect-modal">
+        <div class="modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2 style="margin:0; font-family:var(--font-mono); font-size:1.1rem; color:#56b6c2;" id="modal-title">Response Details</h2>
+                <button class="btn-action" id="btn-close-modal" style="background:transparent; color:#fff; font-size:1.5rem; padding:0;">×</button>
+            </div>
+            
+            <h3 style="font-size:0.9rem; color:#aaa; margin-bottom:0.5rem;">Headers</h3>
+            <div style="background:#111; padding:1rem; border-radius:4px; font-family:var(--font-mono); font-size:0.8rem; color:#e5c07b; margin-bottom:1rem; white-space:pre-wrap; word-break:break-all;" id="modal-headers"></div>
+            
+            <h3 style="font-size:0.9rem; color:#aaa; margin-bottom:0.5rem;">Body Preview (First 1000 chars)</h3>
+            <div style="background:#111; padding:1rem; border-radius:4px; font-family:var(--font-mono); font-size:0.8rem; color:#98c379; white-space:pre-wrap; word-break:break-all; max-height:300px; overflow-y:auto;" id="modal-body"></div>
+        </div>
+    </div>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        // Check API Support
+        if (!('caches' in window)) {
+            document.getElementById('sw-status').innerHTML = '<span style="color:#ff5555;">CacheStorage API: Not Supported ✖</span>';
+        }
+
+        const cacheListEl = document.getElementById('cache-list');
+        const entriesBody = document.getElementById('entries-body');
+        const currCacheTitle = document.getElementById('current-cache-title');
+        const btnDeleteCache = document.getElementById('btn-delete-cache');
+        
+        let activeCacheName = null;
+        let shelfMeshes = [];
+
+        async function loadCaches() {
+            if (!('caches' in window)) return;
+            cacheListEl.innerHTML = '';
+            btnDeleteCache.disabled = true;
+            activeCacheName = null;
+            entriesBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:2rem;">Select a cache to view entries.</td></tr>';
+            currCacheTitle.textContent = 'Select a Cache';
+            update3DShelves([]);
+
+            try {
+                const cacheNames = await caches.keys();
+                
+                if (cacheNames.length === 0) {
+                    cacheListEl.innerHTML = '<li style="color:#666; text-align:center; padding:1rem;">No caches found. Click "Inject Mock Data" to test.</li>';
+                    return;
+                }
+
+                // Render List
+                for (const name of cacheNames) {
+                    const cache = await caches.open(name);
+                    const keys = await cache.keys();
+                    
+                    const li = document.createElement('li');
+                    li.className = 'cache-item';
+                    li.innerHTML = `
+                        <span class="cache-name">${name}</span>
+                        <span class="cache-badge">${keys.length} items</span>
+                    `;
+                    li.onclick = () => selectCache(name, li);
+                    cacheListEl.appendChild(li);
+                }
+                
+                // Update 3D Shelves based on count
+                update3DShelves(cacheNames);
+
+            } catch (err) {
+                console.error('Error loading caches:', err);
+            }
+        }
+
+        async function selectCache(name, liElement) {
+            activeCacheName = name;
+            
+            // UI Selection
+            document.querySelectorAll('.cache-item').forEach(el => el.classList.remove('active'));
+            if(liElement) liElement.classList.add('active');
+            
+            currCacheTitle.textContent = name;
+            btnDeleteCache.disabled = false;
+            
+            await inspectCache(name);
+        }
+
+        async function inspectCache(name) {
+            entriesBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem;">Loading...</td></tr>';
+            
+            try {
+                const cache = await caches.open(name);
+                const requests = await cache.keys();
+                
+                if (requests.length === 0) {
+                    entriesBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:2rem;">Cache is empty.</td></tr>';
+                    return;
+                }
+
+                entriesBody.innerHTML = '';
+                
+                for (const req of requests) {
+                    const response = await cache.match(req);
+                    const contentType = response ? response.headers.get('content-type') : 'Unknown';
+                    const status = response ? response.status : 'N/A';
+                    
+                    // Simple path extraction
+                    let urlPath = req.url;
+                    try { urlPath = new URL(req.url).pathname; } catch(e){}
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="entry-url" style="cursor:pointer;" title="${req.url}">${urlPath}</td>
+                        <td class="entry-type">${(contentType || '').split(';')[0]}</td>
+                        <td>${status}</td>
+                        <td>
+                            <button class="btn-delete-entry" title="Delete Entry" >🗑</button>
+                        </td>
+                    `;
+                    
+                    // Delete Handler
+                    tr.querySelector('.btn-delete-entry').onclick = async (e) => {
+                        e.stopPropagation();
+                        await cache.delete(req);
+                        tr.remove();
+                        loadCaches(); // Refresh counts
+                    };
+                    
+                    // Inspect Handler
+                    tr.onclick = async () => {
+                        showModal(req.url, response);
+                    };
+
+                    entriesBody.appendChild(tr);
+                }
+
+                // Trigger 3D interaction (highlight a shelf)
+                highlightShelf(name);
+
+            } catch (err) {
+                console.error('Error inspecting cache:', err);
+            }
+        }
+
+        // Action Buttons
+        document.getElementById('btn-refresh').onclick = loadCaches;
+        
+        document.getElementById('btn-clear-all').onclick = async () => {
+            if(!confirm('Clear all origin caches?')) return;
+            const names = await caches.keys();
+            for(let name of names) await caches.delete(name);
+            loadCaches();
+        };
+
+        btnDeleteCache.onclick = async () => {
+            if(!activeCacheName) return;
+            if(!confirm(`Delete cache "${activeCacheName}"?`)) return;
+            await caches.delete(activeCacheName);
+            loadCaches();
+        };
+
+        document.getElementById('btn-mock').onclick = async () => {
+            if (!('caches' in window)) return alert('Cache API not supported.');
+            
+            // Create some mock caches
+            const c1 = await caches.open('v1-static-assets');
+            await c1.put(new Request('/css/main.css'), new Response('body { background: #000; }', { headers: {'Content-Type': 'text/css'} }));
+            await c1.put(new Request('/js/app.js'), new Response('console.log("App ready");', { headers: {'Content-Type': 'application/javascript'} }));
+            await c1.put(new Request('/index.html'), new Response('<html><body>Hello World</body></html>', { headers: {'Content-Type': 'text/html'} }));
+            
+            const c2 = await caches.open('v1-api-data');
+            await c2.put(new Request('https://api.example.com/users'), new Response(JSON.stringify([{id:1, name:'Alice'}]), { headers: {'Content-Type': 'application/json'} }));
+            await c2.put(new Request('https://api.example.com/config'), new Response(JSON.stringify({theme: 'dark'}), { headers: {'Content-Type': 'application/json'} }));
+
+            const c3 = await caches.open('image-cache-dynamic');
+            await c3.put(new Request('/img/logo.png'), new Response('fake-image-data', { headers: {'Content-Type': 'image/png'} }));
+
+            loadCaches();
+        };
+
+        // Modal Logic
+        const modal = document.getElementById('inspect-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalHeaders = document.getElementById('modal-headers');
+        const modalBody = document.getElementById('modal-body');
+
+        async function showModal(url, response) {
+            modalTitle.textContent = url.split('/').pop() || url;
+            
+            // Extact headers
+            let headStr = '';
+            response.headers.forEach((val, key) => {
+                headStr += `${key}: ${val}\n`;
+            });
+            modalHeaders.textContent = headStr || 'No headers';
+
+            // Extract body (clone so we don't consume the cached one entirely without recreating it, 
+            // though for viewing string is fine)
+            try {
+                const clonedResp = response.clone();
+                const text = await clonedResp.text();
+                modalBody.textContent = text.length > 1000 ? text.substring(0, 1000) + '\n... [truncated]' : (text || '[Empty Body]');
+            } catch(e) {
+                modalBody.textContent = `[Could not parse body: ${e.message}]`;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        document.getElementById('btn-close-modal').onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        // 3D Scene setup: "A set of shelves with cached items"
+        let scene, camera, renderer, shelvesGrp;
+        let targetRotY = 0;
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 35;
+            camera.position.y = 5;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            shelvesGrp = new THREE.Group();
+            scene.add(shelvesGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+            
+            const fillLight = new THREE.PointLight(0x56b6c2, 0.5);
+            fillLight.position.set(-10, 0, 15);
+            scene.add(fillLight);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate3D();
+        }
+
+        // Create a shelf structure based on number of caches
+        function update3DShelves(cacheNames) {
+            if(!scene) return;
+            
+            // Clear existing
+            while(shelvesGrp.children.length > 0) { 
+                shelvesGrp.remove(shelvesGrp.children[0]); 
+            }
+            shelfMeshes = [];
+
+            const numShelves = Math.max(1, cacheNames.length); // at least a frame
+            const shelfDepth = 8;
+            const shelfWidth = 20;
+            const shelfGap = 6;
+            
+            const shelfGeo = new THREE.BoxGeometry(shelfWidth, 0.5, shelfDepth);
+            const shelfMat = new THREE.MeshPhongMaterial({ color: 0x333333, specular: 0x111111 });
+
+            // Posts
+            const postGeo = new THREE.BoxGeometry(0.5, (numShelves * shelfGap) + 2, 0.5);
+            const post1 = new THREE.Mesh(postGeo, shelfMat); post1.position.set(-9.5, 0, -3.5); shelvesGrp.add(post1);
+            const post2 = new THREE.Mesh(postGeo, shelfMat); post2.position.set(9.5, 0, -3.5); shelvesGrp.add(post2);
+            const post3 = new THREE.Mesh(postGeo, shelfMat); post3.position.set(-9.5, 0, 3.5); shelvesGrp.add(post3);
+            const post4 = new THREE.Mesh(postGeo, shelfMat); post4.position.set(9.5, 0, 3.5); shelvesGrp.add(post4);
+
+            const startY = -((numShelves * shelfGap)/2) + (shelfGap/2);
+
+            for(let i=0; i<numShelves; i++) {
+                const y = startY + (i * shelfGap);
+                
+                const shelf = new THREE.Mesh(shelfGeo, shelfMat);
+                shelf.position.y = y;
+                shelf.userData = { name: cacheNames[i] || 'empty' };
+                shelvesGrp.add(shelf);
+                shelfMeshes.push(shelf);
+
+                // Add "cached items" (blocks) if it has a name
+                if(cacheNames[i]) {
+                    // Random number of items for visual
+                    const numItems = 3 + Math.floor(Math.random() * 5);
+                    for(let j=0; j<numItems; j++) {
+                        const boxColor = [0x56b6c2, 0xe5c07b, 0x98c379, 0xc678dd][Math.floor(Math.random()*4)];
+                        const itemGeo = new THREE.BoxGeometry(1 + Math.random(), 1+Math.random()*2, 1+Math.random());
+                        const itemMat = new THREE.MeshPhongMaterial({ color: boxColor, emissive: 0x000000 });
+                        const item = new THREE.Mesh(itemGeo, itemMat);
+                        
+                        item.position.y = y + 1; // sit on shelf
+                        item.position.x = -8 + (j * 3);
+                        item.position.z = (Math.random() - 0.5) * 4;
+                        
+                        // Add property to identify parent shelf
+                        item.userData = { parentShelfName: cacheNames[i] };
+                        
+                        shelvesGrp.add(item);
+                        shelfMeshes.push(item); // interactable
+                    }
+                }
+            }
+            
+            targetRotY = 0.5; // slight angle
+        }
+
+        // Highlight specific shelf
+        function highlightShelf(cacheName) {
+            shelfMeshes.forEach(mesh => {
+                // If it's an item on the shelf
+                if(mesh.userData.parentShelfName) {
+                    if(mesh.userData.parentShelfName === cacheName) {
+                        mesh.material.emissive.setHex(0x333333); // glow
+                        mesh.position.z += Math.sin(Date.now()) * 0.1; // tiny shake? We'll handle via render loop if needed, for glow is enough
+                    } else {
+                        mesh.material.emissive.setHex(0x000000);
+                    }
+                }
+            });
+            
+            // Jolt rotation
+            targetRotY = (Math.random() - 0.5) * 1.5;
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            if(shelvesGrp) {
+                // Smooth rotation to target
+                shelvesGrp.rotation.y += (targetRotY - shelvesGrp.rotation.y) * 0.05;
+                
+                // Slow drift
+                targetRotY += 0.001;
+                
+                // Gentle bob
+                shelvesGrp.position.y = Math.sin(Date.now()*0.001) * 0.5;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            loadCaches();
+        });
+    </script>
+</body>
+</html>

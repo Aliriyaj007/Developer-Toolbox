@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 85 - GraphQL Query Complexity Analyzer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .code-input {
+            width: 100%;
+            height: 250px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #ccc;
+            resize: vertical;
+            outline: none;
+        }
+
+        .code-input:focus { border-color: #56b6c2; }
+        
+        .result-hud {
+            display: flex;
+            justify-content: space-between;
+            background: #1e1e1e;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid #333;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .hud-item {
+            flex: 1;
+        }
+
+        .hud-val { font-size: 2rem; font-weight: bold; font-family: var(--font-mono); color: #7ee787; }
+        .hud-lbl { font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin-top:0.3rem;}
+
+        .tree-view {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 0.3rem 0;
+            border-bottom: 1px dashed #333;
+        }
+
+        .tree-node:last-child { border-bottom: none; }
+        
+        .tree-indent { display: inline-block; width: 1.5rem; color:#444; }
+        
+        .node-name { color: #56b6c2; font-weight: bold; flex: 1; }
+        .node-cost { 
+            background: rgba(255,255,255,0.1); 
+            color: #fff; 
+            padding: 0.1rem 0.4rem; 
+            border-radius: 3px; 
+            font-size: 0.75rem; 
+        }
+
+        .node-cost.high { background: #ff5555; }
+        .node-cost.med { background: #ffb142; color:#000; }
+        .node-cost.low { background: #7ee787; color:#000; }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>85. GraphQL Query Complexity Analyzer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <h3>Query Input</h3>
+                    <p style="font-size:0.85rem; color:#aaa; margin-top:-0.5rem;">Paste a GraphQL query to estimate its server load.</p>
+                    
+                    <textarea id="query-input" class="code-input" spellcheck="false" placeholder="query {
+  user(id: 1) {
+    name
+    posts(limit: 10) {
+      title
+      comments(limit: 5) {
+        text
+        author {
+          name
+        }
+      }
+    }
+  }
+}"></textarea>
+                    
+                    <div style="display:flex; gap:1rem; align-items:center;">
+                        <button class="btn" id="btn-analyze" style="flex:1;">Analyze Complexity</button>
+                        <button class="btn btn-sm" id="btn-load-complex" style="background:#444;">Load High-Cost Example</button>
+                    </div>
+
+                    <div style="margin-top:1rem; background:rgba(86,182,194,0.1); border-left:4px solid #56b6c2; padding:1rem; border-radius:4px;">
+                        <h4 style="color:#56b6c2; margin-bottom:0.5rem; font-size:0.9rem;">How Cost is Calculated</h4>
+                        <ul style="font-size:0.8rem; margin:0; padding-left:1.2rem; color:#ccc;">
+                            <li><strong>Scalar Fields:</strong> 1 point (string, int, boolean)</li>
+                            <li><strong>Objects/Relations:</strong> 2 points</li>
+                            <li><strong>Lists limits:</strong> Multiplies the cost of nested fields (e.g. <code>limit: 10</code> multiplies children by 10)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="panel">
+                    <h3>Cost Breakdown</h3>
+                    
+                    <div class="result-hud">
+                        <div class="hud-item">
+                            <div class="hud-val" id="hud-cost">0</div>
+                            <div class="hud-lbl">Total Cost</div>
+                        </div>
+                        <div class="hud-item" style="border-left:1px solid #333; border-right:1px solid #333;">
+                            <div class="hud-val" id="hud-depth" style="color:#56b6c2;">0</div>
+                            <div class="hud-lbl">Max Depth</div>
+                        </div>
+                        <div class="hud-item">
+                            <div class="hud-val" id="hud-status" style="font-size:1.5rem; padding-top:0.4rem;">OK</div>
+                            <div class="hud-lbl">Status</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top:0.5rem;">Complexity Tree</h4>
+                    <div class="tree-view" id="tree-view">
+                        <!-- Populated by JS -->
+                        <div style="padding:1rem; color:#666; text-align:center;">Click analyze to view tree</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const queryInput = document.getElementById('query-input');
+        const btnAnalyze = document.getElementById('btn-analyze');
+        const btnLoadComplex = document.getElementById('btn-load-complex');
+        const hudCost = document.getElementById('hud-cost');
+        const hudDepth = document.getElementById('hud-depth');
+        const hudStatus = document.getElementById('hud-status');
+        const treeView = document.getElementById('tree-view');
+
+        btnLoadComplex.addEventListener('click', () => {
+             queryInput.value = `query NPlusOneHeli {
+  users(limit: 100) {
+    id
+    name
+    followers(limit: 50) {
+      name
+      posts(limit: 20) {
+        title
+        comments(limit: 10) {
+          body
+          author { name }
+        }
+      }
+    }
+  }
+}`;
+             analyzeQuery();
+        });
+
+        // Barebones GraphQL string parser to build a structural tree
+        // This is a naive regex/stack-based parser for demonstration purposes.
+        function parseGraphQL(qStr) {
+            // strip comments
+            qStr = qStr.replace(/#.*/g, '');
+            // normalize spaces & newlines
+            qStr = qStr.replace(/\s+/g, ' ').trim();
+            // remove query keyword optionally
+            if(qStr.startsWith('query ')) qStr = qStr.substring(6).trim();
+            if(qStr.startsWith('{')) qStr = qStr.substring(1, qStr.length-1);
+
+            let tokens = [];
+            let currentStr = '';
+            let inParen = false;
+
+            // Naive Tokenizer
+            for(let i=0; i<qStr.length; i++) {
+                let char = qStr[i];
+                if (char === '(') inParen = true;
+                if (char === ')') inParen = false;
+                
+                if (['{', '}'].includes(char) && !inParen) {
+                    if (currentStr.trim()) tokens.push(currentStr.trim());
+                    tokens.push(char);
+                    currentStr = '';
+                } else {
+                    currentStr += char;
+                }
+            }
+            if (currentStr.trim()) tokens.push(currentStr.trim());
+
+            // Build Tree
+            let root = { name: 'root', children: [], cost: 0, depth: 0, mult: 1 };
+            let stack = [root];
+
+            for(let i=0; i<tokens.length; i++) {
+                let t = tokens[i];
+                if (t === '{') continue;
+                if (t === '}') {
+                    stack.pop();
+                    continue;
+                }
+                
+                let parent = stack[stack.length - 1];
+                
+                // Fields can be space separated if on same line in token
+                let fields = t.split(' ').map(s=>s.trim()).filter(Boolean);
+                
+                fields.forEach((f, idx) => {
+                     // Check if it has arguments e.g. posts(limit: 10)
+                     let name = f;
+                     let mult = 1;
+                     const match = f.match(/(.*?)\((.*?)\)/);
+                     if (match) {
+                         name = match[1];
+                         const args = match[2];
+                         // look for limit or first
+                         const limitMatch = args.match(/(limit|first):\s*(\d+)/i);
+                         if (limitMatch) {
+                             mult = parseInt(limitMatch[2], 10);
+                         }
+                     }
+
+                     let node = {
+                         name: name,
+                         children: [],
+                         cost: 0,
+                         totalCost: 0,
+                         mult: mult,
+                         depth: parent.name === 'root' ? 1 : parent.depth + 1
+                     };
+                     
+                     parent.children.push(node);
+                     
+                     // If this is the last field and followed by '{', it's an object, push to stack
+                     if (idx === fields.length - 1 && tokens[i+1] === '{') {
+                         stack.push(node);
+                         node.cost = 2; // object cost
+                     } else {
+                         node.cost = 1; // scalar cost
+                     }
+                });
+            }
+            return root;
+        }
+
+        let maxDepthFound = 0;
+        let totalCostFound = 0;
+        let flatNodes = [];
+
+        function calculateCost(node, currentMultiplier=1) {
+            if (node.name !== 'root') {
+                 node.totalCost = node.cost * currentMultiplier;
+                 if (node.depth > maxDepthFound) maxDepthFound = node.depth;
+            } else {
+                 node.totalCost = 0;
+            }
+            
+            let localMultiplier = currentMultiplier * node.mult;
+            
+            node.children.forEach(child => {
+                const childCost = calculateCost(child, localMultiplier);
+                node.totalCost += childCost;
+            });
+            
+            return node.totalCost;
+        }
+
+        function flattenTree(node) {
+            if (node.name !== 'root') flatNodes.push(node);
+            node.children.forEach(flattenTree);
+        }
+
+        function analyzeQuery() {
+            const raw = queryInput.value;
+            if(!raw.trim()) return;
+
+            try {
+                maxDepthFound = 0;
+                totalCostFound = 0;
+                flatNodes = [];
+
+                const tree = parseGraphQL(raw);
+                totalCostFound = calculateCost(tree);
+                flattenTree(tree);
+
+                // Update UI
+                hudCost.textContent = totalCostFound.toLocaleString();
+                hudDepth.textContent = maxDepthFound;
+
+                let hStatus = 'OK';
+                let hCol = '#7ee787';
+
+                if (totalCostFound > 100000) { hStatus = 'REJECTED'; hCol = '#ff5555'; }
+                else if (totalCostFound > 1000) { hStatus = 'WARN'; hCol = '#ffb142'; }
+                
+                hudStatus.textContent = hStatus;
+                hudStatus.style.color = hCol;
+                hudCost.style.color = hCol;
+
+                // Render Tree List
+                treeView.innerHTML = flatNodes.map(n => {
+                    let indent = '';
+                    for(let i=1; i<n.depth; i++) indent += '— ';
+                    
+                    let costCls = 'low';
+                    if (n.totalCost > 100) costCls = 'med';
+                    if (n.totalCost > 1000) costCls = 'high';
+
+                    let multBadge = n.mult > 1 ? `<span style="color:#aaa; font-size:0.75rem; margin-right:0.5rem">×${n.mult}</span>` : '';
+
+                    return `
+                    <div class="tree-node">
+                        <span class="tree-indent">${indent}</span>
+                        <span class="node-name">${n.name}</span>
+                        ${multBadge}
+                        <span class="node-cost ${costCls}">Cost: ${n.totalCost.toLocaleString()}</span>
+                    </div>`;
+                }).join('');
+
+                // Update 3D visualization
+                update3DTree(flatNodes, maxDepthFound, totalCostFound);
+
+            } catch (e) {
+                console.error(e);
+                treeView.innerHTML = `<div style="color:#ff5555; padding:1rem;">Error parsing query. Check syntax.</div>`;
+            }
+        }
+
+        btnAnalyze.addEventListener('click', analyzeQuery);
+
+
+        // 3D Scene setup: "A tree where branches glow based on cost."
+        let scene, camera, renderer, treeGrp;
+        let branchMeshes = [];
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 30;
+            camera.position.y = 10;
+            camera.position.x = 0;
+            camera.lookAt(0, 5, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            treeGrp = new THREE.Group();
+            scene.add(treeGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 15, 10);
+            scene.add(dirLight);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Demo default tree
+            analyzeQuery();
+
+            animate3D();
+        }
+
+        function update3DTree(nodes, maxDepth, totCost) {
+            // clear old
+            while(treeGrp.children.length > 0){ 
+                treeGrp.remove(treeGrp.children[0]); 
+            }
+            branchMeshes = [];
+
+            if(nodes.length === 0) return;
+
+            // Generate fractal-ish tree based on nodes
+            // Very simplified visual representation: mapping flat nodes to branches
+            
+            const matBase = new THREE.MeshPhongMaterial({ color: 0x444444, shininess: 50 });
+            
+            // Root Trunk
+            const trunkGeo = new THREE.CylinderGeometry(1, 1, 4, 16);
+            const trunk = new THREE.Mesh(trunkGeo, matBase);
+            trunk.position.y = -5;
+            treeGrp.add(trunk);
+
+            let currentLevelParents = [ {mesh: trunk, yTop: -3, depth: 0} ];
+
+            // Group nodes by depth
+            const nodesByDepth = [];
+            for(let i=1; i<=maxDepth; i++) {
+                nodesByDepth.push(nodes.filter(n => n.depth === i));
+            }
+
+            // This creates a visual cascade without doing literal exact parent-child matching 
+            // from the parser (which gets complex to layout radially)
+            
+            nodesByDepth.forEach((depthGroup, dIdx) => {
+                let nextParents = [];
+                let parentsToUse = currentLevelParents;
+                
+                depthGroup.forEach((n, nIdx) => {
+                    // Cost determines branch size and glow
+                    const rawCost = n.totalCost;
+                    const rScale = Math.max(0.2, Math.min(1.5, rawCost / 100));
+                    const lScale = Math.max(2, Math.min(6, rawCost / 10));
+
+                    const geo = new THREE.CylinderGeometry(0.5 * rScale, 0.2 * rScale, lScale, 8);
+                    
+                    // Color based on cost
+                    let col = 0x7ee787; // low
+                    let emiss = 0x000000;
+                    if(rawCost > 100) { col = 0xffb142; }
+                    if(rawCost > 1000) { col = 0xff5555; emiss = 0x550000; }
+
+                    const mat = new THREE.MeshPhongMaterial({ 
+                        color: col,
+                        emissive: emiss,
+                        emissiveIntensity: 0.8
+                    });
+
+                    const mesh = new THREE.Mesh(geo, mat);
+                    
+                    // Attach to a parent
+                    const parent = parentsToUse[nIdx % parentsToUse.length];
+                    
+                    // calculate angle to spread branches
+                    const angle = (nIdx / depthGroup.length) * Math.PI * 2;
+                    const spreadRadius = (dIdx + 1) * 2;
+                    
+                    mesh.position.x = parent.mesh.position.x + Math.cos(angle) * spreadRadius;
+                    mesh.position.z = parent.mesh.position.z + Math.sin(angle) * spreadRadius;
+                    mesh.position.y = parent.yTop + (lScale / 2);
+                    
+                    // Point towards parent roughly
+                    mesh.lookAt(parent.mesh.position);
+                    mesh.rotateX(Math.PI / 2); // fix cylinder orientation after lookAt
+
+                    treeGrp.add(mesh);
+                    nextParents.push({ mesh: mesh, yTop: mesh.position.y + (lScale/2), depth: dIdx+1 });
+                    
+                    branchMeshes.push({ mesh, cost: rawCost });
+                });
+                
+                if(nextParents.length > 0) {
+                    currentLevelParents = nextParents;
+                }
+            });
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            treeGrp.rotation.y += 0.003;
+            
+            // Pulse high cost branches
+            const time = Date.now();
+            branchMeshes.forEach(b => {
+                if (b.cost > 1000) {
+                    b.mesh.material.emissiveIntensity = 0.5 + Math.sin(time * 0.005) * 0.5;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+        });
+    </script>
+</body>
+</html>
