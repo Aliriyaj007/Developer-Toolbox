@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 72 - Webhook Tester Client Side - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .url-box {
+            background: #000;
+            border: 2px dashed #56b6c2;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            font-family: var(--font-mono);
+            color: #7ee787;
+            word-break: break-all;
+            user-select: all;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .url-box:hover {
+            background: rgba(86, 182, 194, 0.1);
+        }
+
+        .url-box::after {
+            content: "Click to Copy";
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .url-box:hover::after {
+            opacity: 1;
+        }
+
+        .btn-action {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .btn-action.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+
+        .btn-action.secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .form-select,
+        .form-input,
+        .code-area {
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            outline: none;
+            width: 100%;
+        }
+
+        /* Requests Viewer */
+        .requests-wrapper {
+            display: flex;
+            background: rgba(86, 182, 194, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 500px;
+            overflow: hidden;
+        }
+
+        .req-list {
+            width: 250px;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .req-item {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            transition: background 0.1s;
+        }
+
+        .req-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .req-item.active {
+            background: rgba(86, 182, 194, 0.2);
+            border-left: 3px solid #56b6c2;
+        }
+
+        .req-method {
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .req-method.POST {
+            color: #ffaa00;
+        }
+
+        .req-method.GET {
+            color: #56b6c2;
+        }
+
+        .req-method.PUT {
+            color: #bb86fc;
+        }
+
+        .req-method.DELETE {
+            color: #ff5555;
+        }
+
+        .req-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .req-details {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .req-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .detail-block {
+            background: #0a0a0f;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+        }
+
+        .detail-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 0.2rem;
+        }
+
+        pre.json-view {
+            margin: 0;
+            color: #7ee787;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* 3D Canvas wrapper */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 250px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1300px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>72. Webhook Tester Client Side</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Left Config -->
+                    <div class="controls-panel">
+                        <h3
+                            style="margin-top:0; border-bottom:1px solid #333; padding-bottom:0.5rem; color:var(--primary-color);">
+                            Your Webhook URL</h3>
+                        <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:0;">Send requests to this
+                            URL. Since this is client-side, use the simulator below to generate local cross-tab
+                            requests.</p>
+
+                        <div class="url-box" id="webhook-url" title="Click to copy">
+                            generating...
+                        </div>
+
+                        <hr style="border-color:#333; margin: 0.5rem 0;">
+
+                        <h3 style="margin:0; font-size:0.9rem;">Simulate Request (Cross-tab)</h3>
+                        <div style="display:flex; gap:0.5rem;">
+                            <select id="sim-method" class="form-select" style="width:80px;">
+                                <option>POST</option>
+                                <option>GET</option>
+                                <option>PUT</option>
+                            </select>
+                            <input type="text" id="sim-path" class="form-input" value="/api/webhook">
+                        </div>
+                        <textarea id="sim-body" class="code-area"
+                            style="height:80px;">{"event": "user.created", "userId": 123}</textarea>
+
+                        <button id="btn-fire" class="btn-action">Fire Simulated Request</button>
+
+                        <!-- Sub Option: Target other tab? -->
+                        <div style="font-size:0.75rem; color:var(--text-secondary); text-align:center;">
+                            You can open this page in another tab.<br>Requests fired there will appear here instantly
+                            via localStorage events.
+                        </div>
+
+                        <!-- 3D Visualization -->
+                        <div class="graph-container" id="graph-container">
+                            <!-- 3D Antenna goes here -->
+                        </div>
+                    </div>
+
+                    <!-- Right Viewer -->
+                    <div class="requests-wrapper">
+
+                        <!-- List -->
+                        <div class="req-list" id="req-list">
+                            <!-- Items -->
+                        </div>
+
+                        <!-- Details -->
+                        <div class="req-details" id="req-details">
+                            <div class="req-empty" id="req-empty">
+                                <div style="font-size:3rem; margin-bottom:1rem; opacity:0.5;">📡</div>
+                                <div>Waiting for incoming requests...</div>
+                                <div style="font-size:0.8rem; opacity:0.7; margin-top:0.5rem;">Try firing a simulated
+                                    request from the left panel.</div>
+                            </div>
+
+                            <div id="req-content" style="display:none;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <h2><span id="det-method" class="req-method POST">POST</span> <span
+                                            id="det-path">/</span></h2>
+                                    <span id="det-time" style="color:#888; font-size:0.85rem;"></span>
+                                </div>
+
+                                <div class="detail-block">
+                                    <div class="detail-title">Query Parameters</div>
+                                    <pre class="json-view" id="det-query">{}</pre>
+                                </div>
+
+                                <div class="detail-block">
+                                    <div class="detail-title">Headers</div>
+                                    <pre class="json-view" id="det-headers">{}</pre>
+                                </div>
+
+                                <div class="detail-block">
+                                    <div class="detail-title">Raw Body</div>
+                                    <pre class="json-view" id="det-body">{}</pre>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        // Setup Webhook URL logic
+        const urlBox = document.getElementById('webhook-url');
+
+        let webhookId = "";
+
+        // Parse Hash or generate one
+        if (window.location.hash.startsWith('#wh=')) {
+            webhookId = window.location.hash.substring(4);
+        } else {
+            webhookId = Math.random().toString(36).substring(2, 10);
+            window.location.hash = `#wh=${webhookId}`;
+        }
+
+        const fullUrl = window.location.origin + window.location.pathname + `#wh=${webhookId}`;
+        urlBox.textContent = fullUrl;
+
+        urlBox.addEventListener('click', () => {
+            navigator.clipboard.writeText(fullUrl);
+            const orig = urlBox.textContent;
+            urlBox.textContent = "Copied to clipboard!";
+            setTimeout(() => urlBox.textContent = orig, 1000);
+        });
+
+        // Request Store (In-Memory per tab)
+        let requests = [];
+        let reqCounter = 1;
+
+        const reqList = document.getElementById('req-list');
+        const reqEmpty = document.getElementById('req-empty');
+        const reqContent = document.getElementById('req-content');
+
+        const detMethod = document.getElementById('det-method');
+        const detPath = document.getElementById('det-path');
+        const detTime = document.getElementById('det-time');
+        const detQuery = document.getElementById('det-query');
+        const detHeaders = document.getElementById('det-headers');
+        const detBody = document.getElementById('det-body');
+
+        // Receive Request
+        function receiveRequest(reqData) {
+            // Append to array
+            const req = {
+                id: reqCounter++,
+                method: reqData.method,
+                path: reqData.path,
+                body: reqData.body,
+                headers: reqData.headers || { "content-type": "application/json", "user-agent": "Simulator/1.0" },
+                query: reqData.query || {},
+                time: new Date()
+            };
+
+            requests.unshift(req); // add to top
+            renderList();
+
+            // Visual feedback
+            pulseAntenna();
+
+            // Auto open first one
+            if (requests.length === 1) {
+                openRequest(req.id);
+            }
+        }
+
+        // Render Sidebar List
+        function renderList() {
+            reqList.innerHTML = '';
+            requests.forEach(r => {
+                const el = document.createElement('div');
+                el.className = `req-item ${r.active ? 'active' : ''}`;
+                el.dataset.id = r.id;
+
+                const dText = r.time.toLocaleTimeString();
+
+                el.innerHTML = `
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="req-method ${r.method}">${r.method}</span>
+                        <span class="req-time">${dText}</span>
+                    </div>
+                    <div style="font-size:0.8rem; color:#ccc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${r.path}
+                    </div>
+                `;
+
+                el.addEventListener('click', () => openRequest(r.id));
+                reqList.appendChild(el);
+            });
+        }
+
+        function openRequest(id) {
+            reqEmpty.style.display = 'none';
+            reqContent.style.display = 'block';
+
+            requests.forEach(r => r.active = (r.id === id));
+            renderList(); // update active class
+
+            const req = requests.find(r => r.id === id);
+            if (!req) return;
+
+            detMethod.textContent = req.method;
+            detMethod.className = `req-method ${req.method}`;
+            detPath.textContent = req.path;
+            detTime.textContent = req.time.toLocaleString();
+
+            detQuery.textContent = Object.keys(req.query).length ? JSON.stringify(req.query, null, 2) : '(empty)';
+            detHeaders.textContent = JSON.stringify(req.headers, null, 2);
+
+            try {
+                // Try format JSON
+                const parsed = JSON.parse(req.body);
+                detBody.textContent = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                detBody.textContent = req.body || '(empty)';
+            }
+        }
+
+        // Simulator Firing
+        document.getElementById('btn-fire').addEventListener('click', () => {
+            const method = document.getElementById('sim-method').value;
+            const path = document.getElementById('sim-path').value;
+            const body = document.getElementById('sim-body').value;
+
+            const payload = {
+                whId: webhookId,
+                req: { method, path, body, timestamp: Date.now() } // Add timestamp to enforce event triggering even if identical payload
+            };
+
+            // Fire to localStorage to trigger cross-tab
+            localStorage.setItem('wh_event', JSON.stringify(payload));
+
+            // Also process locally (localStorage events don't fire in the tab that created them)
+            receiveRequest(payload.req);
+        });
+
+        // Listen for cross-tab events
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'wh_event' && e.newValue) {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    if (data.whId === webhookId) {
+                        receiveRequest(data.req);
+                    }
+                } catch (err) { }
+            }
+        });
+
+
+        // 3D Visualisation (Antenna receiving signals)
+        let scene, camera, renderer;
+        let antennaGroup, mainDish, signalRings = [];
+        let receivingTicks = 0;
+
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, cw / ch, 1, 100);
+            camera.position.set(0, 5, 20);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5, 10, 5);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x404040, 1.5));
+
+            antennaGroup = new THREE.Group();
+            scene.add(antennaGroup);
+
+            // Base
+            const baseGeo = new THREE.CylinderGeometry(2, 3, 1, 16);
+            const baseMat = new THREE.MeshPhongMaterial({ color: 0x223344 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = -2;
+            antennaGroup.add(base);
+
+            // Pole
+            const poleGeo = new THREE.CylinderGeometry(0.3, 0.3, 4, 8);
+            const pole = new THREE.Mesh(poleGeo, baseMat);
+            pole.position.y = 0;
+            antennaGroup.add(pole);
+
+            // Dish group (tilts tracking)
+            const dishGroup = new THREE.Group();
+            dishGroup.position.y = 2;
+            antennaGroup.add(dishGroup);
+
+            // Dish
+            const dishGeo = new THREE.SphereGeometry(3, 16, 16, 0, Math.PI, 0, Math.PI);
+            const dishMat = new THREE.MeshPhongMaterial({ color: 0x56b6c2, side: THREE.DoubleSide });
+            mainDish = new THREE.Mesh(dishGeo, dishMat);
+            mainDish.rotation.x = Math.PI / 2; // face up
+            mainDish.scale.y = 0.3; // flatten
+            dishGroup.add(mainDish);
+
+            // Receiver core
+            const rGeo = new THREE.CylinderGeometry(0.1, 0.1, 2);
+            const rMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0x332200 });
+            const rec = new THREE.Mesh(rGeo, rMat);
+            rec.position.y = 1;
+            dishGroup.add(rec);
+
+            // Signal Rings (invisible initially)
+            for (let i = 0; i < 3; i++) {
+                const sGeo = new THREE.TorusGeometry(1, 0.05, 8, 32);
+                const sMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+                const ring = new THREE.Mesh(sGeo, sMat);
+                ring.rotation.x = Math.PI / 2;
+                dishGroup.add(ring);
+                signalRings.push(ring);
+            }
+
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            animate3D();
+        }
+
+        function pulseAntenna() {
+            receivingTicks = 60; // 1 second roughly
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            antennaGroup.rotation.y += 0.005;
+
+            // Tilt dish
+            const dish = antennaGroup.children[2];
+            dish.rotation.z = Math.sin(Date.now() * 0.001) * 0.3;
+            dish.rotation.x = Math.sin(Date.now() * 0.0008) * 0.2;
+
+            if (receivingTicks > 0) {
+                // Dish glow
+                mainDish.material.emissive.setHex(0x113344);
+
+                // Animate rings expanding outwards from dish
+                signalRings.forEach((r, i) => {
+                    // Stagger phase
+                    const phase = (receivingTicks + (i * 20)) % 60;
+                    const scale = 1 + (phase * 0.1);
+                    r.scale.set(scale, scale, scale);
+                    r.position.y = phase * 0.1;
+                    r.material.opacity = (1 - (phase / 60)) * 0.8;
+                });
+
+                receivingTicks--;
+            } else {
+                mainDish.material.emissive.setHex(0x000000);
+                signalRings.forEach(r => r.material.opacity = 0);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+
+</html>

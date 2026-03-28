@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 19 - Cron Expression Builder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+
+    <style>
+        .cron-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Top Expression Area */
+        .expression-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .expression-input-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .cron-input {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid var(--accent-primary);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 2.5rem;
+            padding: 1rem;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            outline: none;
+            letter-spacing: 5px;
+            transition: all 0.3s;
+        }
+
+        .cron-input:focus {
+            box-shadow: 0 0 15px rgba(187, 134, 252, 0.4);
+        }
+
+        .cron-desc {
+            font-size: 1.2rem;
+            color: #33d9b2;
+            font-weight: bold;
+            min-height: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .cron-error {
+            color: #ff5252;
+            font-size: 0.9rem;
+            min-height: 1.5rem;
+        }
+
+        /* Builder Grid */
+        .builder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .builder-part {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .builder-part:focus-within {
+            border-color: var(--accent-primary);
+        }
+
+        .builder-part label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .builder-part select,
+        .builder-part input {
+            padding: 0.8rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            outline: none;
+            width: 100%;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        /* Next Runs Area */
+        .next-runs-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+        }
+
+        .next-runs-list {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0 0 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .run-item {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-sm);
+            border-left: 4px solid var(--accent-primary);
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .run-item .relative-time {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* 3D background container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content" style="position: relative; z-index: 10;">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>19. Cron Expression Builder</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Build, parse, and visualize cron
+                        schedules.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="cron-container">
+
+                <!-- Main Expression Area -->
+                <div class="expression-panel glass-panel">
+                    <div class="expression-input-wrapper">
+                        <input type="text" id="cron-input" class="cron-input" value="* * * * *" spellcheck="false"
+                            autocomplete="off">
+                        <button id="btn-copy" class="btn btn-primary" style="padding: 1rem 1.5rem;">Copy</button>
+                    </div>
+                    <div id="cron-desc" class="cron-desc">Every minute</div>
+                    <div id="cron-error" class="cron-error"></div>
+                </div>
+
+                <!-- Visual Builder Grids -->
+                <div class="builder-grid">
+                    <div class="builder-part">
+                        <label>Minute (0-59)</label>
+                        <input type="text" id="part-min" value="*" data-idx="0">
+                        <select class="quick-sel" data-target="part-min">
+                            <option value="">Presets...</option>
+                            <option value="*">Every minute (*)</option>
+                            <option value="*/5">Every 5 mins (*/5)</option>
+                            <option value="*/15">Every 15 mins (*/15)</option>
+                            <option value="30">At 30 mins past (30)</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-part">
+                        <label>Hour (0-23)</label>
+                        <input type="text" id="part-hr" value="*" data-idx="1">
+                        <select class="quick-sel" data-target="part-hr">
+                            <option value="">Presets...</option>
+                            <option value="*">Every hour (*)</option>
+                            <option value="*/2">Every 2 hours (*/2)</option>
+                            <option value="2">At 2 AM (2)</option>
+                            <option value="9-17">9 AM to 5 PM (9-17)</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-part">
+                        <label>Day of Month (1-31)</label>
+                        <input type="text" id="part-dom" value="*" data-idx="2">
+                        <select class="quick-sel" data-target="part-dom">
+                            <option value="">Presets...</option>
+                            <option value="*">Every day (*)</option>
+                            <option value="1">1st of month (1)</option>
+                            <option value="15">15th of month (15)</option>
+                            <option value="L">Last day of month (L)</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-part">
+                        <label>Month (1-12)</label>
+                        <input type="text" id="part-mon" value="*" data-idx="3">
+                        <select class="quick-sel" data-target="part-mon">
+                            <option value="">Presets...</option>
+                            <option value="*">Every month (*)</option>
+                            <option value="*/3">Every quarter (*/3)</option>
+                            <option value="1">January (1)</option>
+                            <option value="12">December (12)</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-part">
+                        <label>Day of Week (0-6)</label>
+                        <input type="text" id="part-dow" value="*" data-idx="4">
+                        <select class="quick-sel" data-target="part-dow">
+                            <option value="">Presets...</option>
+                            <option value="*">Every day (*)</option>
+                            <option value="1-5">Mon-Fri (1-5)</option>
+                            <option value="0,6">Weekends (0,6)</option>
+                            <option value="1">Monday (1)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Next Runs List -->
+                <div class="next-runs-panel glass-panel">
+                    <h3>Next 5 Executions</h3>
+                    <ul class="next-runs-list" id="next-runs">
+                        <!-- Populated by JS -->
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Cronstrue for natural language description -->
+    <script src="https://unpkg.com/cronstrue@2.27.1/dist/cronstrue.min.js"></script>
+    <!-- Cron-parser for next run times -->
+    <!-- we bundle the browser version via a minimal cdn fetch -->
+    <script src="https://cdn.jsdelivr.net/npm/cron-parser@4.9.0/lib/browser.min.js"></script>
+
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Core Cron Logic ---
+        const cronInput = document.getElementById('cron-input');
+        const cronDesc = document.getElementById('cron-desc');
+        const cronError = document.getElementById('cron-error');
+        const nextRunsList = document.getElementById('next-runs');
+
+        // Parts array
+        const partsInputs = [
+            document.getElementById('part-min'),
+            document.getElementById('part-hr'),
+            document.getElementById('part-dom'),
+            document.getElementById('part-mon'),
+            document.getElementById('part-dow')
+        ];
+
+        let isUpdatingFromParts = false;
+
+        function getRelativeTime(date) {
+            const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+            const daysDifference = Math.round((date - new Date()) / (1000 * 60 * 60 * 24));
+
+            if (daysDifference > 0 && daysDifference < 7) {
+                return rtf.format(daysDifference, 'day');
+            } else if (daysDifference >= 7) {
+                return "in " + Math.round(daysDifference / 7) + " week(s)";
+            }
+
+            const hoursDiff = Math.abs(date - new Date()) / 36e5;
+            if (hoursDiff < 24) {
+                if (hoursDiff < 1) return "in less than an hour";
+                return "in ~" + Math.round(hoursDiff) + " hours";
+            }
+            return "";
+        }
+
+        function updateFromMainInput() {
+            if (isUpdatingFromParts) return;
+            const exp = cronInput.value.trim().replace(/\s+/g, ' ');
+
+            // Try to set parts
+            const parts = exp.split(' ');
+            if (parts.length >= 5) {
+                partsInputs.forEach((inp, idx) => {
+                    if (parts[idx]) inp.value = parts[idx];
+                });
+            }
+
+            try {
+                // 1. Describe it
+                const desc = cronstrue.toString(exp);
+                cronDesc.textContent = desc;
+                cronError.textContent = '';
+                cronInput.style.borderColor = 'var(--accent-primary)';
+
+                // 2. Get next 5 runs via cron-parser (exposed as window.cronParser in browser bundle usually)
+                // Note: browser version of cron-parser might require specific syntax, checking fallback
+                try {
+                    const cb = window.cronParser || window.cron; // check namespace
+                    if (cb && cb.parseExpression) {
+                        const interval = cb.parseExpression(exp);
+                        nextRunsList.innerHTML = '';
+
+                        // Speeds for 3D animation (rough visually appealing approximations)
+                        const speeds = [0, 0, 0, 0, 0];
+
+                        for (let i = 0; i < 5; i++) {
+                            const d = interval.next().toDate();
+                            const li = document.createElement('li');
+                            li.className = 'run-item';
+                            li.innerHTML = `
+                                <span>${d.toLocaleString()}</span>
+                                <span class="relative-time">${getRelativeTime(d)}</span>
+                            `;
+                            nextRunsList.appendChild(li);
+
+                            // Just use the first run gap to calculate 3D gear speed
+                            if (i === 0) {
+                                const gapMs = d.getTime() - Date.now();
+                                // Faster rotation for closer events
+                                let baseSpeed = 0.05;
+                                if (gapMs < 3600000) baseSpeed = 0.5; // < 1hr
+                                else if (gapMs < 86400000) baseSpeed = 0.2; // < 1d
+
+                                // Calculate speeds roughly for visual: Min, Hr, DOM, Mon, DOW
+                                speeds[0] = parts[0] === '*' ? baseSpeed : baseSpeed / 2;
+                                speeds[1] = parts[1] === '*' ? baseSpeed / 2 : baseSpeed / 4;
+                                speeds[2] = parts[2] === '*' ? baseSpeed / 4 : baseSpeed / 8;
+                                speeds[3] = parts[3] === '*' ? baseSpeed / 8 : baseSpeed / 16;
+                                speeds[4] = parts[4] === '*' ? baseSpeed / 2 : baseSpeed / 8;
+                            }
+                        }
+
+                        // Trigger 3D clock update
+                        if (window.updateGears) window.updateGears(speeds);
+                    } else {
+                        nextRunsList.innerHTML = '<li class="run-item"><span>Cron parser library unavailable</span></li>';
+                    }
+                } catch (e) {
+                    nextRunsList.innerHTML = `<li class="run-item"><span style="color:#ff5252">Invalid cron strictly for execution: ${e.message}</span></li>`;
+                }
+
+                // Animate background tick
+                if (window.triggerTick) window.triggerTick();
+
+            } catch (err) {
+                cronDesc.textContent = '';
+                cronError.textContent = err.toString();
+                cronInput.style.borderColor = '#ff5252';
+                nextRunsList.innerHTML = '';
+            }
+        }
+
+        function updateFromParts() {
+            isUpdatingFromParts = true;
+            const exp = partsInputs.map(inp => inp.value.trim() || '*').join(' ');
+            cronInput.value = exp;
+            updateFromMainInput();
+            isUpdatingFromParts = false;
+        }
+
+        // Event Listeners
+        cronInput.addEventListener('input', updateFromMainInput);
+        partsInputs.forEach(inp => inp.addEventListener('input', updateFromParts));
+
+        // Quick selects
+        document.querySelectorAll('.quick-sel').forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                if (!e.target.value) return; // 'Presets...' selected
+                const targetId = e.target.getAttribute('data-target');
+                document.getElementById(targetId).value = e.target.value;
+                updateFromParts();
+                e.target.value = ""; // reset select
+            });
+        });
+
+        // Copy button
+        document.getElementById('btn-copy').addEventListener('click', (e) => {
+            const text = cronInput.value;
+            if (!text) return;
+
+            navigator.clipboard.writeText(text);
+            const btn = e.target;
+            const orig = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = orig, 1500);
+        });
+
+        // Initialize display
+        setTimeout(updateFromMainInput, 500); // slight delay to ensure libs loaded
+
+
+        // --- 3D Background Setup (Complex Clock/Gears) ---
+        let scene, camera, renderer, clockGroup;
+        let gears = [];
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 25;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            clockGroup = new THREE.Group();
+            scene.add(clockGroup);
+
+            // Generate 5 rings/gears for the 5 cron expressions
+            const colors = [0xBB86FC, 0x03DAC6, 0xffb142, 0x34ace0, 0xff5252];
+            const radii = [4, 5.5, 7, 8.5, 10]; // sizes
+
+            for (let i = 0; i < 5; i++) {
+                const ringGeo = new THREE.TorusGeometry(radii[i], 0.2, 16, 100);
+                const ringMat = new THREE.MeshStandardMaterial({
+                    color: colors[i],
+                    metalness: 0.8,
+                    roughness: 0.2,
+                    transparent: true,
+                    opacity: 0.7
+                });
+
+                const gear = new THREE.Mesh(ringGeo, ringMat);
+
+                // Add tick marks to the ring
+                const numTicks = 12;
+                for (let j = 0; j < numTicks; j++) {
+                    const tickGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                    const tickMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                    const tick = new THREE.Mesh(tickGeo, tickMat);
+
+                    const angle = (j / numTicks) * Math.PI * 2;
+                    tick.position.x = Math.cos(angle) * radii[i];
+                    tick.position.y = Math.sin(angle) * radii[i];
+                    tick.rotation.z = angle;
+
+                    gear.add(tick);
+                }
+
+                // Initial speeds (slow)
+                gear.userData = { targetSpeed: 0.001 * (i + 1), currentSpeed: 0 };
+                gears.push(gear);
+                clockGroup.add(gear);
+            }
+
+            // Tilt the whole clock assembly
+            clockGroup.rotation.x = 0.5;
+            clockGroup.rotation.y = -0.3;
+            clockGroup.position.x = 8; // offset to right slightly
+            clockGroup.position.y = -2;
+
+            // Called when cron changes
+            window.updateGears = (speeds) => {
+                // array of 5 speeds for the 5 gears
+                gears.forEach((g, i) => {
+                    if (speeds[i] !== undefined) {
+                        // smooth transition managed in render loop
+                        g.userData.targetSpeed = speeds[i] * 0.1; // scale down for visual comfort
+                    }
+                });
+            };
+
+            // Called when typing perfectly
+            window.triggerTick = () => {
+                // Pulse the innermost ring
+                const innerMat = gears[0].material;
+                const prevColor = innerMat.color.getHex();
+                innerMat.color.setHex(0xffffff);
+                setTimeout(() => innerMat.color.setHex(prevColor), 100);
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Rotate gears towards target speeds
+                gears.forEach((g, i) => {
+                    // LERP speed
+                    g.userData.currentSpeed += (g.userData.targetSpeed - g.userData.currentSpeed) * 0.05;
+
+                    // alternate direction based on index
+                    const dir = i % 2 === 0 ? 1 : -1;
+                    g.rotation.z += g.userData.currentSpeed * dir;
+                });
+
+                // Idle hover of the whole assembly
+                clockGroup.position.y = Math.sin(Date.now() * 0.001) * 0.5 - 2;
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                if (window.innerWidth < 900) {
+                    camera.position.z = 40;
+                    clockGroup.position.x = 0; // center on mobile
+                } else {
+                    camera.position.z = 25;
+                    clockGroup.position.x = 8;
+                }
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

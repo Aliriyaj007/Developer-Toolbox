@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 28 - JSON Path Tester - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        
+        textarea, .results-panel {
+            width: 100%;
+            height: 350px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            overflow-y: auto;
+        }
+        
+        textarea { resize: vertical; }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            background: var(--bg-main);
+            border: 2px solid var(--primary-color);
+            border-radius: var(--radius-md);
+            padding: 0.5rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-group span {
+            font-family: var(--font-mono);
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-right: 0.5rem;
+        }
+
+        .input-group input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            outline: none;
+        }
+
+        .error-message {
+            color: #ff5555;
+            background: rgba(255, 85, 85, 0.1);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .info-panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .info-panel code {
+            color: var(--primary-color);
+            background: rgba(0,0,0,0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .match-count {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>28. JSON Path Tester</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="input-group">
+                    <span>$</span>
+                    <input type="text" id="json-path-input" placeholder="..author" value="..author">
+                </div>
+                
+                <div id="error-alert" class="error-message"></div>
+
+                <div class="split-view">
+                    <div>
+                        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label style="font-weight: bold; color: var(--text-secondary);">JSON Input</label>
+                            <button class="btn btn-sm" id="format-btn">Format JSON</button>
+                        </div>
+                        <textarea id="json-input">{
+  "store": {
+    "book": [
+      {
+        "category": "reference",
+        "author": "Nigel Rees",
+        "title": "Sayings of the Century",
+        "price": 8.95
+      },
+      {
+        "category": "fiction",
+        "author": "Evelyn Waugh",
+        "title": "Sword of Honour",
+        "price": 12.99
+      },
+      {
+        "category": "fiction",
+        "author": "Herman Melville",
+        "title": "Moby Dick",
+        "isbn": "0-553-21311-3",
+        "price": 8.99
+      },
+      {
+        "category": "fiction",
+        "author": "J. R. R. Tolkien",
+        "title": "The Lord of the Rings",
+        "isbn": "0-395-19395-8",
+        "price": 22.99
+      }
+    ],
+    "bicycle": {
+      "color": "red",
+      "price": 19.95
+    }
+  },
+  "expensive": 10
+}</textarea>
+                    </div>
+                    <div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Results</label>
+                            <span id="match-count" class="match-count">0 matches</span>
+                        </div>
+                        <pre class="results-panel" id="results-output"></pre>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h4>Quick Examples (Click to apply)</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                        <code onclick="setPath('$.store.book[*].author')">$.store.book[*].author</code>
+                        <code onclick="setPath('$..author')">$..author</code>
+                        <code onclick="setPath('$.store.*')">$.store.*</code>
+                        <code onclick="setPath('$.store..price')">$.store..price</code>
+                        <code onclick="setPath('$..book[2]')">$..book[2]</code>
+                        <code onclick="setPath('$..book[?(@.isbn)]')">$..book[?(@.isbn)]</code>
+                        <code onclick="setPath('$..book[?(@.price<10)]')">$..book[?(@.price<10)]</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonpath/1.1.1/jsonpath.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const formatBtn = document.getElementById('format-btn');
+        const jsonInput = document.getElementById('json-input');
+        const pathInput = document.getElementById('json-path-input');
+        const resultsOutput = document.getElementById('results-output');
+        const errorAlert = document.getElementById('error-alert');
+        const matchCount = document.getElementById('match-count');
+
+        window.setPath = (path) => {
+            // strip starting $
+            if(path.startsWith('$')) {
+                pathInput.value = path.substring(1);
+            } else {
+                pathInput.value = path;
+            }
+            evaluatePath();
+        };
+
+        const showError = (msg) => {
+            errorAlert.textContent = msg;
+            errorAlert.style.display = 'block';
+            resultsOutput.textContent = '';
+            matchCount.textContent = 'Error';
+            matchCount.style.background = '#ff5555';
+        };
+
+        const hideError = () => {
+            errorAlert.style.display = 'none';
+        };
+
+        const evaluatePath = () => {
+            hideError();
+            let jsonObj;
+            try {
+                jsonObj = JSON.parse(jsonInput.value);
+            } catch(e) {
+                showError("Invalid JSON input: " + e.message);
+                return;
+            }
+
+            let pathStr = pathInput.value.trim();
+            if(!pathStr.startsWith('$')) pathStr = '$' + pathStr;
+
+            try {
+                const result = jsonpath.query(jsonObj, pathStr);
+                resultsOutput.textContent = JSON.stringify(result, null, 2);
+                matchCount.textContent = `${result.length} match${result.length !== 1 ? 'es' : ''}`;
+                matchCount.style.background = 'var(--primary-color)';
+                
+                if(window.update3DTree) {
+                    window.update3DTree(result.length);
+                }
+            } catch(e) {
+                showError("Invalid JSONPath expression: " + e.message);
+            }
+        };
+
+        jsonInput.addEventListener('input', evaluatePath);
+        pathInput.addEventListener('input', evaluatePath);
+
+        formatBtn.addEventListener('click', () => {
+            try {
+                const jsonObj = JSON.parse(jsonInput.value);
+                jsonInput.value = JSON.stringify(jsonObj, null, 2);
+            } catch(e) {
+                showError("Cannot format invalid JSON: " + e.message);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', evaluatePath);
+
+        // 3D Visualization: A tree structure with highlighted branches
+        let scene, camera, renderer, treeGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 5, 15);
+            camera.lookAt(0, 2, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            treeGroup = new THREE.Group();
+            scene.add(treeGroup);
+
+            createStaticTree();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        let nodes = [];
+        let edges = [];
+
+        function createStaticTree() {
+            // Root
+            addNode(0, 0, 0, true);
+            
+            // Level 1
+            addNode(-3, -2, 0);
+            addNode(3, -2, 0);
+            addEdge(0, 1);
+            addEdge(0, 2);
+
+            // Level 2 (Left)
+            addNode(-5, -4, 0);
+            addNode(-1, -4, 0);
+            addEdge(1, 3);
+            addEdge(1, 4);
+
+            // Level 2 (Right)
+            addNode(1, -4, 0);
+            addNode(5, -4, 0);
+            addEdge(2, 5);
+            addEdge(2, 6);
+
+            // Level 3 (scattered)
+            addNode(-6, -6, 0);
+            addNode(-4, -6, 0);
+            addEdge(3, 7);
+            addEdge(3, 8);
+
+            addNode(4, -6, 0);
+            addNode(6, -6, 0);
+            addEdge(6, 9);
+            addEdge(6, 10);
+
+            treeGroup.position.set(2, 4, 0);
+        }
+
+        const defaultMat = new THREE.MeshPhongMaterial({ color: 0x445566 });
+        const highlightMat = new THREE.MeshPhongMaterial({ color: 0x00ffcc, emissive: 0x00ffcc, emissiveIntensity: 0.5 });
+
+        function addNode(x, y, z, isRoot = false) {
+            const geo = new THREE.SphereGeometry(isRoot ? 0.6 : 0.4, 16, 16);
+            const mesh = new THREE.Mesh(geo, defaultMat);
+            mesh.position.set(x, y, z);
+            treeGroup.add(mesh);
+            nodes.push(mesh);
+        }
+
+        function addEdge(n1, n2) {
+            const p1 = nodes[n1].position;
+            const p2 = nodes[n2].position;
+            const distance = p1.distanceTo(p2);
+            
+            const geo = new THREE.CylinderGeometry(0.1, 0.1, distance, 8);
+            geo.translate(0, distance / 2, 0);
+            geo.rotateX(Math.PI / 2);
+
+            const mesh = new THREE.Mesh(geo, defaultMat);
+            mesh.position.copy(p1);
+            mesh.lookAt(p2);
+            
+            treeGroup.add(mesh);
+            edges.push(mesh);
+        }
+
+        window.update3DTree = (matchCount) => {
+            if(!treeGroup || nodes.length === 0) return;
+            
+            // Reset all
+            nodes.forEach(n => n.material = defaultMat);
+            
+            // Highlight root by default if path exists
+            nodes[0].material = highlightMat;
+
+            // Randomly highlight nodes based on matchCount
+            const toHighlight = Math.min(matchCount, nodes.length - 1); // limit to available nodes
+            
+            // Shuffle indices 1 to n
+            const indices = Array.from({length: nodes.length - 1}, (_, i) => i + 1);
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+
+            for(let i=0; i<toHighlight; i++) {
+                nodes[indices[i]].material = highlightMat;
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(treeGroup) {
+                treeGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.3;
+                treeGroup.position.y = 4 + Math.sin(Date.now() * 0.002) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

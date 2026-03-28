@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 62 - Web Component Playground - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+        }
+
+        /* Editors */
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .editor-box {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            height: 200px;
+        }
+
+        .editor-header {
+            background: rgba(255,255,255,0.05);
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .editor-header span { color: var(--primary-color); }
+
+        textarea.code-area {
+            flex: 1;
+            background: transparent;
+            color: #7ee787; /* default code green */
+            border: none;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+            white-space: pre;
+            overflow: auto;
+        }
+
+        #js-editor { color: #56b6c2; }
+        #css-editor { color: #f0f0f0; }
+
+        /* Preview container */
+        .preview-box {
+            background: #ffffff;
+            color: #333;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-color);
+            min-height: 250px;
+            position: relative;
+            padding: 2rem;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* Shadow DOM Inspector */
+        .shadow-inspector {
+            background: rgba(0,0,0,0.4);
+            border: 1px dashed var(--primary-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .node-tag { color: #56b6c2; font-weight: bold; }
+        .node-attr { color: #ffaa00; }
+        .node-val { color: #7ee787; }
+
+        .btn-run {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        .btn-run:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .error-msg {
+            color: #ff5555; font-size: 0.85rem; margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>62. Web Component Playground</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Code Editors -->
+                    <div class="editor-container">
+                        <div class="control-group">
+                            <label>Component Tag Name</label>
+                            <input type="text" id="tag-name" value="my-counter">
+                            <small style="color:var(--text-secondary);">Must contain a hyphen (e.g., custom-btn)</small>
+                        </div>
+                        
+                        <div class="editor-box">
+                            <div class="editor-header">
+                                <span>HTML Template (Shadow DOM innerHTML)</span>
+                            </div>
+                            <textarea id="html-editor" class="code-area" spellcheck="false">
+<div class="container">
+  <h3>Click Counter</h3>
+  <button id="btn">Clicks: <span id="count">0</span></button>
+</div>
+                            </textarea>
+                        </div>
+
+                        <div class="editor-box">
+                            <div class="editor-header">
+                                <span>CSS (Encapsulated)</span>
+                            </div>
+                            <textarea id="css-editor" class="code-area" spellcheck="false">
+.container {
+  padding: 1rem;
+  border: 2px solid #56b6c2;
+  border-radius: 8px;
+  background: #f9f9f9;
+  font-family: sans-serif;
+  text-align: center;
+}
+h3 { margin-top: 0; color: #333; }
+button {
+  padding: 0.5rem 1rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+}
+                            </textarea>
+                        </div>
+
+                        <div class="editor-box">
+                            <div class="editor-header">
+                                <span>JavaScript (Logic)</span>
+                            </div>
+                            <textarea id="js-editor" class="code-area" spellcheck="false">
+// 'this' refers to the custom element instance.
+// 'shadow' is the already attached shadow root.
+let count = 0;
+const btn = shadow.getElementById('btn');
+const countSpan = shadow.getElementById('count');
+
+btn.addEventListener('click', () => {
+  count++;
+  countSpan.textContent = count;
+});
+                            </textarea>
+                        </div>
+
+                        <button class="btn-run" id="btn-run">▶ Compile & Render</button>
+                        <div id="error-output" class="error-msg"></div>
+                    </div>
+
+                    <!-- Output Details -->
+                    <div>
+                        <h3 style="margin-top:0;">Live Component Preview</h3>
+                        <div class="preview-box" id="preview-box">
+                            <!-- Instance injected here -->
+                        </div>
+
+                        <div class="shadow-inspector">
+                            <h4 style="margin-top:0; color:var(--text-secondary);">🔍 Shadow DOM Inspector</h4>
+                            <div id="inspector-output" style="white-space:pre-wrap;">
+                                Run the component to inspect.
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        const htmlEditor = document.getElementById('html-editor');
+        const cssEditor = document.getElementById('css-editor');
+        const jsEditor = document.getElementById('js-editor');
+        const tagNameInput = document.getElementById('tag-name');
+        const btnRun = document.getElementById('btn-run');
+        const previewBox = document.getElementById('preview-box');
+        const errorOut = document.getElementById('error-output');
+        const inspectorOut = document.getElementById('inspector-output');
+
+        function compileComponent() {
+            errorOut.textContent = '';
+            const tagName = tagNameInput.value.trim().toLowerCase();
+            
+            if(!tagName.includes('-')) {
+                 errorOut.textContent = "Error: Custom element names must contain a hyphen (-).";
+                 return;
+            }
+
+            // Remove existing instance if tag already exists and just replace innerHTML of preview
+            // But we can't easily unregister a custom element in the browser. 
+            // So we'll prefix it with a random id to ensure we can re-create it live.
+            const uniqueTag = `${tagName}-${Math.random().toString(36).substr(2, 5)}`;
+
+            const htmlContent = htmlEditor.value;
+            const cssContent = cssEditor.value;
+            const jsContent = jsEditor.value;
+
+            try {
+                // Dynamically create the class
+                // We wrap the user's JS in a function block that gets called during connectedCallback
+                const ComponentClass = class extends HTMLElement {
+                    constructor() {
+                        super();
+                        this.attachShadow({ mode: 'open' });
+                    }
+
+                    connectedCallback() {
+                        // Render template + styles
+                        this.shadowRoot.innerHTML = `
+                            <style>${cssContent}</style>
+                            ${htmlContent}
+                        `;
+
+                        // Execute user JS within constructor context
+                        // 'shadow' is provided as a local var wrapping 'this.shadowRoot'
+                        try {
+                            const userFn = new Function('shadow', jsContent);
+                            userFn.call(this, this.shadowRoot);
+                        } catch(e) {
+                            console.error(e);
+                            errorOut.textContent = "JS Error: " + e.message;
+                        }
+                    }
+                };
+
+                // Register
+                customElements.define(uniqueTag, ComponentClass);
+
+                // Render into preview
+                previewBox.innerHTML = '';
+                const instance = document.createElement(uniqueTag);
+                previewBox.appendChild(instance);
+
+                // Wait a moment for rendering, then inspect
+                setTimeout(() => {
+                    inspectShadow(instance);
+                    if(window.trigger3DAssembly) window.trigger3DAssembly();
+                }, 50);
+
+            } catch(e) {
+                errorOut.textContent = "Compile Error: " + e.message;
+            }
+        }
+
+        // Basic DOM to string parser to visualize shadow root
+        function inspectShadow(element) {
+            if(!element.shadowRoot) {
+                inspectorOut.textContent = "No shadow root found.";
+                return;
+            }
+
+            let str = `<span class="node-tag">&lt;${element.tagName.toLowerCase()}&gt;</span>\n`;
+            str += `  <span style="color:#888;">#shadow-root (open)</span>\n`;
+
+            const childNodes = element.shadowRoot.childNodes;
+            childNodes.forEach(node => {
+                if(node.nodeType === Node.ELEMENT_NODE) {
+                    str += `    ${formatNode(node)}\n`;
+                } else if(node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                    str += `    "${node.textContent.trim()}"\n`;
+                }
+            });
+
+            str += `<span class="node-tag">&lt;/${element.tagName.toLowerCase()}&gt;</span>`;
+            
+            // basic escaping for display
+            inspectorOut.innerHTML = str.replace(/<style>[\s\S]*?<\/style>/, '&lt;style&gt;...&lt;/style&gt;');
+        }
+
+        function formatNode(node) {
+            const tag = node.tagName.toLowerCase();
+            if(tag === 'style') return `<span class="node-tag">&lt;style&gt;</span>...<span class="node-tag">&lt;/style&gt;</span>`;
+            
+            let attrs = '';
+            for(let i=0; i<node.attributes.length; i++) {
+                const a = node.attributes[i];
+                attrs += ` <span class="node-attr">${a.name}</span>="<span class="node-val">${a.value}</span>"`;
+            }
+            
+            if(node.children.length === 0 && !node.textContent.trim()) {
+                return `<span class="node-tag">&lt;${tag}${attrs}/&gt;</span>`;
+            } else {
+                return `<span class="node-tag">&lt;${tag}${attrs}&gt;</span>...<span class="node-tag">&lt;/${tag}&gt;</span>`;
+            }
+        }
+
+        btnRun.addEventListener('click', compileComponent);
+        
+        // Initial compile
+        compileComponent();
+
+
+        // 3D Visualization: A component cube with shadow layers
+        let scene, camera, renderer, componentGroup;
+        let layers = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x56b6c2, 0.8);
+            dirLight.position.set(2, 5, 5);
+            scene.add(dirLight);
+
+            componentGroup = new THREE.Group();
+            scene.add(componentGroup);
+
+            // Shift right
+            scene.position.x = 2;
+            scene.position.y = 1;
+
+            buildCubeLayers();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function buildCubeLayers() {
+            // Base layer (Light DOM container)
+            const baseGeo = new THREE.BoxGeometry(3, 3, 0.1);
+            const baseMat = new THREE.MeshPhongMaterial({ color: 0x334455, transparent: true, opacity: 0.5 });
+            const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+            
+            const edges = new THREE.EdgesGeometry(baseGeo);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x56b6c2 });
+            const boxLines = new THREE.LineSegments(edges, lineMat);
+            baseMesh.add(boxLines);
+            baseMesh.position.z = -1;
+            
+            // Shadow Root Barrier
+            const rootGeo = new THREE.PlaneGeometry(3, 3);
+            const rootMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+            const rootMesh = new THREE.Mesh(rootGeo, rootMat);
+            rootMesh.position.z = 0;
+
+            // Encapsulated UI (The button/content)
+            const uiGeo = new THREE.BoxGeometry(1.5, 1, 0.5);
+            const uiMat = new THREE.MeshPhongMaterial({ color: 0x7ee787 });
+            const uiMesh = new THREE.Mesh(uiGeo, uiMat);
+            uiMesh.position.z = 0.5;
+
+            // Group them
+            componentGroup.add(baseMesh);
+            componentGroup.add(rootMesh);
+            componentGroup.add(uiMesh);
+
+            layers = [baseMesh, rootMesh, uiMesh];
+
+            // Initial spread
+            baseMesh.userData = { targetZ: -1 };
+            rootMesh.userData = { targetZ: 0 };
+            uiMesh.userData = { targetZ: 0.5 };
+        }
+
+        window.trigger3DAssembly = () => {
+            if(!layers.length) return;
+            
+            // Explode out
+            layers[0].userData.targetZ = -2;
+            layers[1].userData.targetZ = 0;
+            layers[2].userData.targetZ = 2;
+
+            setTimeout(() => {
+                // Snap back together into a tight web component
+                layers[0].userData.targetZ = -0.5;
+                layers[1].userData.targetZ = 0;
+                layers[2].userData.targetZ = 0.3;
+            }, 600);
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(componentGroup) {
+                // Animate layers snapping
+                layers.forEach(l => {
+                    l.position.z += (l.userData.targetZ - l.position.z) * 0.1;
+                });
+
+                // Spin slowly to see the separation
+                componentGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.4 - 0.5;
+                componentGroup.rotation.x = Math.sin(Date.now() * 0.0005) * 0.2 - 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

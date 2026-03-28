@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 46 - CSS Specificity Calculator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+        }
+
+        .results-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+        }
+
+        .score-display {
+            font-size: 3rem;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 5px;
+            margin: 1rem 0 2rem 0;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .score-part {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-val {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            border-bottom: 4px solid transparent;
+        }
+
+        .score-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            letter-spacing: normal;
+            font-family: var(--font-main);
+            text-transform: uppercase;
+        }
+
+        .breakdown-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        .breakdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .tag-inline {
+            color: #ff5555;
+        }
+
+        .tag-id {
+            color: #ffaa00;
+        }
+
+        .tag-class {
+            color: #7ee787;
+        }
+
+        .tag-element {
+            color: #56b6c2;
+        }
+
+        .val-inline {
+            border-bottom-color: #ff5555;
+        }
+
+        .val-id {
+            border-bottom-color: #ffaa00;
+        }
+
+        .val-class {
+            border-bottom-color: #7ee787;
+        }
+
+        .val-element {
+            border-bottom-color: #56b6c2;
+        }
+
+        .comparison-mode {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .vs-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .vs-winner {
+            color: #7ee787;
+            font-weight: bold;
+        }
+
+        .vs-loser {
+            color: #ff5555;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>46. CSS Specificity Calculator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    <div>
+                        <div class="input-group">
+                            <label>CSS Selector</label>
+                            <input type="text" id="selector-input" placeholder="e.g. #nav .menu-item:hover > a::before"
+                                value="ul#nav li.active a:hover">
+                        </div>
+
+                        <div class="input-group">
+                            <label style="color:var(--text-secondary); font-size: 0.9rem; font-weight: normal;">
+                                Specificity is calculated based on four categories: Inline styles, IDs,
+                                Classes/Attributes/Pseudo-classes, and Elements/Pseudo-elements.
+                            </label>
+                        </div>
+
+                        <div class="comparison-mode">
+                            <label
+                                style="color:var(--text-secondary); font-weight: bold; margin-bottom: 1rem; display: block;">Compare
+                                against (Optional)</label>
+                            <input type="text" id="compare-input" placeholder="e.g. .menu-list a">
+
+                            <div id="compare-result"
+                                style="margin-top: 1rem; font-family: var(--font-mono); padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); border-left: 3px solid #7ee787; display: none;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="results-panel">
+                        <h3 style="margin-top: 0; text-align: center; color: var(--text-secondary);">Specificity Score
+                        </h3>
+                        <div class="score-display">
+                            <div class="score-part">
+                                <span class="score-val val-inline" id="score-inline">0</span>
+                                <span class="score-label">Inline</span>
+                            </div>
+                            <div style="align-self: flex-start; margin-top: 0.5rem; color: var(--text-secondary);">,
+                            </div>
+                            <div class="score-part">
+                                <span class="score-val val-id" id="score-id">0</span>
+                                <span class="score-label">IDs</span>
+                            </div>
+                            <div style="align-self: flex-start; margin-top: 0.5rem; color: var(--text-secondary);">,
+                            </div>
+                            <div class="score-part">
+                                <span class="score-val val-class" id="score-class">0</span>
+                                <span class="score-label">Classes</span>
+                            </div>
+                            <div style="align-self: flex-start; margin-top: 0.5rem; color: var(--text-secondary);">,
+                            </div>
+                            <div class="score-part">
+                                <span class="score-val val-element" id="score-element">0</span>
+                                <span class="score-label">Elements</span>
+                            </div>
+                        </div>
+
+                        <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">Breakdown</h4>
+                        <ul class="breakdown-list" id="breakdown-list">
+                            <!-- Breakdown items injected here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const selectorInput = document.getElementById('selector-input');
+        const compareInput = document.getElementById('compare-input');
+        const compareResult = document.getElementById('compare-result');
+        const scoreInline = document.getElementById('score-inline');
+        const scoreId = document.getElementById('score-id');
+        const scoreClass = document.getElementById('score-class');
+        const scoreElement = document.getElementById('score-element');
+        const breakdownList = document.getElementById('breakdown-list');
+
+        // Simple specificity parser
+        function calculateSpecificity(selector) {
+            let s = selector.trim();
+            if (!s) return { score: [0, 0, 0, 0], breakdown: [] };
+
+            let ids = 0, classes = 0, elements = 0;
+            let breakdown = [];
+
+            // A very simplified parsing logic (Not a full parser, handles common cases for visualizer)
+            // Remove inside of :not(), :is(), :has() for simplicity in this demo, or just treat as pseudo-classes
+            // In a real robust app, we'd use keeganstreet/specificity.
+
+            const regexId = /#[a-zA-Z0-9_-]+/g;
+            const regexClass = /\.[a-zA-Z0-9_-]+/g;
+            const regexAttr = /\[[^\]]+\]/g;
+            // Pseudo-elements (::before, :first-line, etc) - note that single colon is pseudo-class
+            const regexPseudoElem = /(::[a-zA-Z0-9_-]+|:first-line|:first-letter|:before|:after)/g;
+            const regexPseudoClass = /:[a-zA-Z0-9_-]+(?:\([^)]*\))?/g;
+
+            // Extract IDs
+            let m;
+            while ((m = regexId.exec(s)) !== null) {
+                ids++;
+                breakdown.push({ match: m[0], type: 'ID', color: 'tag-id' });
+                s = s.replace(m[0], ' '.repeat(m[0].length)); // clear
+            }
+
+            // Extract Classes
+            while ((m = regexClass.exec(s)) !== null) {
+                classes++;
+                breakdown.push({ match: m[0], type: 'Class', color: 'tag-class' });
+                s = s.replace(m[0], ' '.repeat(m[0].length));
+            }
+
+            // Extract Attributes
+            while ((m = regexAttr.exec(s)) !== null) {
+                classes++;
+                breakdown.push({ match: m[0], type: 'Attribute', color: 'tag-class' });
+                s = s.replace(m[0], ' '.repeat(m[0].length));
+            }
+
+            // Extract Pseudo Elements
+            while ((m = regexPseudoElem.exec(s)) !== null) {
+                elements++;
+                breakdown.push({ match: m[0], type: 'Pseudo-element', color: 'tag-element' });
+                s = s.replace(m[0], ' '.repeat(m[0].length));
+            }
+
+            // Extract Pseudo Classes
+            while ((m = regexPseudoClass.exec(s)) !== null) {
+                // Ignore :not, etc if we wanted deep parsing, but count as 1 here.
+                classes++;
+                breakdown.push({ match: m[0], type: 'Pseudo-class', color: 'tag-class' });
+                s = s.replace(m[0], ' '.repeat(m[0].length));
+            }
+
+            // Elements (words left over that aren't combinators)
+            s = s.replace(/[\*\+\>\~]/g, ' '); // remove combinators
+            const elementMatches = s.match(/[a-zA-Z0-9_-]+/g);
+            if (elementMatches) {
+                elementMatches.forEach(el => {
+                    elements++;
+                    breakdown.push({ match: el, type: 'Element', color: 'tag-element' });
+                });
+            }
+
+            return {
+                score: [0, ids, classes, elements],
+                breakdown: breakdown
+            };
+        }
+
+        function compareScores(s1, s2) {
+            for (let i = 0; i < 4; i++) {
+                if (s1[i] > s2[i]) return 1;
+                if (s1[i] < s2[i]) return -1;
+            }
+            return 0; // tie
+        }
+
+        const updateUI = () => {
+            const val1 = selectorInput.value;
+            const res1 = calculateSpecificity(val1);
+
+            scoreInline.textContent = res1.score[0];
+            scoreId.textContent = res1.score[1];
+            scoreClass.textContent = res1.score[2];
+            scoreElement.textContent = res1.score[3];
+
+            breakdownList.innerHTML = '';
+            if (res1.breakdown.length === 0 && val1.trim() !== '') {
+                breakdownList.innerHTML = '<li class="breakdown-item"><span style="color:var(--text-secondary)">No valid selectors found</span></li>';
+            } else {
+                res1.breakdown.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'breakdown-item';
+                    li.innerHTML = `<span>${item.match}</span><span class="${item.color}">${item.type}</span>`;
+                    breakdownList.appendChild(li);
+                });
+            }
+
+            // Comparison
+            const val2 = compareInput.value;
+            if (val2.trim() !== '') {
+                const res2 = calculateSpecificity(val2);
+                const winner = compareScores(res1.score, res2.score);
+
+                compareResult.style.display = 'block';
+                if (winner === 1) {
+                    compareResult.innerHTML = `
+                        <div><strong class="vs-winner">${val1}</strong> (${res1.score.join(',')})</div>
+                        <div style="font-size:0.8rem; margin:0.5rem 0;">overrides</div>
+                        <div><span class="vs-loser">${val2}</span> (${res2.score.join(',')})</div>
+                        <div style="margin-top:0.5rem; color:var(--text-secondary); font-size: 0.8rem;">The original selector wins due to higher specificity.</div>
+                    `;
+                    compareResult.style.borderLeftColor = '#7ee787';
+                } else if (winner === -1) {
+                    compareResult.innerHTML = `
+                        <div><strong class="vs-winner">${val2}</strong> (${res2.score.join(',')})</div>
+                        <div style="font-size:0.8rem; margin:0.5rem 0;">overrides</div>
+                        <div><span class="vs-loser">${val1}</span> (${res1.score.join(',')})</div>
+                        <div style="margin-top:0.5rem; color:#ffaa00; font-size: 0.8rem;">The comparison selector wins and will override the original!</div>
+                    `;
+                    compareResult.style.borderLeftColor = '#ffaa00';
+                } else {
+                    compareResult.innerHTML = `
+                        <div><strong>${val1}</strong> (${res1.score.join(',')})</div>
+                        <div style="font-size:0.8rem; margin:0.5rem 0;">ties with</div>
+                        <div><strong>${val2}</strong> (${res2.score.join(',')})</div>
+                        <div style="margin-top:0.5rem; color:var(--text-secondary); font-size: 0.8rem;">Equal specificity. The one defined last in the CSS file will win.</div>
+                    `;
+                    compareResult.style.borderLeftColor = '#56b6c2';
+                }
+            } else {
+                compareResult.style.display = 'none';
+            }
+
+            // Update 3D
+            if (window.update3DCubes) {
+                window.update3DCubes(res1.score[1], res1.score[2], res1.score[3]);
+            }
+        };
+
+        selectorInput.addEventListener('input', updateUI);
+        compareInput.addEventListener('input', updateUI);
+
+        // 3D Visualization: Floating coloured cubes representing specificity levels
+        let scene, camera, renderer;
+        let idGroup, classGroup, elementGroup;
+        let cubes = { id: [], class: [], element: [] };
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            idGroup = new THREE.Group();
+            idGroup.position.set(-2, 2, 0);
+            scene.add(idGroup);
+
+            classGroup = new THREE.Group();
+            classGroup.position.set(0, 0, 0);
+            scene.add(classGroup);
+
+            elementGroup = new THREE.Group();
+            elementGroup.position.set(2, -2, 0);
+            scene.add(elementGroup);
+
+            // Shift whole scene right
+            scene.position.x = 4;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            setTimeout(updateUI, 100); // Trigger initial
+        }
+
+        const createCube = (color, size) => {
+            const geo = new THREE.BoxGeometry(size, size, size);
+            const mat = new THREE.MeshPhongMaterial({ color: color, shininess: 80, transparent: true, opacity: 0.9 });
+            const mesh = new THREE.Mesh(geo, mat);
+            return mesh;
+        }
+
+        const syncCubes = (group, array, targetCount, color, size) => {
+            // Cap visual cubes to 10 max per category to prevent clutter
+            const visualCount = Math.min(targetCount, 10);
+
+            while (array.length < visualCount) {
+                const c = createCube(color, size);
+                c.position.set(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                );
+                // Assign random rotation velocities
+                c.userData = {
+                    rx: (Math.random() - 0.5) * 0.05,
+                    ry: (Math.random() - 0.5) * 0.05,
+                    rz: (Math.random() - 0.5) * 0.05
+                };
+                group.add(c);
+                array.push(c);
+            }
+            while (array.length > visualCount) {
+                const c = array.pop();
+                group.remove(c);
+            }
+
+            // If capped, maybe scale them up slightly to represent weight? 
+            // Or just leave as is for abstraction.
+        };
+
+        window.update3DCubes = (idCount, classCount, elementCount) => {
+            if (!scene) return;
+            // ID = Orange (Large), Class = Green (Medium), Element = Blue (Small)
+            syncCubes(idGroup, cubes.id, idCount, 0xffaa00, 1.2);
+            syncCubes(classGroup, cubes.class, classCount, 0x7ee787, 0.8);
+            syncCubes(elementGroup, cubes.element, elementCount, 0x56b6c2, 0.5);
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (scene) {
+                // slowly rotate entire groups
+                idGroup.rotation.y += 0.005;
+                classGroup.rotation.y -= 0.003;
+                elementGroup.rotation.y += 0.008;
+
+                // Animate individual cubes
+                [cubes.id, cubes.class, cubes.element].forEach(arr => {
+                    arr.forEach(c => {
+                        c.rotation.x += c.userData.rx;
+                        c.rotation.y += c.userData.ry;
+                        c.rotation.z += c.userData.rz;
+                    });
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+
+</html>

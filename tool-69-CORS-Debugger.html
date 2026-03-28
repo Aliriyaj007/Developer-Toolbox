@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 69 - CORS Debugger - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .form-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .form-input, .form-select {
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .form-input:focus, .form-select:focus {
+            border-color: var(--primary-color);
+        }
+
+        .code-area {
+            height: 100px;
+            resize: vertical;
+        }
+
+        button.action-btn {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 1rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+            margin-top: 1rem;
+            width: 100%;
+        }
+        button.action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        .result-panel {
+            background: rgba(86,182,194,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .check-matrix {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .check-item {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.85rem;
+        }
+        .check-item.pass { border-left: 4px solid #7ee787; }
+        .check-item.fail { border-left: 4px solid #ff5555; }
+        .check-item.skip { border-left: 4px solid #888; opacity: 0.7; }
+
+        .icon-status { font-weight: bold; font-size: 1.2rem; }
+        .pass .icon-status { color: #7ee787; content: '✓'; }
+        .fail .icon-status { color: #ff5555; content: '✗'; }
+
+        .fix-box {
+            background: rgba(255, 85, 85, 0.1);
+            border: 1px solid #ff5555;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            color: #ffaaaa;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            font-family: var(--font-mono);
+            display: none;
+        }
+
+        /* 3D Canvas wrapper */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 250px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+            margin-top: 1.5rem;
+        }
+
+        .check-detail { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
+        .check-title { font-weight: bold; color: var(--text-main); }
+        .check-desc { color: var(--text-secondary); font-size: 0.75rem; }
+
+        .tag {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: #bb86fc;
+        }
+
+    </style>
+</head>
+<body class="theme-dark">
+    
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>69. CORS Debugger</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Sim Builder Panel -->
+                    <div class="controls-panel">
+                        <h3 style="margin-top:0; color:var(--primary-color);">Request Setup (Browser)</h3>
+                        
+                        <div style="display:flex; gap:1rem;">
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Client Origin</label>
+                                <input type="text" id="req-origin" class="form-input" value="https://myfrontend.app">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Target API URL</label>
+                                <input type="text" id="req-url" class="form-input" value="https://api.backend.com/data">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:1rem;">
+                            <div class="form-group" style="width: 120px;">
+                                <label class="form-label">Method</label>
+                                <select id="req-method" class="form-select">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT" selected>PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                    <option value="PATCH">PATCH</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Request Headers (comma separated)</label>
+                                <input type="text" id="req-headers" class="form-input" value="Content-Type, Authorization">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-top:0.5rem;">
+                            <input type="checkbox" id="req-creds" style="accent-color: var(--primary-color);">
+                            <label class="form-label" for="req-creds">Include Credentials (Cookies/Auth)</label>
+                        </div>
+
+
+                        <hr style="border-color:var(--border-color); margin: 0.5rem 0;">
+
+                        <h3 style="margin:0; color:var(--primary-color);">Server Response Config</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Access-Control-Allow-Origin</label>
+                            <input type="text" id="res-acao" class="form-input" value="*">
+                        </div>
+
+                        <div style="display:flex; gap:1rem;">
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">A-C-Allow-Methods</label>
+                                <input type="text" id="res-acam" class="form-input" value="GET, POST">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">A-C-Allow-Headers</label>
+                                <input type="text" id="res-acah" class="form-input" value="Content-Type">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-top:0.5rem;">
+                            <input type="checkbox" id="res-acac" style="accent-color: var(--primary-color);">
+                            <label class="form-label" for="res-acac">Access-Control-Allow-Credentials (true)</label>
+                        </div>
+
+                        <button class="action-btn" id="btn-simulate">Run CORS Simulation →</button>
+                    </div>
+
+                    <!-- Details Panel -->
+                    <div class="result-panel">
+                        <h3 style="margin-top:0;">Diagnostic Results <span id="overall-status" class="tag" style="background:rgba(255,255,255,0.1);">Idling</span></h3>
+
+                        <ul class="check-matrix" id="matrix">
+                            <li class="check-item skip" id="chk-preflight">
+                                <span class="icon-status">○</span>
+                                <div class="check-detail">
+                                    <span class="check-title">Needs Preflight (OPTIONS)?</span>
+                                    <span class="check-desc">Determining if request is complex</span>
+                                </div>
+                            </li>
+                            <li class="check-item skip" id="chk-origin">
+                                <span class="icon-status">○</span>
+                                <div class="check-detail">
+                                    <span class="check-title">Origin Check</span>
+                                    <span class="check-desc">Checking Access-Control-Allow-Origin</span>
+                                </div>
+                            </li>
+                            <li class="check-item skip" id="chk-method">
+                                <span class="icon-status">○</span>
+                                <div class="check-detail">
+                                    <span class="check-title">Method Allowed</span>
+                                    <span class="check-desc">Checking Access-Control-Allow-Methods</span>
+                                </div>
+                            </li>
+                            <li class="check-item skip" id="chk-headers">
+                                <span class="icon-status">○</span>
+                                <div class="check-detail">
+                                    <span class="check-title">Headers Allowed</span>
+                                    <span class="check-desc">Checking Access-Control-Allow-Headers</span>
+                                </div>
+                            </li>
+                            <li class="check-item skip" id="chk-creds">
+                                <span class="icon-status">○</span>
+                                <div class="check-detail">
+                                    <span class="check-title">Credentials Match</span>
+                                    <span class="check-desc">Checking ACAO and A-C-Allow-Credentials</span>
+                                </div>
+                            </li>
+                        </ul>
+
+                        <div class="fix-box" id="fix-box"></div>
+
+                        <!-- 3D Visualization -->
+                        <div class="graph-container" id="graph-container">
+                            <!-- 3D Door goes here -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        // UI Elements
+        const formReqOrigin = document.getElementById('req-origin');
+        const formReqMethod = document.getElementById('req-method');
+        const formReqHeaders = document.getElementById('req-headers');
+        const formReqCreds = document.getElementById('req-creds');
+
+        const formResACAO = document.getElementById('res-acao');
+        const formResACAM = document.getElementById('res-acam');
+        const formResACAH = document.getElementById('res-acah');
+        const formResACAC = document.getElementById('res-acac');
+
+        const btnSimulate = document.getElementById('btn-simulate');
+        const fixBox = document.getElementById('fix-box');
+        const overallStatus = document.getElementById('overall-status');
+
+        // Result Nodes
+        const rNodes = {
+            preflight: document.getElementById('chk-preflight'),
+            origin: document.getElementById('chk-origin'),
+            method: document.getElementById('chk-method'),
+            headers: document.getElementById('chk-headers'),
+            creds: document.getElementById('chk-creds')
+        };
+
+        function setCheck(nodeId, state, title, desc) {
+            const el = rNodes[nodeId];
+            el.className = `check-item ${state}`;
+            
+            const icon = el.querySelector('.icon-status');
+            if(state === 'pass') { icon.textContent = '✓'; icon.style.color = '#7ee787'; }
+            else if(state === 'fail') { icon.textContent = '✗'; icon.style.color = '#ff5555'; }
+            else { icon.textContent = '○'; icon.style.color = '#888'; }
+
+            if(title) el.querySelector('.check-title').innerHTML = title;
+            if(desc) el.querySelector('.check-desc').innerHTML = desc;
+        }
+
+        let isDoorOpen = false;
+
+        function simulateCORS() {
+            // Read UI
+            const reqOrigin = formReqOrigin.value.trim().toLowerCase();
+            const reqMethod = formReqMethod.value.toUpperCase();
+            const reqHeadersRaw = formReqHeaders.value.toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+            const reqCreds = formReqCreds.checked;
+
+            const resACAO = formResACAO.value.trim();
+            const resACAMRaw = formResACAM.value.toUpperCase().split(',').map(s=>s.trim()).filter(Boolean);
+            const resACAHRaw = formResACAH.value.toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+            const resACAC = formResACAC.checked;
+
+            let failed = false;
+            let errors = [];
+
+            // 1. Is Preflight Needed?
+            const simpleMethods = ['GET', 'HEAD', 'POST'];
+            const simpleHeaders = ['accept', 'accept-language', 'content-language', 'content-type'];
+            // Simplify content-type check for simulation
+            let needsPreflight = false;
+            if(!simpleMethods.includes(reqMethod)) needsPreflight = true;
+            if(reqHeadersRaw.length > 0) {
+                const customHeaders = reqHeadersRaw.filter(h => !simpleHeaders.includes(h));
+                if(customHeaders.length > 0) needsPreflight = true;
+            }
+
+            if(needsPreflight) {
+                setCheck('preflight', 'pass', 'Preflight (OPTIONS) Sent', `Method ${reqMethod} or custom headers require preflight`);
+            } else {
+                setCheck('preflight', 'skip', 'Simple Request', `Method ${reqMethod} and headers are Simple. No preflight needed.`);
+            }
+
+            // 2. Origin Check
+            let acaoPass = false;
+            if(resACAO === '*') {
+                if(reqCreds) {
+                    acaoPass = false; // Wildcard not allowed with credentials
+                    errors.push(`Access-Control-Allow-Origin cannot be "*" when credentials are included.`);
+                } else {
+                    acaoPass = true;
+                }
+            } else if(resACAO.toLowerCase() === reqOrigin) {
+                acaoPass = true;
+            } else {
+                errors.push(`Access-Control-Allow-Origin "${resACAO}" does not match client origin "${reqOrigin}".`);
+            }
+
+            if(acaoPass) {
+                setCheck('origin', 'pass', 'Origin Match', `CORS Origin allowed: ${resACAO}`);
+            } else {
+                setCheck('origin', 'fail', 'Origin Mismatch', `Cannot read from Origin`);
+                failed = true;
+            }
+
+            // 3. Method Check (Only if preflighted)
+            if(needsPreflight) {
+                if(resACAMRaw.includes(reqMethod) || resACAMRaw.includes('*')) {
+                    setCheck('method', 'pass', 'Method Allowed', `Method ${reqMethod} is permitted`);
+                } else {
+                    setCheck('method', 'fail', 'Method Denied', `Method ${reqMethod} not in A-C-Allow-Methods`);
+                    errors.push(`You requested ${reqMethod}, but server only allows: ${formResACAM.value || 'None'}`);
+                    failed = true;
+                }
+            } else {
+                setCheck('method', 'skip', 'Method Check Skipped', `Simple request, method inherently allowed if origin passes`);
+            }
+
+            // 4. Headers Check (Only if preflighted / custom headers present)
+            if(reqHeadersRaw.length > 0 && needsPreflight) {
+                let deniedHeaders = [];
+                reqHeadersRaw.forEach(h => {
+                    if(!resACAHRaw.includes(h) && !resACAHRaw.includes('*')) {
+                        deniedHeaders.push(h);
+                    }
+                });
+                if(deniedHeaders.length > 0) {
+                    setCheck('headers', 'fail', 'Headers Denied', `Failed: ${deniedHeaders.join(', ')}`);
+                    errors.push(`Custom headers requested that are not allowed by server: ${deniedHeaders.join(', ')}`);
+                    failed = true;
+                } else {
+                    setCheck('headers', 'pass', 'Headers Allowed', 'All requested headers are permitted');
+                }
+            } else {
+                setCheck('headers', 'skip', 'Headers Check Skipped', `No custom headers or simple request`);
+            }
+
+            // 5. Credentials Check
+            if(reqCreds) {
+                if(!resACAC) {
+                    setCheck('creds', 'fail', 'Credentials Denied', `Server does not return A-C-Allow-Credentials: true`);
+                    errors.push(`Request included credentials, but server did not explicitly set Access-Control-Allow-Credentials: true`);
+                    failed = true;
+                } else if(resACAO === '*') {
+                    setCheck('creds', 'fail', 'Invalid Config', `ACAO: * is illegal with Credentials`);
+                    // Error already pushed in origin check
+                    failed = true;
+                } else {
+                    setCheck('creds', 'pass', 'Credentials Accepted', `A-C-Allow-Credentials is true and origin is explicit`);
+                }
+            } else {
+                setCheck('creds', 'skip', 'Credentials Skipped', `Request did not include credentials`);
+            }
+
+            // Summary
+            if(failed) {
+                overallStatus.textContent = 'Blocked by CORS policy';
+                overallStatus.style.background = 'rgba(255,85,85,0.2)';
+                overallStatus.style.color = '#ff5555';
+                
+                fixBox.style.display = 'block';
+                fixBox.innerHTML = `<strong>Fix Required:</strong>\n- ${errors.join('\n- ')}`;
+                isDoorOpen = false;
+            } else {
+                overallStatus.textContent = 'CORS Passed';
+                overallStatus.style.background = 'rgba(126,231,135,0.2)';
+                overallStatus.style.color = '#7ee787';
+                
+                fixBox.style.display = 'none';
+                isDoorOpen = true;
+            }
+        }
+
+        btnSimulate.addEventListener('click', simulateCORS);
+
+        // 3D Visualisation (The CORS Wall & Door)
+        let scene, camera, renderer, doorGroup, dataPacket;
+
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, cw / ch, 1, 100);
+            camera.position.set(0, 5, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1.2);
+            light.position.set(5, 10, 5);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x404040));
+
+            // Wall
+            const wallGeo = new THREE.BoxGeometry(20, 10, 1);
+            const wallMat = new THREE.MeshPhongMaterial({ color: 0x223344 });
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            scene.add(wall);
+
+            // Cut a hole for the door (simulate by making left/right/top walls)
+            wall.visible = false; 
+
+            const wallL = new THREE.Mesh(new THREE.BoxGeometry(8, 10, 1), wallMat);
+            wallL.position.set(-6, 0, 0);
+            scene.add(wallL);
+
+            const wallR = new THREE.Mesh(new THREE.BoxGeometry(8, 10, 1), wallMat);
+            wallR.position.set(6, 0, 0);
+            scene.add(wallR);
+
+            const wallT = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 1), wallMat);
+            wallT.position.set(0, 3, 0);
+            scene.add(wallT);
+
+            // Door
+            doorGroup = new THREE.Group();
+            doorGroup.position.set(-2, -2, 0);
+            scene.add(doorGroup);
+
+            const doorGeo = new THREE.BoxGeometry(4, 6, 0.5);
+            const doorMat = new THREE.MeshPhongMaterial({ color: 0x56b6c2 });
+            const doorMesh = new THREE.Mesh(doorGeo, doorMat);
+            doorMesh.position.set(2, 0, 0); // pivot offset
+            doorGroup.add(doorMesh);
+
+            // Data Packet (request)
+            const packetGeo = new THREE.SphereGeometry(0.8, 16, 16);
+            const packetMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0x332200 });
+            dataPacket = new THREE.Mesh(packetGeo, packetMat);
+            dataPacket.position.set(0, -1, 10);
+            scene.add(dataPacket);
+
+            window.addEventListener('resize', () => {
+                if(!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            animate3D();
+            
+            // Initial state
+            simulateCORS();
+        }
+
+        let doorAngle = 0;
+        let packetZ = 10;
+        
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Target angle
+            const targetAngle = isDoorOpen ? Math.PI / 2 : 0;
+            doorAngle += (targetAngle - doorAngle) * 0.1;
+            doorGroup.rotation.y = -doorAngle;
+
+            // Packet animation
+            if(isDoorOpen) {
+                packetZ -= 0.1;
+                if(packetZ < -10) packetZ = 10; // loop
+            } else {
+                if(packetZ > 1) {
+                    packetZ -= 0.1; // approach door
+                } else if(packetZ <= 1) {
+                    // bounce / stuck
+                    packetZ = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+                }
+            }
+            dataPacket.position.z = packetZ;
+
+            scene.rotation.y = Math.sin(Date.now() * 0.0005) * 0.1; // gentle sway
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

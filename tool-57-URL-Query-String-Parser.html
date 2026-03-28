@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 57 - URL Query String Parser - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        textarea {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+        }
+
+        .editor-section {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .params-table th,
+        .params-table td {
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .params-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .params-table input {
+            background: transparent;
+            border: 1px dashed transparent;
+            width: 100%;
+            padding: 0.3rem 0.5rem;
+            color: #7ee787;
+        }
+
+        .params-table input.param-key {
+            color: #56b6c2;
+            font-weight: bold;
+        }
+
+        .params-table input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .btn-icon:hover {
+            color: #ff5555;
+        }
+
+        .url-output {
+            background: var(--bg-main);
+            padding: 1.5rem;
+            border: 1px solid var(--primary-color);
+            border-radius: var(--radius-md);
+            word-break: break-all;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(86, 182, 194, 0.1);
+            position: relative;
+            margin-top: 2rem;
+            transition: all 0.3s;
+        }
+
+        .url-output-highlight {
+            border-color: #ffaa00;
+            box-shadow: 0 4px 20px rgba(255, 170, 0, 0.3);
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .badge-array {
+            background: #667eea;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+        }
+
+        /* 3D Container specific height */
+        #canvas-container {
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1000px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>57. URL Query String Parser</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+
+                <div class="input-group" style="margin-bottom: 2rem;">
+                    <label>Parse URL</label>
+                    <textarea id="url-input" rows="3"
+                        placeholder="https://example.com/api/v1/users?sort=desc&filter[status]=active&tags[]=dev&tags[]=manager">https://example.com/api/v1/users?sort=desc&filter[status]=active&tags[]=dev&tags[]=manager</textarea>
+                </div>
+
+                <div class="editor-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0;">Query Parameters</h3>
+                        <div>
+                            <button class="btn btn-sm btn-primary" id="btn-add">➕ Add Parameter</button>
+                            <button class="btn btn-sm" id="btn-clear-params"
+                                style="color:#ff5555; border-color:#ff5555;">🗑️ Clear</button>
+                        </div>
+                    </div>
+
+                    <table class="params-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 35%">Key</th>
+                                <th style="width: 55%">Value</th>
+                                <th style="width: 10%; text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="params-body">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                    <div id="empty-state"
+                        style="display:none; text-align:center; padding: 2rem; color: var(--text-secondary); font-style:italic;">
+                        No query parameters found. Add one above.
+                    </div>
+                </div>
+
+                <div class="url-output" id="url-output">
+                    <button class="btn btn-sm btn-primary copy-btn" id="btn-copy">Copy URL</button>
+                    <div id="result-text" style="padding-top: 1rem; padding-right: 5rem;">https://example.com</div>
+                </div>
+
+                <div style="margin-top: 1rem; color:var(--text-secondary); font-size: 0.85rem;">
+                    <label style="display:inline-flex; align-items:center; gap:0.5rem;">
+                        <input type="checkbox" id="chk-encode" checked> URL Encode Values (+ handling)
+                    </label>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const urlInput = document.getElementById('url-input');
+        const paramsBody = document.getElementById('params-body');
+        const emptyState = document.getElementById('empty-state');
+        const resultText = document.getElementById('result-text');
+        const outBox = document.getElementById('url-output');
+        const chkEncode = document.getElementById('chk-encode');
+
+        let baseUrl = '';
+        let paramsList = []; // Array of {k, v} to preserve order and duplicates
+
+        function parseURL(urlString) {
+            try {
+                // Determine if valid URL or just path/query
+                let fullUrl = urlString;
+                if (!urlString.includes('://')) fullUrl = 'http://localhost/' + urlString.replace(/^\//, '');
+
+                const url = new URL(fullUrl);
+
+                // If it was just a query string `?foo=bar` without domain
+                if (!urlString.includes('://') && urlString.startsWith('?')) {
+                    baseUrl = '';
+                } else {
+                    baseUrl = urlString.includes('?') ? urlString.split('?')[0] : urlString;
+                }
+
+                const searchParams = new URLSearchParams(url.search);
+                paramsList = [];
+                for (let [k, v] of searchParams.entries()) {
+                    paramsList.push({ k, v });
+                }
+
+                renderTable();
+                buildOutput();
+
+            } catch (e) {
+                // Fallback basic parse if invalid URL entirely
+                if (urlString.includes('?')) {
+                    const parts = urlString.split('?');
+                    baseUrl = parts[0];
+                    parseQueryString(parts[1]);
+                } else {
+                    baseUrl = urlString;
+                    paramsList = [];
+                    renderTable();
+                    buildOutput();
+                }
+            }
+        }
+
+        function parseQueryString(qs) {
+            paramsList = [];
+            if (!qs) return renderTable(), buildOutput();
+
+            const pairs = qs.split('&');
+            pairs.forEach(p => {
+                const [k, v] = p.split('=');
+                if (k) {
+                    paramsList.push({
+                        k: decodeURIComponent(k),
+                        v: v ? decodeURIComponent(v.replace(/\+/g, ' ')) : ''
+                    });
+                }
+            });
+            renderTable();
+            buildOutput();
+        }
+
+        function renderTable() {
+            paramsBody.innerHTML = '';
+
+            if (paramsList.length === 0) {
+                emptyState.style.display = 'block';
+                document.querySelector('.params-table').style.display = 'none';
+                update3DLinks(0);
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            document.querySelector('.params-table').style.display = 'table';
+
+            paramsList.forEach((param, idx) => {
+                const tr = document.createElement('tr');
+
+                // Array/Object detector badge
+                let badge = '';
+                if (param.k.endsWith('[]')) badge = `<span class="badge-array" title="Array Type">[]</span>`;
+                else if (param.k.includes('[') && param.k.endsWith(']')) badge = `<span class="badge-array" style="background:#fa709a" title="Object Type">{}</span>`;
+
+                tr.innerHTML = `
+                    <td>
+                        <div style="display:flex; align-items:center; gap:0.5rem">
+                            <input type="text" value="${escapeHTML(param.k)}" class="param-key" data-idx="${idx}" data-field="k" placeholder="Key">
+                            ${badge}
+                        </div>
+                    </td>
+                    <td><input type="text" value="${escapeHTML(param.v)}" data-idx="${idx}" data-field="v" placeholder="Value"></td>
+                    <td style="text-align:right;"><button class="btn-icon" data-idx="${idx}">×</button></td>
+                `;
+                paramsBody.appendChild(tr);
+            });
+
+            // Bind inputs
+            document.querySelectorAll('#params-body input').forEach(inp => {
+                inp.addEventListener('input', (e) => {
+                    const idx = e.target.dataset.idx;
+                    const field = e.target.dataset.field;
+                    paramsList[idx][field] = e.target.value;
+                    buildOutput();
+
+                    // Trigger link wiggle
+                    if (window.wiggleLink) window.wiggleLink(idx);
+                });
+            });
+
+            document.querySelectorAll('#params-body .btn-icon').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = e.target.dataset.idx;
+                    paramsList.splice(idx, 1);
+                    renderTable();
+                    buildOutput();
+                });
+            });
+
+            update3DLinks(paramsList.length);
+        }
+
+        function buildOutput() {
+            if (paramsList.length === 0) {
+                const final = baseUrl;
+                resultText.innerHTML = `<span style="color:#aaa">${final}</span>`;
+                return;
+            }
+
+            const encode = chkEncode.checked;
+
+            let queryParts = [];
+            paramsList.forEach(p => {
+                if (!p.k) return; // Skip empty keys
+
+                const key = encode ? encodeURIComponent(p.k) : p.k;
+                const val = encode ? encodeURIComponent(p.v) : p.v;
+
+                queryParts.push(`${key}=${val}`);
+            });
+
+            const queryStr = queryParts.join('&');
+            const sep = baseUrl.includes('?') ? '&' : '?';
+
+            const finalUrl = baseUrl + (queryStr ? sep + queryStr : '');
+
+            // Highlight format for output
+            let formatted = `<span style="color:#aaa">${baseUrl}${sep}</span>`;
+
+            queryParts.forEach((part, i) => {
+                const [k, v] = part.split('=');
+                formatted += `<span style="color:#56b6c2; font-weight:bold;">${k}</span>=<span style="color:#7ee787">${v}</span>`;
+                if (i < queryParts.length - 1) formatted += `<span style="color:#ffaa00">&amp;</span>`;
+            });
+
+            resultText.innerHTML = formatted;
+
+            // Visual flash
+            outBox.classList.add('url-output-highlight');
+            setTimeout(() => outBox.classList.remove('url-output-highlight'), 300);
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g,
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        document.getElementById('btn-add').addEventListener('click', () => {
+            paramsList.push({ k: 'new_param', v: 'value' });
+            renderTable();
+            buildOutput();
+        });
+
+        document.getElementById('btn-clear-params').addEventListener('click', () => {
+            paramsList = [];
+            renderTable();
+            buildOutput();
+        });
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            // Rebuild raw for copying without HTML tags
+            let qp = paramsList.filter(p => p.k).map(p => `${chkEncode.checked ? encodeURIComponent(p.k) : p.k}=${chkEncode.checked ? encodeURIComponent(p.v) : p.v}`);
+            let url = baseUrl;
+            if (qp.length > 0) url += (baseUrl.includes('?') ? '&' : '?') + qp.join('&');
+            navigator.clipboard.writeText(url);
+            window.showToast("URL Copied!");
+        });
+
+        urlInput.addEventListener('input', (e) => parseURL(e.target.value));
+        chkEncode.addEventListener('change', buildOutput);
+
+        // Init
+        parseURL(urlInput.value);
+
+
+        // 3D Visualization: A chain of connected links representing parameters
+        let scene, camera, renderer, chainGroup;
+        let links = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffaa00, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            const blueLight = new THREE.DirectionalLight(0x00aaff, 0.6);
+            blueLight.position.set(-5, 5, 5);
+            scene.add(blueLight);
+
+            chainGroup = new THREE.Group();
+            scene.add(chainGroup);
+
+            // Shift up a bit
+            scene.position.y = 2;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DLinks = (count) => {
+            if (!chainGroup) return;
+
+            // Cap for perf
+            const displayCount = Math.min(count, 15);
+
+            // Clear old
+            links.forEach(l => chainGroup.remove(l));
+            links = [];
+
+            // A torus makes a good chain link
+            const geo = new THREE.TorusGeometry(0.8, 0.25, 16, 32);
+            const mat = new THREE.MeshPhongMaterial({
+                color: 0xaaaaaa, // silver
+                shininess: 100,
+                specular: 0xffffff
+            });
+
+            // Layout links horizontally, alternating rotation
+            const spacing = 1.0;
+            const startX = -((displayCount - 1) * spacing) / 2;
+
+            for (let i = 0; i < displayCount; i++) {
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(startX + (i * spacing), 0, 0);
+
+                // Alternate rotation
+                if (i % 2 === 1) mesh.rotation.x = Math.PI / 2;
+
+                // Wiggle properties
+                mesh.userData = {
+                    baseY: 0,
+                    targetY: 0,
+                    baseColor: 0xaaaaaa,
+                    idx: i
+                };
+
+                chainGroup.add(mesh);
+                links.push(mesh);
+            }
+        };
+
+        window.wiggleLink = (idx) => {
+            if (idx < links.length) {
+                const link = links[idx];
+                link.userData.targetY = 0.5;
+                link.material.color.setHex(0xffaa00); // flash gold
+
+                setTimeout(() => {
+                    link.userData.targetY = 0;
+                    link.material.color.setHex(link.userData.baseColor);
+                }, 200);
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (chainGroup) {
+                // slow wave
+                chainGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
+                chainGroup.rotation.z = Math.sin(Date.now() * 0.0003) * 0.1;
+
+                links.forEach(l => {
+                    l.position.y += (l.userData.targetY - l.position.y) * 0.2;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+
+</html>

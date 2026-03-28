@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 63 - PR Template Builder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 450px 1fr;
+            }
+        }
+
+        .builder-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .field-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .field-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            cursor: move;
+        }
+
+        .field-item.dragging {
+            opacity: 0.5;
+            border-color: var(--primary-color);
+        }
+
+        .field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .field-actions button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.2rem;
+        }
+
+        .field-actions button:hover {
+            color: #ff5555;
+        }
+
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-family: inherit;
+        }
+
+        .add-field-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        /* Preview Panel */
+        .preview-panel {
+            background: var(--bg-main);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .markdown-output {
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: #7ee787;
+            white-space: pre-wrap;
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>63. PR Template Builder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Builder -->
+                    <div class="builder-panel">
+                        <h3 style="margin-top:0;">1. Build Your Template</h3>
+                        <p style="font-size:0.85rem; color:var(--text-secondary);">Drag and drop fields to reorder.
+                            Output generates a ready-to-use GitHub/GitLab markdown PR template.</p>
+
+                        <div class="field-list" id="field-list">
+                            <!-- Fields injected here -->
+                        </div>
+
+                        <div class="add-field-bar">
+                            <select id="add-type" style="flex:1;">
+                                <option value="header">Section Header (H2)</option>
+                                <option value="text">Text Input (Paragraph)</option>
+                                <option value="checkboxes">Checklist</option>
+                                <option value="dropdown">Comment Block (Hidden Docs)</option>
+                            </select>
+                            <button class="btn btn-primary" id="btn-add">➕ Add Element</button>
+                        </div>
+                    </div>
+
+                    <!-- Output -->
+                    <div class="preview-panel">
+                        <div class="preview-header">
+                            <h3 style="margin:0;">2. Markdown Output</h3>
+                            <div>
+                                <button class="btn btn-sm btn-primary" id="btn-copy">📋 Copy Markdown</button>
+                                <button class="btn btn-sm" id="btn-download" style="margin-left:0.5rem;">💾 Save
+                                    .md</button>
+                            </div>
+                        </div>
+                        <div class="markdown-output" id="markdown-out"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const fieldList = document.getElementById('field-list');
+        const btnAdd = document.getElementById('btn-add');
+        const addType = document.getElementById('add-type');
+        const markdownOut = document.getElementById('markdown-out');
+        const btnCopy = document.getElementById('btn-copy');
+
+        // Initial State
+        let items = [
+            { id: getID(), type: 'header', value: 'Description' },
+            { id: getID(), type: 'text', value: 'Please include a summary of the change and which issue is fixed.' },
+            { id: getID(), type: 'header', value: 'Type of change' },
+            { id: getID(), type: 'checkboxes', value: '- [ ] Bug fix (non-breaking change)\n- [ ] New feature (non-breaking change)\n- [ ] Breaking change (fix or feature)' },
+            { id: getID(), type: 'header', value: 'Checklist:' },
+            { id: getID(), type: 'checkboxes', value: '- [ ] My code follows the style guidelines of this project\n- [ ] I have performed a self-review of my own code\n- [ ] I have commented my code, particularly in hard-to-understand areas' }
+        ];
+
+        function getID() { return Math.random().toString(36).substr(2, 9); }
+
+        function renderFields() {
+            fieldList.innerHTML = '';
+            items.forEach((item, index) => {
+                const el = document.createElement('div');
+                el.className = 'field-item';
+                el.draggable = true;
+                el.dataset.index = index;
+
+                let title = '';
+                let inputHtml = '';
+
+                if (item.type === 'header') {
+                    title = 'Header (##)';
+                    inputHtml = `<input type="text" class="item-input" data-id="${item.id}" value="${escapeHtml(item.value)}" placeholder="Section Title">`;
+                } else if (item.type === 'text') {
+                    title = 'Text Block / Prompt';
+                    inputHtml = `<textarea class="item-input" data-id="${item.id}" rows="2" placeholder="Write description prompt...">${escapeHtml(item.value)}</textarea>`;
+                } else if (item.type === 'checkboxes') {
+                    title = 'Checklist Items (Markdown)';
+                    inputHtml = `<textarea class="item-input" data-id="${item.id}" rows="3" placeholder="- [ ] Item 1\n- [ ] Item 2">${escapeHtml(item.value)}</textarea>`;
+                } else if (item.type === 'dropdown') {
+                    title = 'Hidden Comment (<!-- -->)';
+                    inputHtml = `<textarea class="item-input" data-id="${item.id}" rows="2" placeholder="Notes for the author reading the template...">${escapeHtml(item.value)}</textarea>`;
+                }
+
+                el.innerHTML = `
+                    <div class="field-header">
+                        <span style="cursor:grab;">☰ ${title}</span>
+                        <div class="field-actions">
+                            <button onclick="rmItem('${item.id}')" title="Remove">🗑️</button>
+                        </div>
+                    </div>
+                    ${inputHtml}
+                `;
+
+                // Drag Events
+                el.addEventListener('dragstart', handleDragStart);
+                el.addEventListener('dragover', handleDragOver);
+                el.addEventListener('drop', handleDrop);
+                el.addEventListener('dragend', handleDragEnd);
+
+                fieldList.appendChild(el);
+            });
+
+            // Bind Inputs
+            document.querySelectorAll('.item-input').forEach(inp => {
+                inp.addEventListener('input', (e) => {
+                    const id = e.target.dataset.id;
+                    const it = items.find(i => i.id === id);
+                    if (it) it.value = e.target.value;
+                    generateOutput();
+                });
+            });
+
+            generateOutput();
+
+            // 3D Sync
+            if (window.update3DStack) window.update3DStack(items);
+        }
+
+        // Drag and Drop Logic
+        let dragStartIndex;
+
+        function handleDragStart(e) {
+            dragStartIndex = +e.target.closest('.field-item').dataset.index;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const dragEndIndex = +e.target.closest('.field-item').dataset.index;
+            swapItems(dragStartIndex, dragEndIndex);
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+
+        function swapItems(fromIndex, toIndex) {
+            const itemOne = items[fromIndex];
+            const itemTwo = items[toIndex];
+            items[fromIndex] = itemTwo;
+            items[toIndex] = itemOne;
+            renderFields();
+
+            if (window.triggerStackShuffle) window.triggerStackShuffle();
+        }
+
+        window.rmItem = (id) => {
+            items = items.filter(i => i.id !== id);
+            renderFields();
+        };
+
+        btnAdd.addEventListener('click', () => {
+            let val = '';
+            if (addType.value === 'header') val = 'New Section';
+            else if (addType.value === 'checkboxes') val = '- [ ] Task 1';
+
+            items.push({ id: getID(), type: addType.value, value: val });
+            renderFields();
+        });
+
+        function escapeHtml(unsafe) {
+            return (unsafe || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function generateOutput() {
+            let md = '';
+            items.forEach(item => {
+                if (!item.value.trim()) return;
+
+                if (item.type === 'header') md += `## ${item.value}\n\n`;
+                else if (item.type === 'text') md += `${item.value}\n\n`;
+                else if (item.type === 'checkboxes') {
+                    // Ensure it's formatted as markdown list
+                    const lines = item.value.split('\n');
+                    lines.forEach(l => {
+                        let cl = l.trim();
+                        if (!cl.startsWith('- [ ]') && !cl.startsWith('- [x]') && cl.length > 0) {
+                            cl = `- [ ] ${cl}`;
+                        }
+                        if (cl) md += `${cl}\n`;
+                    });
+                    md += '\n';
+                }
+                else if (item.type === 'dropdown') {
+                    md += `<!--\n${item.value}\n-->\n\n`;
+                }
+            });
+
+            markdownOut.textContent = md.trim();
+        }
+
+        btnCopy.addEventListener('click', () => {
+            navigator.clipboard.writeText(markdownOut.textContent);
+            window.showToast("Markdown Copied!");
+        });
+
+        document.getElementById('btn-download').addEventListener('click', () => {
+            const blob = new Blob([markdownOut.textContent], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'PULL_REQUEST_TEMPLATE.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Init
+        renderFields();
+
+
+        // 3D Visualization: A stack of papers/cards that rearrange
+        let scene, camera, renderer, stackGroup;
+        let cards = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 5, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight.position.set(2, 5, 2);
+            scene.add(dirLight);
+
+            stackGroup = new THREE.Group();
+            scene.add(stackGroup);
+
+            // Shift right to balance layout
+            scene.position.x = 2;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DStack = (itemsArr) => {
+            if (!stackGroup) return;
+
+            // Clear old
+            cards.forEach(c => stackGroup.remove(c));
+            cards = [];
+
+            const total = itemsArr.length;
+            const cardW = 3;
+            const cardH = 4;
+            const cardThick = 0.05;
+            const gap = 0.4; // vertical gap
+
+            // Start building from top down
+            const startY = (total * gap) / 2;
+
+            itemsArr.forEach((it, i) => {
+                const geo = new THREE.BoxGeometry(cardW, cardThick, cardH);
+
+                // Color based on type
+                let color = 0xdddddd;
+                if (it.type === 'header') color = 0x56b6c2; // blue
+                else if (it.type === 'checkboxes') color = 0x7ee787; // green
+                else if (it.type === 'dropdown') color = 0xffaa00; // orange
+
+                const mat = new THREE.MeshPhongMaterial({ color: color });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                // Add some text lines on the card
+                const linesGeo = new THREE.PlaneGeometry(cardW - 0.5, cardH - 0.5);
+
+                // Create a basic striped canvas texture for lines
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 64, 128);
+                ctx.fillStyle = '#bbbbbb';
+                for (let l = 20; l < 128; l += 20) ctx.fillRect(10, l, 44, 4);
+
+                const tex = new THREE.CanvasTexture(canvas);
+                const linesMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.8 });
+
+                const linesMesh = new THREE.Mesh(linesGeo, linesMat);
+                linesMesh.rotation.x = -Math.PI / 2;
+                linesMesh.position.y = cardThick / 2 + 0.01;
+                mesh.add(linesMesh);
+
+                // Final Position
+                mesh.position.y = startY - (i * gap);
+                mesh.position.z = 0;
+
+                // Random slight scatter rotation
+                mesh.rotation.y = (Math.random() - 0.5) * 0.2;
+
+                mesh.userData = { targetY: mesh.position.y, targetZ: 0, index: i };
+                stackGroup.add(mesh);
+                cards.push(mesh);
+            });
+        };
+
+        window.triggerStackShuffle = () => {
+            if (!cards.length) return;
+            // Fan out
+            cards.forEach((c, i) => {
+                c.userData.targetZ = (i % 2 === 0 ? 1 : -1) * 2;
+                setTimeout(() => { c.userData.targetZ = 0; }, 400);
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (stackGroup) {
+                // slow spin
+                stackGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
+
+                cards.forEach(c => {
+                    c.position.y += (c.userData.targetY - c.position.y) * 0.1;
+                    c.position.z += (c.userData.targetZ - c.position.z) * 0.1;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            setTimeout(() => { if (window.update3DStack) window.update3DStack(items); }, 100);
+        });
+
+    </script>
+</body>
+
+</html>

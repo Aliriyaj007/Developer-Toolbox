@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 71 - gitignore Generator with Context - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        select.form-select,
+        input.form-search {
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            outline: none;
+            width: 100%;
+        }
+
+        select.form-select:focus,
+        input.form-search:focus {
+            border-color: var(--primary-color);
+        }
+
+        .category-group {
+            margin-bottom: 1.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .cat-header {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .cat-title {
+            font-weight: bold;
+            color: var(--text-main);
+            font-size: 1rem;
+        }
+
+        .cat-badge {
+            background: #56b6c2;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        /* Security alert */
+        .cat-header.security {
+            background: rgba(255, 85, 85, 0.1);
+            border-bottom-color: #ff5555;
+        }
+
+        .cat-header.security .cat-title {
+            color: #ff5555;
+        }
+
+        .cat-header.security .cat-badge {
+            background: #ff5555;
+            color: #fff;
+        }
+
+        .pattern-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .pattern-item {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .pattern-item:last-child {
+            border-bottom: none;
+        }
+
+        .pattern-row {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+
+        .pattern-code {
+            font-family: var(--font-mono);
+            color: #7ee787;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .pattern-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .btn-copy {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            width: 100%;
+            transition: all 0.2s;
+            margin-top: 1rem;
+        }
+
+        .btn-copy:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        /* 3D Canvas wrapper */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1300px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>71. gitignore Generator with Context</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Left Config -->
+                    <div class="controls-panel">
+                        <label style="color:var(--text-secondary); font-size:0.85rem; font-weight:bold;">Project
+                            Framework / Language</label>
+                        <select id="project-type" class="form-select">
+                            <option value="node">Node.js / npm</option>
+                            <option value="python">Python</option>
+                            <option value="react">React (Create React App/Vite)</option>
+                            <option value="java">Java (Maven/Gradle)</option>
+                            <option value="go">Go (Golang)</option>
+                            <option value="general">General / Web</option>
+                        </select>
+
+                        <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:1rem;">
+                            <label style="color:var(--text-secondary); font-size:0.85rem; font-weight:bold;">Add Common
+                                Extras</label>
+
+                            <label
+                                style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:var(--text-main);">
+                                <input type="checkbox" id="add-macos" checked
+                                    style="accent-color:var(--primary-color);"> macOS (DS_Store)
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:var(--text-main);">
+                                <input type="checkbox" id="add-windows" checked
+                                    style="accent-color:var(--primary-color);"> Windows (Thumbs.db)
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:var(--text-main);">
+                                <input type="checkbox" id="add-vscode" checked
+                                    style="accent-color:var(--primary-color);"> VS Code (.vscode)
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:var(--text-main);">
+                                <input type="checkbox" id="add-idea" style="accent-color:var(--primary-color);">
+                                IntelliJ (.idea)
+                            </label>
+                        </div>
+
+                        <!-- 3D Visualization -->
+                        <div class="graph-container" id="graph-container">
+                            <!-- 3D Shield goes here -->
+                        </div>
+
+                        <button id="btn-copy-all" class="btn-copy">Copy to Clipboard</button>
+                    </div>
+
+                    <!-- Right Viewer -->
+                    <div>
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                            <h3 style="margin:0; color:var(--primary-color);">Categorised Rules (<span
+                                    id="rule-count">0</span>)</h3>
+                            <button id="btn-expand"
+                                style="background:transparent; border:none; color:var(--primary-color); cursor:pointer; font-size:0.85rem; text-decoration:underline;">Expand
+                                All</button>
+                        </div>
+
+                        <div id="output-view">
+                            <!-- Rules injected here -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const projectType = document.getElementById('project-type');
+        const outputView = document.getElementById('output-view');
+        const ruleCount = document.getElementById('rule-count');
+
+        const chkMacOs = document.getElementById('add-macos');
+        const chkWindows = document.getElementById('add-windows');
+        const chkVscode = document.getElementById('add-vscode');
+        const chkIdea = document.getElementById('add-idea');
+
+        const db = {
+            security: {
+                title: 'Security & Secrets',
+                icon: '🔒',
+                isDanger: true,
+                rules: [
+                    { pattern: '.env*', desc: 'Environment variables often contain API keys, database passwords, and secrets. NEVER commit these.' },
+                    { pattern: '*.pem', desc: 'Private keys and certificates. Committing these exposes your servers to attacks.' },
+                    { pattern: 'secret_key*', desc: 'Django or framework-specific secret keys used for signing cookies and cryptography.' }
+                ]
+            },
+            node: {
+                title: 'Node.js Core',
+                icon: '🟢',
+                rules: [
+                    { pattern: 'node_modules/', desc: 'Contains heavily nested dependencies. Should be regenerated locally using npm install or yarn.' },
+                    { pattern: 'npm-debug.log*', desc: 'Local debug logs created when npm fails.' },
+                    { pattern: 'yarn-error.log*', desc: 'Error logs from Yarn package manager.' },
+                    { pattern: '.npm/', desc: 'Local npm cache directory.' }
+                ]
+            },
+            react: {
+                title: 'React Built Files',
+                icon: '⚛️',
+                rules: [
+                    { pattern: '/build/', desc: 'Production build artifacts from Create React App.' },
+                    { pattern: '/dist/', desc: 'Distribution output folder from Vite or Webpack.' },
+                    { pattern: '.eslintcache', desc: 'ESLint cache file which speeds up subsequent linting. User-specific.' }
+                ]
+            },
+            python: {
+                title: 'Python Artifacts',
+                icon: '🐍',
+                rules: [
+                    { pattern: '__pycache__/', desc: 'Compiled bytecode files. Python generates these automatically on execution.' },
+                    { pattern: '*.py[cod]', desc: 'Compiled Python (.pyc, .pyo, .pyd) files which are system-dependent.' },
+                    { pattern: 'venv/', desc: 'Virtual environment containing localized site-packages. Should be rebuilt per environment.' },
+                    { pattern: '.pytest_cache/', desc: 'Cache directory for pytest test runner.' }
+                ]
+            },
+            java: {
+                title: 'Java Builds',
+                icon: '☕',
+                rules: [
+                    { pattern: 'target/', desc: 'Maven build output directory.' },
+                    { pattern: 'build/', desc: 'Gradle build output directory.' },
+                    { pattern: '*.class', desc: 'Compiled Java bytecode files. Should not be versioned, only source .java files.' },
+                    { pattern: '*.jar', desc: 'Compiled archives. Large binaries bloat the repository.' }
+                ]
+            },
+            go: {
+                title: 'Go Builds',
+                icon: '🐹',
+                rules: [
+                    { pattern: 'bin/', desc: 'Compiled binaries directory.' },
+                    { pattern: '*.exe', desc: 'Windows executable binaries.' },
+                    { pattern: '*.out', desc: 'General binary build outputs.' }
+                ]
+            },
+            macos: {
+                title: 'macOS System',
+                icon: '🍎',
+                rules: [
+                    { pattern: '.DS_Store', desc: 'Desktop Services Store. Mac auto-generates these to store folder view preferences. Clutters repos for non-Mac users.' },
+                    { pattern: '.AppleDouble', desc: 'Resource forks created on non-HFS+ filesystems.' }
+                ]
+            },
+            windows: {
+                title: 'Windows System',
+                icon: '🪟',
+                rules: [
+                    { pattern: 'Thumbs.db', desc: 'Image thumbnail cache generated by Windows Explorer.' },
+                    { pattern: 'ehthumbs.db', desc: 'Media Center thumbnail cache.' },
+                    { pattern: 'Desktop.ini', desc: 'Folder customization settings.' }
+                ]
+            },
+            vscode: {
+                title: 'VS Code',
+                icon: '📝',
+                rules: [
+                    { pattern: '.vscode/*', desc: 'Workspace settings, debug configs, and launch tasks.' },
+                    { pattern: '!.vscode/settings.json', desc: 'Exception: We DO want to commit shared workspace settings, so we negate it here.' }
+                ]
+            },
+            idea: {
+                title: 'IntelliJ / WebStorm',
+                icon: '💻',
+                rules: [
+                    { pattern: '.idea/', desc: 'Project configuration files for JetBrains IDEs. Highly local and user-specific.' },
+                    { pattern: '*.iml', desc: 'IntelliJ module configuration files.' }
+                ]
+            }
+        };
+
+        let currentActiveList = [];
+
+        function renderOutput() {
+            const val = projectType.value;
+            const groups = [];
+
+            // Always include Security
+            groups.push(db.security);
+
+            if (val === 'node') { groups.push(db.node); }
+            if (val === 'react') { groups.push(db.node); groups.push(db.react); }
+            if (val === 'python') { groups.push(db.python); }
+            if (val === 'java') { groups.push(db.java); }
+            if (val === 'go') { groups.push(db.go); }
+
+            if (chkMacOs.checked) groups.push(db.macos);
+            if (chkWindows.checked) groups.push(db.windows);
+            if (chkVscode.checked) groups.push(db.vscode);
+            if (chkIdea.checked) groups.push(db.idea);
+
+            currentActiveList = groups;
+
+            outputView.innerHTML = '';
+            let total = 0;
+
+            groups.forEach(g => {
+                total += g.rules.length;
+
+                const catClass = g.isDanger ? 'category-group security' : 'category-group';
+                const hdrClass = g.isDanger ? 'cat-header security' : 'cat-header';
+
+                let listHtml = g.rules.map(r => `
+                    <li class="pattern-item">
+                        <div class="pattern-code">${r.pattern}</div>
+                        <div class="pattern-desc">${r.desc}</div>
+                    </li>
+                `).join('');
+
+                const html = `
+                    <div class="${catClass}">
+                        <div class="${hdrClass}">
+                            <div class="cat-title">${g.icon} ${g.title}</div>
+                            <div class="cat-badge">${g.rules.length} rules</div>
+                        </div>
+                        <ul class="pattern-list">${listHtml}</ul>
+                    </div>
+                `;
+                outputView.innerHTML += html;
+            });
+
+            ruleCount.textContent = total;
+
+            // Effect: trigger shield pulse
+            triggerShieldHit();
+        }
+
+        [projectType, chkMacOs, chkWindows, chkVscode, chkIdea].forEach(el => {
+            el.addEventListener('change', renderOutput);
+        });
+
+        document.getElementById('btn-copy-all').addEventListener('click', (e) => {
+            let ptext = "";
+            currentActiveList.forEach(g => {
+                ptext += `# ${g.title}\n`;
+                g.rules.forEach(r => {
+                    ptext += `${r.pattern}\n`;
+                });
+                ptext += '\n';
+            });
+            navigator.clipboard.writeText(ptext.trim());
+            const orig = e.target.textContent;
+            e.target.textContent = 'Copied to Clipboard!';
+            setTimeout(() => e.target.textContent = orig, 1500);
+        });
+
+        // 3D Visualization (Shield defending against bad files)
+        let scene, camera, renderer, shield;
+        let threats = [];
+        let hitTime = 0;
+
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, cw / ch, 1, 100);
+            camera.position.set(0, 0, 10);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            const dLight = new THREE.DirectionalLight(0xffffff, 1);
+            dLight.position.set(5, 5, 5);
+            scene.add(dLight);
+
+            const pLight = new THREE.PointLight(0x56b6c2, 2, 20);
+            pLight.position.set(0, 0, 2);
+            scene.add(pLight);
+
+            scene.add(new THREE.AmbientLight(0x222222));
+
+            // Shield Group
+            shield = new THREE.Group();
+            scene.add(shield);
+
+            // Shield Base (Diamond shape)
+            const pts = [];
+            pts.push(new THREE.Vector2(0, 2));
+            pts.push(new THREE.Vector2(1.5, 0.5));
+            pts.push(new THREE.Vector2(0, -2));
+            pts.push(new THREE.Vector2(-1.5, 0.5));
+            const shape = new THREE.Shape(pts);
+
+            const extrudeSettings = { depth: 0.5, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 0.1, bevelThickness: 0.1 };
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geometry.center();
+
+            const mBas = new THREE.MeshPhongMaterial({ color: 0x334455, shininess: 100 });
+            const sMesh = new THREE.Mesh(geometry, mBas);
+            shield.add(sMesh);
+
+            // Glowing ring (Force field)
+            const ringGeo = new THREE.TorusGeometry(2.5, 0.05, 16, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x56b6c2, transparent: true, opacity: 0.5 });
+            const sRing = new THREE.Mesh(ringGeo, ringMat);
+            shield.add(sRing);
+
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            animate3D();
+        }
+
+        function triggerShieldHit() {
+            hitTime = 1.0;
+            spawnThreat();
+        }
+
+        function spawnThreat() {
+            const tGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const colors = [0xff5555, 0xffaa00, 0xbb86fc];
+            const tMat = new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
+            const t = new THREE.Mesh(tGeo, tMat);
+
+            // Random start away from shield (background Z or offscreen X)
+            const angle = Math.random() * Math.PI * 2;
+            const r = 8;
+            t.position.set(Math.cos(angle) * r, Math.sin(angle) * r, (Math.random() - 0.5) * 4);
+
+            scene.add(t);
+            threats.push(t);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Shield rotation
+            shield.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+            shield.rotation.x = Math.sin(Date.now() * 0.0013) * 0.1;
+
+            if (hitTime > 0) {
+                const s = 1 + (hitTime * 0.2); // pulse size Up
+                shield.scale.set(s, s, s);
+                shield.children[1].material.opacity = 0.5 + hitTime * 0.5; // forcefield brightness
+                hitTime -= 0.05;
+            } else {
+                shield.scale.set(1, 1, 1);
+                shield.children[1].material.opacity = 0.3;
+            }
+
+            // Move threats towards shield
+            for (let i = threats.length - 1; i >= 0; i--) {
+                const t = threats[i];
+                t.rotation.x += 0.1; t.rotation.y += 0.1;
+
+                // Move towards center 0,0,0
+                const dir = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), t.position);
+                t.position.add(dir.multiplyScalar(0.05));
+
+                if (t.position.length() < 2.5) {
+                    // Hit forcefield
+                    scene.remove(t);
+                    threats.splice(i, 1);
+                    hitTime = 0.8; // ripple effect
+                }
+            }
+
+            // Random idle spawns
+            if (Math.random() < 0.01) spawnThreat();
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            renderOutput();
+        });
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 4 - Regex Tester Builder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 900px) {
+            .layout-grid {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        /* Drag & Drop Palette */
+        .palette-section h4 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.25rem;
+        }
+
+        .draggables-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .regex-block {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            cursor: grab;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .regex-block:active {
+            cursor: grabbing;
+        }
+
+        .regex-block:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        /* Builder Area */
+        .builder-area {
+            min-height: 80px;
+            background: var(--bg-main);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .builder-area.drag-over {
+            border-color: var(--accent-primary);
+            background: rgba(187, 134, 252, 0.05);
+        }
+
+        .builder-item {
+            background: var(--bg-surface);
+            border: 1px solid var(--accent-primary);
+            padding: 0.4rem;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: var(--font-mono);
+            animation: popIn 0.2s ease-out;
+        }
+
+        .builder-item button {
+            /* delete btn */
+            background: none;
+            border: none;
+            color: #ff5252;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Generated Output */
+        .regex-output-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #000;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .regex-output {
+            flex: 1;
+            font-size: 1.2rem;
+            font-family: var(--font-mono);
+            color: var(--accent-secondary);
+            word-break: break-all;
+            background: transparent;
+            border: none;
+            outline: none;
+        }
+
+        .regex-flags {
+            color: #ffb142;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+        }
+
+        /* Testing Area */
+        .test-area {
+            position: relative;
+            margin-top: 1rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            border-top-left-radius: 0;
+        }
+
+        .test-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: transparent;
+            pointer-events: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            z-index: 1;
+            overflow-y: auto;
+        }
+
+        .test-textarea {
+            position: relative;
+            z-index: 2;
+            background: transparent;
+            color: var(--text-primary);
+            width: 100%;
+            min-height: 200px;
+            resize: vertical;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            line-height: inherit;
+            padding: 1rem;
+            border: none;
+            outline: none;
+        }
+
+        mark {
+            background-color: rgba(187, 134, 252, 0.4);
+            color: transparent;
+            border-radius: 2px;
+        }
+
+        mark.group-match {
+            background-color: rgba(51, 217, 178, 0.4);
+        }
+
+        .theme-neon mark {
+            background-color: rgba(57, 255, 20, 0.5);
+        }
+
+        /* Match Results Sidebar */
+        .match-results {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .match-item {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .match-group {
+            margin-left: 1rem;
+            color: var(--accent-secondary);
+        }
+
+        /* 3D Container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .error-msg {
+            color: #ff5252;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container">
+
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>4. Regex Tester Builder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="layout-grid">
+
+                <!-- Palette Panel -->
+                <div class="glass-panel panel-palette">
+                    <h3>Components</h3>
+                    <p class="text-secondary mb-4" style="font-size:0.85rem;">Drag blocks or click 'Add' to build your
+                        pattern.</p>
+
+                    <div class="palette-section">
+                        <h4>Characters</h4>
+                        <div class="draggables-container">
+                            <div class="regex-block" draggable="true" data-type="val" data-val="\d"
+                                title="Any digit (0-9)">\d (Digit)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="\w"
+                                title="Any word character (a-z,A-Z,0-9,_)">\w (Word)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="\s"
+                                title="Any whitespace">\s (Space)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="."
+                                title="Any character except newline">. (Any)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="\D" title="Non-digit">\D
+                                (Not Digit)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="\W" title="Non-word">\W
+                                (Not Word)</div>
+                        </div>
+
+                        <h4>Quantifiers</h4>
+                        <div class="draggables-container">
+                            <div class="regex-block" draggable="true" data-type="val" data-val="*"
+                                title="0 or more times">* (0+)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="+"
+                                title="1 or more times">+ (1+)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="?" title="0 or 1 time">?
+                                (Opt)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="{2,4}"
+                                title="Between 2 and 4 times">{n,m}</div>
+                        </div>
+
+                        <h4>Anchors</h4>
+                        <div class="draggables-container">
+                            <div class="regex-block" draggable="true" data-type="val" data-val="^"
+                                title="Start of string">^ (Start)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="$"
+                                title="End of string">$ (End)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="\b"
+                                title="Word boundary">\b (Bound)</div>
+                        </div>
+
+                        <h4>Groups / Sets</h4>
+                        <div class="draggables-container">
+                            <div class="regex-block" draggable="true" data-type="val" data-val="(">(</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val=")">)</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="[a-zA-Z]"
+                                title="Character Set">[a-zA-Z]</div>
+                            <div class="regex-block" draggable="true" data-type="val" data-val="[^0-9]"
+                                title="Negated Set">[^0-9]</div>
+                        </div>
+
+                        <h4>Custom Text</h4>
+                        <div class="draggables-container" style="display:flex; gap:0.5rem; align-items:center;">
+                            <input type="text" id="custom-val" placeholder="Exact string"
+                                style="flex:1; font-family:var(--font-mono); padding:0.4rem; background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: var(--radius-sm);">
+                            <button class="btn btn-primary" id="btn-add-custom"
+                                style="padding: 0.4rem 0.6rem;">Add</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Builder & Test Panel -->
+                <div class="glass-panel">
+
+                    <div class="flex justify-between items-center mb-2">
+                        <h3>Builder / Editor</h3>
+                        <div class="flex gap-2">
+                            <button class="btn" id="btn-copy" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Copy
+                                Regex</button>
+                            <button class="btn" id="btn-clear" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Clear
+                                All</button>
+                        </div>
+                    </div>
+
+                    <div class="builder-area" id="builder-area">
+                        <div class="text-secondary" id="builder-placeholder">Drop regex blocks here to build visually...
+                        </div>
+                        <!-- Items injected here -->
+                    </div>
+
+                    <div class="regex-output-container">
+                        <span style="color:var(--text-secondary); font-size:1.2rem;">/</span>
+                        <input type="text" class="regex-output" id="regex-output"
+                            placeholder="Or type regex here directly...">
+                        <span class="regex-flags" id="regex-flags-display">/gm</span>
+                    </div>
+                    <div id="regex-error" class="error-msg">Invalid Regular Expression</div>
+
+                    <h3 class="mt-4 mb-2">Test String</h3>
+
+                    <div class="flex gap-4 items-center mb-2">
+                        <label class="flex items-center gap-2" style="font-size: 0.9rem;">
+                            <input type="checkbox" id="flag-g" checked> Global (g)
+                        </label>
+                        <label class="flex items-center gap-2" style="font-size: 0.9rem;">
+                            <input type="checkbox" id="flag-i"> Case Insensitive (i)
+                        </label>
+                        <label class="flex items-center gap-2" style="font-size: 0.9rem;">
+                            <input type="checkbox" id="flag-m" checked> Multiline (m)
+                        </label>
+                    </div>
+
+                    <div class="test-area">
+                        <div class="test-backdrop" id="highlights"></div>
+                        <textarea class="test-textarea" id="test-text" spellcheck="false">Test your regular expression here.
+
+Phone: +1 123-456-7890
+Email: dev.test@example.com
+Date: 2024-05-12
+
+Try matching the phone number using blocks: \+ \d \s \d { 3 } - \d { 3 } - \d { 4 }
+Or extract the email: \w + @ \w + \. \w +</textarea>
+                    </div>
+
+                    <div class="match-results" id="match-results">
+                        <div class="text-secondary">Matches will appear here...</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script>
+        // State
+        let builtPattern = [];
+        let isManualMode = false;
+
+        const builderArea = document.getElementById('builder-area');
+        const placeholder = document.getElementById('builder-placeholder');
+        const outputInput = document.getElementById('regex-output');
+        const flagsDisplay = document.getElementById('regex-flags-display');
+        const errorMsg = document.getElementById('regex-error');
+
+        const testText = document.getElementById('test-text');
+        const highlights = document.getElementById('highlights');
+        const matchResults = document.getElementById('match-results');
+
+        // Drag and Drop
+        document.querySelectorAll('.regex-block[draggable="true"]').forEach(el => {
+            el.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', e.target.getAttribute('data-val'));
+            });
+            // Also allow click to add
+            el.addEventListener('click', () => {
+                addBlock(el.getAttribute('data-val'));
+            });
+        });
+
+        builderArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            builderArea.classList.add('drag-over');
+        });
+
+        builderArea.addEventListener('dragleave', () => builderArea.classList.remove('drag-over'));
+
+        builderArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            builderArea.classList.remove('drag-over');
+            const val = e.dataTransfer.getData('text/plain');
+            if (val) addBlock(val);
+        });
+
+        // Add Custom Block
+        document.getElementById('btn-add-custom').addEventListener('click', () => {
+            const v = document.getElementById('custom-val').value;
+            if (v) {
+                // escape special regex chars for exact matching
+                const escaped = v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                addBlock(escaped);
+                document.getElementById('custom-val').value = '';
+            }
+        });
+
+        // Builder Functions
+        const addBlock = (regexVal) => {
+            if (isManualMode) {
+                // if they typed manually, sync it to blocks first or clear blocks?
+                // Let's just append to the manual text for simplicity
+                outputInput.value += regexVal;
+                evaluateRegex();
+                return;
+            }
+            const id = Math.random().toString(36).substr(2, 9);
+            builtPattern.push({ id, val: regexVal });
+            renderBuilder();
+            updateRegexInput();
+            evaluateRegex();
+
+            // 3D Visuals
+            if (window.addPuzzlePiece) window.addPuzzlePiece(regexVal);
+        };
+
+        window.removeBlock = (id) => {
+            builtPattern = builtPattern.filter(b => b.id !== id);
+            renderBuilder();
+            updateRegexInput();
+            evaluateRegex();
+
+            if (window.removePuzzlePiece) window.removePuzzlePiece();
+        };
+
+        const renderBuilder = () => {
+            placeholder.style.display = builtPattern.length > 0 ? 'none' : 'block';
+
+            Array.from(builderArea.children).forEach(c => {
+                if (c.id !== 'builder-placeholder') builderArea.removeChild(c);
+            });
+
+            builtPattern.forEach(b => {
+                const d = document.createElement('div');
+                d.className = 'builder-item';
+                d.innerHTML = `<span>${b.val}</span><button onclick="removeBlock('${b.id}')">&times;</button>`;
+                builderArea.appendChild(d);
+            });
+        };
+
+        const updateRegexInput = () => {
+            outputInput.value = builtPattern.map(b => b.val).join('');
+        };
+
+        // Manual Editing overrides visual builder sync slightly
+        outputInput.addEventListener('input', () => {
+            isManualMode = true;
+            // disable visual builder while typing manually to prevent conflicts
+            builderArea.style.opacity = '0.5';
+            placeholder.textContent = "Visual builder paused while editing manually. Clear to restart.";
+            if (window.addPuzzlePiece) window.addPuzzlePiece('manual');
+            evaluateRegex();
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            builtPattern = [];
+            isManualMode = false;
+            builderArea.style.opacity = '1';
+            placeholder.textContent = "Drop regex blocks here to build visually...";
+            outputInput.value = '';
+            renderBuilder();
+            evaluateRegex();
+            if (window.resetPuzzle) window.resetPuzzle();
+        });
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            const flags = getFlags();
+            navigator.clipboard.writeText(`/${outputInput.value}/${flags}`).then(() => {
+                if (window.AppCore) AppCore.showToast('Copied to clipboard!');
+            });
+        });
+
+        // Evaluation
+        const getFlags = () => {
+            let flags = '';
+            if (document.getElementById('flag-g').checked) flags += 'g';
+            if (document.getElementById('flag-i').checked) flags += 'i';
+            if (document.getElementById('flag-m').checked) flags += 'm';
+            return flags;
+        };
+
+        const updateFlagsDisplay = () => {
+            flagsDisplay.textContent = '/' + getFlags();
+        };
+
+        const evaluateRegex = () => {
+            const patternStr = outputInput.value;
+            const text = testText.value;
+            const flags = getFlags();
+
+            errorMsg.style.display = 'none';
+            matchResults.innerHTML = '';
+            updateFlagsDisplay();
+
+            if (!patternStr) {
+                highlights.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+                matchResults.innerHTML = '<div class="text-secondary">No pattern to match.</div>';
+                return;
+            }
+
+            try {
+                // To allow finding multiple matches without 'g' getting stuck on infinite loop with empty matches
+                // we handle empty matches carefully if 'g' is used.
+                const rx = new RegExp(patternStr, flags);
+
+                // --- Highlight Logic ---
+                // We do a complex replace to handle capture groups visually if we want, 
+                // but standard simple replace matching full string is safer against DOM breaking.
+                let htmlFormatted = escapeHtml(text);
+
+                // Note: simply doing replace() on escaped HTML can break if regex matches entities like &amp;
+                // For a robust tester, we iterate matches and build the string.
+                let highlightHTML = '';
+                let lastIdx = 0;
+                let match;
+
+                // reset LastIndex for global
+                if (rx.global) rx.lastIndex = 0;
+
+                let matchesList = [];
+
+                while ((match = rx.exec(text)) !== null) {
+                    // prevent infinite loop on empty matches like (?:)
+                    if (match.index === rx.lastIndex) rx.lastIndex++;
+
+                    // Add text before match
+                    highlightHTML += escapeHtml(text.substring(lastIdx, match.index));
+
+                    // Add highlighted match
+                    highlightHTML += `<mark>${escapeHtml(match[0])}</mark>`;
+
+                    lastIdx = match.index + match[0].length;
+
+                    // Store for results pane
+                    matchesList.push(match);
+
+                    if (!rx.global) break; // if no global flag, only run once
+                }
+
+                // Add remaining text
+                highlightHTML += escapeHtml(text.substring(lastIdx));
+
+                // Important: fix newlines for absolute positioning overlay
+                highlights.innerHTML = highlightHTML.replace(/\n/g, '<br>');
+
+                // --- Results Pane Logic ---
+                if (matchesList.length === 0) {
+                    matchResults.innerHTML = '<div class="text-secondary">No matches found.</div>';
+                } else {
+                    matchesList.forEach((m, idx) => {
+                        let div = document.createElement('div');
+                        div.className = 'match-item';
+                        div.innerHTML = `<strong>Match ${idx + 1}:</strong> <code>${escapeHtml(m[0])}</code> (Index: ${m.index})`;
+
+                        // Capture groups
+                        if (m.length > 1) {
+                            for (let i = 1; i < m.length; i++) {
+                                if (m[i] !== undefined) {
+                                    div.innerHTML += `<div class="match-group">Group ${i}: <code>${escapeHtml(m[i])}</code></div>`;
+                                }
+                            }
+                        }
+                        matchResults.appendChild(div);
+                    });
+                }
+
+                // Animate 3D connection on valid
+                if (window.triggerSnap) window.triggerSnap(true);
+
+            } catch (e) {
+                highlights.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+                errorMsg.textContent = e.message;
+                errorMsg.style.display = 'block';
+                matchResults.innerHTML = '<div class="text-secondary">Syntax error in pattern.</div>';
+
+                if (window.triggerSnap) window.triggerSnap(false);
+            }
+        };
+
+        const escapeHtml = (unsafe) => {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        };
+
+        // Events
+        testText.addEventListener('input', evaluateRegex);
+
+        // Sync scrolling
+        testText.addEventListener('scroll', () => {
+            highlights.scrollTop = testText.scrollTop;
+            highlights.scrollLeft = testText.scrollLeft;
+        });
+
+        document.querySelectorAll('input[type="checkbox"]').forEach(c => {
+            c.addEventListener('change', () => { updateFlagsDisplay(); evaluateRegex(); });
+        });
+
+        // Init
+        evaluateRegex();
+    </script>
+
+    <!-- Three.js Scene: Floating Connecting Puzzle Pieces -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script>
+        let scene, camera, renderer, group;
+        let pieces = [];
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 15;
+            camera.position.y = 2; // looking slightly down
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 0.8);
+            light.position.set(2, 5, 10);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+            group = new THREE.Group();
+            scene.add(group);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        };
+
+        const createPuzzleGeometry = () => {
+            // A simple block with a sphere protrusion (male) and indent simulated by shape
+            // For simplicity in three.js primitive, we use a Group of Box + Cylinder
+            const pGroup = new THREE.Group();
+
+            const mat = new THREE.MeshPhongMaterial({
+                color: new THREE.Color(getComputedStyle(document.body).getPropertyValue('--accent-primary').trim() || '#BB86FC'),
+                transparent: true,
+                opacity: 0.8,
+                shininess: 100
+            });
+
+            const boxGeo = new THREE.BoxGeometry(2, 1.5, 0.5);
+            const box = new THREE.Mesh(boxGeo, mat);
+            pGroup.add(box);
+
+            const cyGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+            cyGeo.rotateX(Math.PI / 2);
+            const cy = new THREE.Mesh(cyGeo, mat);
+            cy.position.set(1.1, 0, 0); // Stick out right side
+            pGroup.add(cy);
+
+            pGroup.userData.mat = mat; // store for color changes
+            return pGroup;
+        };
+
+        window.addPuzzlePiece = (val) => {
+            if (!scene) return;
+
+            const piece = createPuzzleGeometry();
+
+            // Random start pos
+            piece.position.set(
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10 - 5,
+                (Math.random() - 0.5) * 5
+            );
+
+            // Target pos (lined up)
+            const count = pieces.length;
+            const targetX = (count * 2.1) - 5;
+            piece.userData.targetPos = new THREE.Vector3(targetX, 0, 0);
+
+            group.add(piece);
+            pieces.push(piece);
+
+            // Animate to position
+            gsap.to(piece.position, {
+                x: piece.userData.targetPos.x,
+                y: piece.userData.targetPos.y,
+                z: piece.userData.targetPos.z,
+                duration: 1,
+                ease: "back.out(1.2)"
+            });
+
+            // Re-center group
+            gsap.to(group.position, { x: -(count * 2.1) / 2, duration: 1 });
+        };
+
+        window.removePuzzlePiece = () => {
+            if (!scene || pieces.length === 0) return;
+            const piece = pieces.pop();
+
+            gsap.to(piece.position, {
+                y: -10,
+                opacity: 0,
+                duration: 0.5,
+                onComplete: () => group.remove(piece)
+            });
+
+            gsap.to(group.position, { x: -(pieces.length * 2.1) / 2, duration: 0.5 });
+        };
+
+        window.resetPuzzle = () => {
+            if (!scene) return;
+            pieces.forEach(p => group.remove(p));
+            pieces = [];
+        };
+
+        window.triggerSnap = (isValid) => {
+            if (!scene) return;
+            const col = isValid ?
+                new THREE.Color(getComputedStyle(document.body).getPropertyValue('--accent-primary').trim() || '#BB86FC') :
+                new THREE.Color(0xff5252);
+
+            pieces.forEach(p => {
+                gsap.to(p.userData.mat.color, {
+                    r: col.r, g: col.g, b: col.b,
+                    duration: 0.3
+                });
+
+                // Shake if invalid
+                if (!isValid) {
+                    gsap.to(p.position, {
+                        y: p.userData.targetPos.y + (Math.random() * 0.5 - 0.25),
+                        duration: 0.1,
+                        yoyo: true,
+                        repeat: 3,
+                        onComplete: () => {
+                            gsap.to(p.position, { y: p.userData.targetPos.y, duration: 0.1 });
+                        }
+                    });
+                }
+            });
+        };
+
+        const animate = () => {
+            requestAnimationFrame(animate);
+            if (group) {
+                // gentle float overall
+                group.position.y = Math.sin(Date.now() * 0.001) * 0.5;
+                group.rotation.x = Math.sin(Date.now() * 0.0005) * 0.1;
+                group.rotation.y = Math.sin(Date.now() * 0.0003) * 0.1;
+
+                // gentle breathing of pieces
+                pieces.forEach((p, i) => {
+                    p.rotation.z = Math.sin((Date.now() * 0.002) + i) * 0.05;
+                });
+            }
+            renderer.render(scene, camera);
+        };
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+
+</html>

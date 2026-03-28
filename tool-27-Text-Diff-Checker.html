@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 27 - Text Diff Checker - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        
+        textarea {
+            width: 100%;
+            height: 250px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .diff-output {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 200px;
+            line-height: 1.5;
+        }
+
+        .diff-added {
+            background-color: rgba(46, 160, 67, 0.2);
+            color: #7ee787;
+        }
+
+        .diff-removed {
+            background-color: rgba(248, 81, 73, 0.2);
+            color: #ff7b72;
+            text-decoration: line-through;
+        }
+        
+        .theme-light .diff-added {
+            background-color: rgba(46, 160, 67, 0.2);
+            color: #1a7f37;
+        }
+        
+        .theme-light .diff-removed {
+            background-color: rgba(248, 81, 73, 0.2);
+            color: #cf222e;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .btn-group { display: flex; gap: 0.5rem; }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>27. Text Diff Checker</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="toolbar">
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="compare-words-btn">Compare Words</button>
+                        <button class="btn" id="compare-chars-btn">Compare Chars</button>
+                        <button class="btn" id="compare-lines-btn">Compare Lines</button>
+                    </div>
+                    <button class="btn" id="clear-btn">Clear All</button>
+                </div>
+
+                <div class="split-view">
+                    <div>
+                        <h3>Original Text</h3>
+                        <textarea id="text-original" placeholder="Paste original text here...">The quick brown fox jumps over the lazy dog.
+This is a test document to show how the diff works.</textarea>
+                    </div>
+                    <div>
+                        <h3>Modified Text</h3>
+                        <textarea id="text-modified" placeholder="Paste modified text here...">The fast brown fox leaped over the lazy dog.
+This is a test document to show how the diff checker works.</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <h3>Diff Results (<span id="diff-mode-label">Words</span>)</h3>
+                <div class="diff-output" id="diff-output"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const original = document.getElementById('text-original');
+            const modified = document.getElementById('text-modified');
+            const diffOut = document.getElementById('diff-output');
+            const diffModeLabel = document.getElementById('diff-mode-label');
+
+            const btnWords = document.getElementById('compare-words-btn');
+            const btnChars = document.getElementById('compare-chars-btn');
+            const btnLines = document.getElementById('compare-lines-btn');
+            const clearBtn = document.getElementById('clear-btn');
+
+            let currentMode = 'words';
+
+            const setActiveBtn = (activeBtn) => {
+                [btnWords, btnChars, btnLines].forEach(btn => btn.classList.remove('btn-primary'));
+                activeBtn.classList.add('btn-primary');
+            };
+
+            const computeDiff = () => {
+                const text1 = original.value;
+                const text2 = modified.value;
+
+                let diff;
+                if(currentMode === 'words') {
+                    diff = Diff.diffWords(text1, text2);
+                } else if(currentMode === 'chars') {
+                    diff = Diff.diffChars(text1, text2);
+                } else {
+                    diff = Diff.diffLines(text1, text2);
+                }
+
+                diffOut.innerHTML = '';
+                
+                let diffCount = 0;
+
+                diff.forEach((part) => {
+                    const span = document.createElement('span');
+                    if (part.added) {
+                        span.className = 'diff-added';
+                        diffCount++;
+                    } else if (part.removed) {
+                        span.className = 'diff-removed';
+                        diffCount++;
+                    }
+                    span.textContent = part.value;
+                    diffOut.appendChild(span);
+                });
+
+                // Update 3D visualization
+                if(window.update3DDiff) {
+                    window.update3DDiff(diffCount);
+                }
+            };
+
+            btnWords.addEventListener('click', () => { currentMode = 'words'; diffModeLabel.textContent = 'Words'; setActiveBtn(btnWords); computeDiff(); });
+            btnChars.addEventListener('click', () => { currentMode = 'chars'; diffModeLabel.textContent = 'Chars'; setActiveBtn(btnChars); computeDiff(); });
+            btnLines.addEventListener('click', () => { currentMode = 'lines'; diffModeLabel.textContent = 'Lines'; setActiveBtn(btnLines); computeDiff(); });
+
+            original.addEventListener('input', computeDiff);
+            modified.addEventListener('input', computeDiff);
+
+            clearBtn.addEventListener('click', () => {
+                original.value = '';
+                modified.value = '';
+                computeDiff();
+            });
+
+            // Init
+            computeDiff();
+        });
+
+        // 3D Visualization: Two blocks with protruding bricks
+        let scene, camera, renderer, leftBlockGroup, rightBlockGroup;
+        let diffAnimateValue = 0;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 4, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            leftBlockGroup = new THREE.Group();
+            rightBlockGroup = new THREE.Group();
+            
+            leftBlockGroup.position.x = -2.5;
+            rightBlockGroup.position.x = 2.5;
+
+            scene.add(leftBlockGroup);
+            scene.add(rightBlockGroup);
+
+            createBaseBlocks();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function createBaseBlocks() {
+            // Left main block
+            const baseGeo = new THREE.BoxGeometry(3, 4, 1);
+            const baseMat = new THREE.MeshPhongMaterial({ color: 0x334455, transparent: true, opacity: 0.8 });
+            const p1 = new THREE.Mesh(baseGeo, baseMat);
+            leftBlockGroup.add(p1);
+
+            // Right main block
+            const p2 = new THREE.Mesh(baseGeo, baseMat);
+            rightBlockGroup.add(p2);
+        }
+
+        window.update3DDiff = (diffCount) => {
+            if(!scene) return;
+            
+            // clear old differences
+            while(leftBlockGroup.children.length > 1) { leftBlockGroup.remove(leftBlockGroup.children[1]); }
+            while(rightBlockGroup.children.length > 1) { rightBlockGroup.remove(rightBlockGroup.children[1]); }
+
+            // Add protruding blocks based on diff
+            const maxBlocks = Math.min(diffCount, 20); // Cap it so it doesn't lag
+            
+            const redMat = new THREE.MeshPhongMaterial({ color: 0xff3333 });
+            const greenMat = new THREE.MeshPhongMaterial({ color: 0x33ff33 });
+            const diffGeo = new THREE.BoxGeometry(0.8, 0.3, 1.5); // Extends deeper
+
+            for(let i=0; i<maxBlocks; i++) {
+                const yPos = (Math.random() * 3) - 1.5;
+                const xPos = (Math.random() * 2) - 1;
+                
+                // Add red to left
+                const b1 = new THREE.Mesh(diffGeo, redMat);
+                b1.position.set(xPos, yPos, 0);
+                leftBlockGroup.add(b1);
+
+                // Add green to right
+                const b2 = new THREE.Mesh(diffGeo, greenMat);
+                b2.position.set(xPos, yPos, 0);
+                rightBlockGroup.add(b2);
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(leftBlockGroup && rightBlockGroup) {
+                leftBlockGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+                rightBlockGroup.rotation.y = -Math.sin(Date.now() * 0.001) * 0.2;
+                
+                leftBlockGroup.position.y = Math.sin(Date.now() * 0.002) * 0.1;
+                rightBlockGroup.position.y = Math.sin(Date.now() * 0.002 + Math.PI) * 0.1;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

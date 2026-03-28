@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 15 - Color Picker Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+
+    <style>
+        .color-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        @media (min-width: 900px) {
+            .color-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Color Display Area */
+        .color-display-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            min-height: 350px;
+        }
+
+        .color-swatch-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 4px solid var(--border-color);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="10" height="10" fill="%23ccc"/><rect x="10" width="10" height="10" fill="%23fff"/><rect y="10" width="10" height="10" fill="%23fff"/><rect x="10" y="10" width="10" height="10" fill="%23ccc"/></svg>');
+        }
+
+        .color-swatch {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #BB86FC;
+            /* default */
+            transition: background-color 0.1s;
+        }
+
+        /* Hide the default color picker UI, make it cover the swatch area invisibly */
+        input[type="color"] {
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .instruction-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        /* Inputs Panel */
+        .color-inputs-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-row input[type="text"] {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .input-row input[type="text"]:focus {
+            border-color: var(--accent-primary);
+        }
+
+        /* Contrast Checker */
+        .contrast-checker {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-top: 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .contrast-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .contrast-box {
+            padding: 1.5rem;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            border: 1px solid var(--border-color);
+            transition: background-color 0.1s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .contrast-box.white-text {
+            color: #ffffff;
+        }
+
+        .contrast-box.black-text {
+            color: #000000;
+        }
+
+        .wcag-badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: normal;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .wcag-pass {
+            background: rgba(51, 217, 178, 0.3);
+        }
+
+        .wcag-fail {
+            background: rgba(255, 82, 82, 0.3);
+        }
+
+        .contrast-box.black-text .wcag-badge {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .contrast-box.black-text .wcag-pass {
+            background: rgba(51, 217, 178, 0.5);
+        }
+
+        .contrast-box.black-text .wcag-fail {
+            background: rgba(255, 82, 82, 0.5);
+        }
+
+
+        /* 3D background container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* behind content */
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content" style="position: relative; z-index: 10;">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>15. Color Picker Converter</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Convert between HEX, RGB, HSL and check
+                        WCAG contrast.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="color-grid">
+                <!-- Color Display & Native Picker -->
+                <div class="color-display-panel">
+                    <div class="color-swatch-container">
+                        <div class="color-swatch" id="main-swatch"></div>
+                        <input type="color" id="native-picker" value="#BB86FC">
+                    </div>
+                    <div class="instruction-text">
+                        Click the circle to open system color picker.<br>
+                        Or edit the values below directly.
+                    </div>
+                </div>
+
+                <!-- Text Inputs -->
+                <div class="glass-panel color-inputs-panel">
+                    <div class="input-group">
+                        <label for="input-hex">HEX</label>
+                        <div class="input-row">
+                            <input type="text" id="input-hex" value="#BB86FC" spellcheck="false">
+                            <button class="btn btn-copy" data-target="input-hex">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="input-rgb">RGB</label>
+                        <div class="input-row">
+                            <input type="text" id="input-rgb" value="rgb(187, 134, 252)" spellcheck="false">
+                            <button class="btn btn-copy" data-target="input-rgb">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="input-hsl">HSL</label>
+                        <div class="input-row">
+                            <input type="text" id="input-hsl" value="hsl(267, 96%, 76%)" spellcheck="false">
+                            <button class="btn btn-copy" data-target="input-hsl">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contrast Checker -->
+            <div class="contrast-checker">
+                <h3>WCAG Contrast Checker</h3>
+                <p class="text-secondary" style="font-size: 0.85rem;">Check how text looks against the selected color
+                    (Requires min 4.5:1 ratio for normal text).</p>
+
+                <div class="contrast-grid">
+                    <div class="contrast-box white-text" id="contrast-white-box">
+                        <div>White Text on Color</div>
+                        <div style="font-size: 0.9rem; font-weight: normal;">Ratio: <span id="ratio-white">0.00:1</span>
+                        </div>
+                        <div><span class="wcag-badge" id="badge-white">...</span></div>
+                    </div>
+
+                    <div class="contrast-box black-text" id="contrast-black-box">
+                        <div>Black Text on Color</div>
+                        <div style="font-size: 0.9rem; font-weight: normal;">Ratio: <span id="ratio-black">0.00:1</span>
+                        </div>
+                        <div><span class="wcag-badge" id="badge-black">...</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Color conversion library (TinyColor) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.6.0/tinycolor.min.js"></script>
+
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Core Color Logic ---
+        const nativePicker = document.getElementById('native-picker');
+        const mainSwatch = document.getElementById('main-swatch');
+        const inputHex = document.getElementById('input-hex');
+        const inputRgb = document.getElementById('input-rgb');
+        const inputHsl = document.getElementById('input-hsl');
+
+        const whiteBox = document.getElementById('contrast-white-box');
+        const blackBox = document.getElementById('contrast-black-box');
+        const ratioWhite = document.getElementById('ratio-white');
+        const ratioBlack = document.getElementById('ratio-black');
+        const badgeWhite = document.getElementById('badge-white');
+        const badgeBlack = document.getElementById('badge-black');
+
+        // Initial setup
+        let currentColor = tinycolor("#BB86FC");
+        updateUI(currentColor, 'init');
+
+        function getContrast(color1, color2) {
+            const lum1 = tinycolor(color1).getLuminance();
+            const lum2 = tinycolor(color2).getLuminance();
+            const brightest = Math.max(lum1, lum2);
+            const darkest = Math.min(lum1, lum2);
+            return (brightest + 0.05) / (darkest + 0.05);
+        }
+
+        function updateUI(colorObj, source) {
+            if (!colorObj.isValid()) return;
+
+            const hex = colorObj.toHexString().toUpperCase();
+            const rgb = colorObj.toRgbString();
+            const hsl = Math.round(colorObj.toHsl().a) === 1 ? colorObj.toHslString() : colorObj.toHslString(); // simplify
+
+            // Update Swatch & Picker
+            mainSwatch.style.backgroundColor = hex;
+            if (source !== 'native') nativePicker.value = hex;
+
+            // Update Text Inputs (Avoid overwriting the one being typed in to prevent cursor jump)
+            if (source !== 'hex') inputHex.value = hex;
+            if (source !== 'rgb') inputRgb.value = rgb;
+            if (source !== 'hsl') inputHsl.value = hsl;
+
+            // Update Contrast
+            whiteBox.style.backgroundColor = hex;
+            blackBox.style.backgroundColor = hex;
+
+            const crWhite = getContrast(hex, '#ffffff').toFixed(2);
+            const crBlack = getContrast(hex, '#000000').toFixed(2);
+
+            ratioWhite.textContent = `${crWhite}:1`;
+            ratioBlack.textContent = `${crBlack}:1`;
+
+            const checkWCAG = (ratio, badge) => {
+                if (ratio >= 7) {
+                    badge.textContent = 'AAA Pass';
+                    badge.className = 'wcag-badge wcag-pass';
+                } else if (ratio >= 4.5) {
+                    badge.textContent = 'AA Pass';
+                    badge.className = 'wcag-badge wcag-pass';
+                } else if (ratio >= 3.0) {
+                    badge.textContent = 'Large Text Only';
+                    badge.className = 'wcag-badge wcag-fail'; // or a warning color, but fail is safer
+                } else {
+                    badge.textContent = 'Fail';
+                    badge.className = 'wcag-badge wcag-fail';
+                }
+            };
+
+            checkWCAG(crWhite, badgeWhite);
+            checkWCAG(crBlack, badgeBlack);
+
+            // Update 3D Cube Color
+            if (window.updateCubeColor) window.updateCubeColor(hex);
+        }
+
+        // Event Listeners
+        nativePicker.addEventListener('input', (e) => {
+            currentColor = tinycolor(e.target.value);
+            updateUI(currentColor, 'native');
+        });
+
+        inputHex.addEventListener('input', (e) => {
+            const c = tinycolor(e.target.value);
+            if (c.isValid()) {
+                currentColor = c;
+                updateUI(currentColor, 'hex');
+            }
+        });
+
+        inputRgb.addEventListener('input', (e) => {
+            const c = tinycolor(e.target.value);
+            if (c.isValid()) {
+                currentColor = c;
+                updateUI(currentColor, 'rgb');
+            }
+        });
+
+        inputHsl.addEventListener('input', (e) => {
+            const c = tinycolor(e.target.value);
+            if (c.isValid()) {
+                currentColor = c;
+                updateUI(currentColor, 'hsl');
+            }
+        });
+
+        // Copy buttons
+        document.querySelectorAll('.btn-copy').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetId = e.target.getAttribute('data-target');
+                const text = document.getElementById(targetId).value;
+                if (!text) return;
+
+                navigator.clipboard.writeText(text);
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = originalText, 1500);
+            });
+        });
+
+
+        // --- 3D Background Setup (RGB Wireframe Cube) ---
+        let scene, camera, renderer, rgbGroup, centerCube, innerPointLight;
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 20;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, logarithmicDepthBuffer: true }); // better lines
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+            scene.add(ambientLight);
+
+            rgbGroup = new THREE.Group();
+
+            // Frame/Axes Cube
+            const size = 10;
+            const geo = new THREE.BoxGeometry(size, size, size);
+
+            // Outer wireframe box
+            const outerEdges = new THREE.EdgesGeometry(geo);
+            const outerMat = new THREE.LineBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.3 });
+            const outerBox = new THREE.LineSegments(outerEdges, outerMat);
+            rgbGroup.add(outerBox);
+
+            // Inner solid cube representing the current color
+            const innerGeo = new THREE.BoxGeometry(3, 3, 3);
+            const innerMat = new THREE.MeshStandardMaterial({
+                color: 0xBB86FC,
+                metalness: 0.1,
+                roughness: 0.5,
+                emissive: 0xBB86FC,
+                emissiveIntensity: 0.5
+            });
+            centerCube = new THREE.Mesh(innerGeo, innerMat);
+            rgbGroup.add(centerCube);
+
+            // Point light inside to cast glow
+            innerPointLight = new THREE.PointLight(0xBB86FC, 2, 20);
+            rgbGroup.add(innerPointLight);
+
+            // Axes lines (R, G, B representing X, Y, Z essentially)
+            // Just decorative lines radiating from center
+            const redMat = new THREE.LineBasicMaterial({ color: 0xff5252, linewidth: 2 });
+            const greenMat = new THREE.LineBasicMaterial({ color: 0x33d9b2, linewidth: 2 });
+            const blueMat = new THREE.LineBasicMaterial({ color: 0x34ace0, linewidth: 2 });
+
+            const addAxis = (vec, mat) => {
+                const points = [];
+                points.push(new THREE.Vector3(0, 0, 0));
+                points.push(vec.clone().multiplyScalar(size / 2 + 2)); // extend slightly out
+                const axisGeo = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(axisGeo, mat);
+                rgbGroup.add(line);
+            };
+
+            addAxis(new THREE.Vector3(1, 0, 0), redMat);
+            addAxis(new THREE.Vector3(0, 1, 0), greenMat);
+            addAxis(new THREE.Vector3(0, 0, 1), blueMat);
+
+            scene.add(rgbGroup);
+
+            // Function to update color called from main JS
+            window.updateCubeColor = (hex) => {
+                const color = new THREE.Color(hex);
+
+                // Animate color change over 0.5s smoothly
+                gsap.to(centerCube.material.color, { r: color.r, g: color.g, b: color.b, duration: 0.5 });
+                gsap.to(centerCube.material.emissive, { r: color.r, g: color.g, b: color.b, duration: 0.5 });
+                gsap.to(innerPointLight.color, { r: color.r, g: color.g, b: color.b, duration: 0.5 });
+
+                // Slight scale bump to indicate picking
+                gsap.to(centerCube.scale, {
+                    x: 1.2, y: 1.2, z: 1.2,
+                    duration: 0.2,
+                    yoyo: true,
+                    repeat: 1,
+                    ease: "power1.inOut"
+                });
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Idle slow erratic spin to look cool
+                rgbGroup.rotation.x += 0.002;
+                rgbGroup.rotation.y += 0.003;
+                rgbGroup.rotation.z += 0.001;
+
+                // Gentle bobbing
+                rgbGroup.position.y = Math.sin(Date.now() * 0.001) * 0.5;
+
+                centerCube.rotation.x -= 0.005;
+                centerCube.rotation.y += 0.006;
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                if (window.innerWidth < 900) {
+                    camera.position.z = 25;
+                } else {
+                    camera.position.z = 20;
+                }
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

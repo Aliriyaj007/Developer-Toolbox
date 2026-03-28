@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 77 - Semantic Version Calculator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .form-input {
+            background: #000;
+            color: #7ee787;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            outline: none;
+            width: 100px;
+            font-weight: bold;
+        }
+
+        .check-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .check-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            padding: 0.8rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .check-item:hover {
+            background: rgba(86, 182, 194, 0.1);
+        }
+
+        .check-item input[type=checkbox] {
+            accent-color: var(--primary-color);
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+            margin-top: 2px;
+        }
+
+        .check-title {
+            color: var(--text-main);
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .check-desc {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 0.2rem;
+        }
+
+        .result-panel {
+            background: rgba(86, 182, 194, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .version-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: #000;
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            border: 1px solid #333;
+        }
+
+        .v-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .v-num {
+            font-size: 3.5rem;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            color: #fff;
+            line-height: 1;
+            transition: color 0.3s;
+        }
+
+        .v-lbl {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-top: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .v-dot {
+            font-size: 2.5rem;
+            color: #555;
+            align-self: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .v-num.changed {
+            color: #56b6c2;
+            text-shadow: 0 0 10px rgba(86, 182, 194, 0.5);
+        }
+
+        .v-num.changed.major {
+            color: #ff5555;
+            text-shadow: 0 0 10px rgba(255, 85, 85, 0.5);
+        }
+
+        .v-num.changed.minor {
+            color: #56b6c2;
+            text-shadow: 0 0 10px rgba(86, 182, 194, 0.5);
+        }
+
+        .v-num.changed.patch {
+            color: #7ee787;
+            text-shadow: 0 0 10px rgba(126, 231, 135, 0.5);
+        }
+
+        .explanation {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-left: 4px solid var(--primary-color);
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        /* 3D Canvas wrapper */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 250px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+            margin-top: 1rem;
+        }
+
+        #chart-overlay {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>77. Semantic Version Calculator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Left: Checklist -->
+                    <div class="controls-panel">
+                        <div class="form-group" style="align-items:center;">
+                            <label class="form-label">Current Version</label>
+                            <input type="text" id="inp-current" class="form-input" value="1.0.0">
+                        </div>
+
+                        <hr style="border-color:#333; margin: 0.5rem 0; width:100%;">
+
+                        <h3 style="margin:0; color:var(--primary-color);">What changes were made?</h3>
+
+                        <ul class="check-list">
+                            <label class="check-item">
+                                <input type="checkbox" class="chk-change" value="patch">
+                                <div>
+                                    <div class="check-title">Bug Fixes (Patch)</div>
+                                    <div class="check-desc">Internal fixes that don't affect the API, or minor internal
+                                        improvements.</div>
+                                </div>
+                            </label>
+
+                            <label class="check-item">
+                                <input type="checkbox" class="chk-change" value="minor">
+                                <div>
+                                    <div class="check-title">New Features (Minor)</div>
+                                    <div class="check-desc">Added functionality in a backwards-compatible manner. Old
+                                        code still works.</div>
+                                </div>
+                            </label>
+
+                            <label class="check-item">
+                                <input type="checkbox" class="chk-change" value="major">
+                                <div>
+                                    <div class="check-title">Breaking Changes (Major)</div>
+                                    <div class="check-desc">API or structural changes that make it incompatible with
+                                        previous versions. Users must update their code.</div>
+                                </div>
+                            </label>
+                        </ul>
+
+                        <div style="font-size:0.75rem; color:#888; text-align:center; margin-top:auto;">
+                            The highest severity change dictates the version bump.
+                        </div>
+                    </div>
+
+                    <!-- Right: Result -->
+                    <div class="result-panel">
+
+                        <div class="version-display">
+                            <div class="v-box">
+                                <div class="v-num" id="out-major">1</div>
+                                <div class="v-lbl">Major</div>
+                            </div>
+                            <div class="v-dot">.</div>
+                            <div class="v-box">
+                                <div class="v-num" id="out-minor">0</div>
+                                <div class="v-lbl">Minor</div>
+                            </div>
+                            <div class="v-dot">.</div>
+                            <div class="v-box">
+                                <div class="v-num" id="out-patch">0</div>
+                                <div class="v-lbl">Patch</div>
+                            </div>
+                        </div>
+
+                        <div class="explanation" id="explanation">
+                            <strong>Release Type: None</strong><br>
+                            Current version stands. Select the types of changes made in this release on the left to
+                            determine the correct SemVer bump.
+                        </div>
+
+                        <!-- 3D Visualization -->
+                        <div class="graph-container" id="graph-container">
+                            <div id="chart-overlay">SemVer Staircase</div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const inpCurrent = document.getElementById('inp-current');
+        const checkboxes = document.querySelectorAll('.chk-change');
+
+        const outMajor = document.getElementById('out-major');
+        const outMinor = document.getElementById('out-minor');
+        const outPatch = document.getElementById('out-patch');
+        const explanation = document.getElementById('explanation');
+
+        let currentBumpType = 'none';
+
+        function parseVersion(v) {
+            const parts = v.split('.').map(Number);
+            return {
+                major: isNaN(parts[0]) ? 0 : parts[0],
+                minor: isNaN(parts[1]) ? 0 : parts[1],
+                patch: isNaN(parts[2]) ? 0 : parts[2]
+            };
+        }
+
+        function updateVersion() {
+            const cv = parseVersion(inpCurrent.value);
+
+            let isPatch = false;
+            let isMinor = false;
+            let isMajor = false;
+
+            checkboxes.forEach(chk => {
+                if (chk.checked) {
+                    if (chk.value === 'patch') isPatch = true;
+                    if (chk.value === 'minor') isMinor = true;
+                    if (chk.value === 'major') isMajor = true;
+                }
+            });
+
+            // Reset classes
+            outMajor.className = 'v-num';
+            outMinor.className = 'v-num';
+            outPatch.className = 'v-num';
+
+            // Rules
+            let nv = { ...cv };
+            let msg = '';
+
+            if (isMajor) {
+                // If major bump, reset minor and patch
+                nv.major += 1;
+                nv.minor = 0;
+                nv.patch = 0;
+                outMajor.className = 'v-num changed major';
+                msg = `<strong>Release Type: MAJOR</strong><br>Because there are breaking changes, the Major version must be incremented. Minor and Patch versions reset to 0 to signal a fresh, breaking release cycle (e.g. ${cv.major}.${cv.minor}.${cv.patch} → ${nv.major}.0.0).`;
+                currentBumpType = 'major';
+            }
+            else if (isMinor) {
+                // If minor bump, reset patch
+                nv.minor += 1;
+                nv.patch = 0;
+                outMinor.className = 'v-num changed minor';
+                msg = `<strong>Release Type: MINOR</strong><br>Because there are new, backwards-compatible features, the Minor version is incremented. The Patch version resets to 0 (e.g. ${cv.major}.${cv.minor}.${cv.patch} → ${cv.major}.${nv.minor}.0). Bug fixes are included within this bundle automatically.`;
+                currentBumpType = 'minor';
+            }
+            else if (isPatch) {
+                // Only patch
+                nv.patch += 1;
+                outPatch.className = 'v-num changed patch';
+                msg = `<strong>Release Type: PATCH</strong><br>Since there are only backwards-compatible bug fixes or internal tweaks, the Patch version is incremented (e.g. ${cv.major}.${cv.minor}.${cv.patch} → ${cv.major}.${cv.minor}.${nv.patch}).`;
+                currentBumpType = 'patch';
+            }
+            else {
+                msg = `<strong>Release Type: None</strong><br>Current version stands. Select the types of changes made to see the calculation.`;
+                currentBumpType = 'none';
+            }
+
+            outMajor.textContent = nv.major;
+            outMinor.textContent = nv.minor;
+            outPatch.textContent = nv.patch;
+            explanation.innerHTML = msg;
+
+            triggerStepAnim(currentBumpType);
+        }
+
+        inpCurrent.addEventListener('input', updateVersion);
+        checkboxes.forEach(c => c.addEventListener('change', updateVersion));
+
+
+        // 3D Visualisation (Staircase)
+        let scene, camera, renderer;
+        let stepGrp, activeStepMesh;
+        let steps = []; // [patch, minor, major]
+        let glowMaterial;
+
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, cw / ch, 1, 100);
+            camera.position.set(4, 4, 8);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5, 10, 5);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x404040, 1.5));
+
+            stepGrp = new THREE.Group();
+            scene.add(stepGrp);
+
+            const bGeo = new THREE.BoxGeometry(2, 0.5, 2);
+            const bMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+
+            glowMaterial = new THREE.MeshPhongMaterial({ color: 0x555555, emissive: 0x000000 });
+
+            // Create 3 stairs
+            for (let i = 0; i < 3; i++) {
+                const step = new THREE.Mesh(bGeo, bMat.clone());
+                // major is highest step
+                step.position.set(-2 + (i * 1.5), i * 0.8, -2 + (i * 1.5));
+                stepGrp.add(step);
+                steps.push(step); // 0=patch, 1=minor, 2=major
+            }
+
+            // Ball representing the version
+            activeStepMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            activeStepMesh.position.set(-2, 0.55, -2);
+            activeStepMesh.userData = { targetPos: new THREE.Vector3(-2, 0.55, -2) };
+            stepGrp.add(activeStepMesh);
+
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            animate3D();
+        }
+
+        function triggerStepAnim(type) {
+            steps.forEach(s => {
+                s.material.color.setHex(0x333333);
+                s.material.emissive.setHex(0x000000);
+            });
+
+            let targetIdx = 0; // default pitch
+
+            if (type === 'major') {
+                targetIdx = 2;
+                steps[2].material.color.setHex(0xff5555);
+                activeStepMesh.material.color.setHex(0xffaa55);
+            } else if (type === 'minor') {
+                targetIdx = 1;
+                steps[1].material.color.setHex(0x56b6c2);
+                activeStepMesh.material.color.setHex(0x56b6c2);
+            } else if (type === 'patch') {
+                targetIdx = 0;
+                steps[0].material.color.setHex(0x7ee787);
+                activeStepMesh.material.color.setHex(0x7ee787);
+            } else {
+                activeStepMesh.material.color.setHex(0xffffff);
+            }
+
+            const targetStep = steps[targetIdx];
+            activeStepMesh.userData.targetPos.set(targetStep.position.x, targetStep.position.y + 0.55, targetStep.position.z);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            stepGrp.rotation.y += 0.005;
+
+            // lerp ball position
+            if (activeStepMesh) {
+                activeStepMesh.position.lerp(activeStepMesh.userData.targetPos, 0.1);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            updateVersion();
+        });
+
+    </script>
+</body>
+
+</html>

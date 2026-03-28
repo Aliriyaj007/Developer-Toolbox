@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 33 - XML Formatter Validator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .control-group input[type="radio"], .control-group input[type="checkbox"] {
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-panel {
+            background: rgba(255, 85, 85, 0.1);
+            border: 1px solid #ff5555;
+            color: #ffaa00;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1.5rem;
+            display: none;
+            font-family: var(--font-mono);
+            white-space: pre-wrap;
+        }
+
+        .success-panel {
+            background: rgba(46, 160, 67, 0.1);
+            color: #7ee787;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>33. XML Formatter Validator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="controls">
+                    <span style="font-weight: bold; color: var(--text-secondary);">Output Format:</span>
+                    <label class="control-group">
+                        <input type="radio" name="format-mode" value="format" checked> Format (Pretty Print)
+                    </label>
+                    <label class="control-group">
+                        <input type="radio" name="format-mode" value="minify"> Minify
+                    </label>
+                    
+                    <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center;">
+                        <span id="success-msg" class="success-panel">✓ Valid XML</span>
+                    </div>
+                </div>
+
+                <div id="error-panel" class="error-panel"></div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">XML Input</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        <textarea id="xml-input" placeholder="Paste your XML here..."><?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+<book id="bk101">
+<author>Gambardella, Matthew</author>
+<title>Tool 33 - XML Developer's Guide</title>
+<genre>Computer</genre>
+<price>44.95</price>
+<publish_date>2000-10-01</publish_date>
+<description>An in-depth look at creating applications with XML.</description>
+</book>
+<book id="bk102">
+<author>Ralls, Kim</author>
+<title>Tool 33 - Midnight Rain</title>
+<genre>Fantasy</genre>
+<price>5.95</price>
+<publish_date>2000-12-16</publish_date>
+<description>A former architect battles corporate zombies.</description>
+</book>
+</catalog></textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Formatted Output</label>
+                            <button class="btn btn-sm btn-primary" id="copy-btn">Copy XML</button>
+                        </div>
+                        <textarea id="xml-output" readonly placeholder="Output will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const xmlInput = document.getElementById('xml-input');
+        const xmlOutput = document.getElementById('xml-output');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const formatRadios = document.querySelectorAll('input[name="format-mode"]');
+        const errorPanel = document.getElementById('error-panel');
+        const successMsg = document.getElementById('success-msg');
+
+        // Helper to format XML
+        const formatXml = (xml, minify = false) => {
+            let formatted = '';
+            let pad = 0;
+            const PADDING = '  ';
+
+            // Remove inter-tag whitespace and comments if minifying
+            const cleanXml = xml.replace(/>\s+</g, '><').replace(/<!--[\s\S]*?-->/g, '');
+
+            if (minify) return cleanXml;
+
+            // Split into tags
+            const tags = cleanXml.split(/(<[^>]+>)/g).filter(s => s.trim() !== '');
+
+            for (let i = 0; i < tags.length; i++) {
+                const node = tags[i];
+
+                if (node.match(/^<\?xml/)) {
+                    formatted += node + '\n';
+                } else if (node.match(/^<!/)) {
+                    formatted += PADDING.repeat(pad) + node + '\n';
+                } else if (node.match(/^<\//)) {
+                    pad--;
+                    formatted += PADDING.repeat(pad) + node + '\n';
+                } else if (node.match(/^<[^>]*\/>/)) {
+                    formatted += PADDING.repeat(pad) + node + '\n';
+                } else if (node.match(/^<[^>]*>$/)) {
+                    // Check if next node is text and then closing tag
+                    if (i + 2 < tags.length && !tags[i + 1].match(/^</) && tags[i + 2].match(/^<\//)) {
+                        formatted += PADDING.repeat(pad) + node + tags[i + 1] + tags[i + 2] + '\n';
+                        i += 2;
+                    } else {
+                        formatted += PADDING.repeat(pad) + node + '\n';
+                        pad++;
+                    }
+                } else {
+                    formatted += PADDING.repeat(pad) + node + '\n';
+                }
+            }
+
+            return formatted.trim();
+        };
+
+        const processXml = () => {
+            const xml = xmlInput.value.trim();
+            errorPanel.style.display = 'none';
+            successMsg.style.display = 'none';
+
+            if (!xml) {
+                xmlOutput.value = '';
+                if(window.update3DTreeLevel) window.update3DTreeLevel(0, false);
+                return;
+            }
+
+            const isMinify = document.querySelector('input[name="format-mode"]:checked').value === 'minify';
+
+            // Validate XML
+            const parser = new DOMParser();
+            const dom = parser.parseFromString(xml, 'application/xml');
+            
+            const parseError = dom.querySelector('parsererror');
+            
+            if (parseError) {
+                errorPanel.style.display = 'block';
+                // Extract error message text
+                errorPanel.textContent = parseError.textContent;
+                xmlOutput.value = '';
+                if(window.update3DTreeLevel) window.update3DTreeLevel(0, false);
+                return;
+            }
+
+            // Valid!
+            successMsg.style.display = 'block';
+
+            try {
+                // Find max depth for 3D visualization
+                let maxDepth = 0;
+                const traverse = (node, depth) => {
+                    if (depth > maxDepth) maxDepth = depth;
+                    for(let i=0; i<node.childNodes.length; i++) {
+                        if(node.childNodes[i].nodeType === 1) { // Element node
+                            traverse(node.childNodes[i], depth + 1);
+                        }
+                    }
+                };
+                traverse(dom.documentElement, 1);
+
+                xmlOutput.value = formatXml(xml, isMinify);
+                if(window.update3DTreeLevel) window.update3DTreeLevel(maxDepth, true);
+
+            } catch(e) {
+                errorPanel.style.display = 'block';
+                errorPanel.textContent = "Formatting error: " + e.message;
+            }
+        };
+
+        formatRadios.forEach(r => r.addEventListener('change', processXml));
+        xmlInput.addEventListener('input', processXml);
+
+        clearBtn.addEventListener('click', () => {
+            xmlInput.value = '';
+            processXml();
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if(!xmlOutput.value) return;
+            navigator.clipboard.writeText(xmlOutput.value);
+            const og = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => copyBtn.textContent = og, 1500);
+        });
+
+        document.addEventListener('DOMContentLoaded', processXml);
+
+
+        // 3D Visualization: A tree with expanding/collapsing branches
+        let scene, camera, renderer, treeGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 5, 12);
+            camera.lookAt(0, 3, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            treeGroup = new THREE.Group();
+            scene.add(treeGroup);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        let currentDepth = 0;
+        let isTreeValid = false;
+
+        const branchMat = new THREE.MeshPhongMaterial({ color: 0x88bbff, shininess: 80 });
+        const errorMat = new THREE.MeshPhongMaterial({ color: 0xff5555, shininess: 80 });
+
+        window.update3DTreeLevel = (depth, isValid) => {
+            if(!treeGroup) return;
+            
+            // clear old tree
+            while(treeGroup.children.length > 0) {
+                treeGroup.remove(treeGroup.children[0]);
+            }
+
+            if(depth === 0) return;
+
+            const material = isValid ? branchMat : errorMat;
+            const maxDepth = Math.min(depth, 5); // cap at 5 for visual clarity
+            
+            // Recursive function to draw fractal tree
+            const drawBranch = (len, w, currentLevel) => {
+                if(currentLevel > maxDepth) return;
+                
+                const geo = new THREE.CylinderGeometry(w/1.5, w, len, 8);
+                geo.translate(0, len/2, 0);
+                const mesh = new THREE.Mesh(geo, material);
+                
+                treeGroup.add(mesh);
+                
+                if(currentLevel < maxDepth) {
+                    // Left branch
+                    const left = new THREE.Group();
+                    left.position.y = len;
+                    left.rotation.z = 0.5;
+                    mesh.add(left);
+                    drawBranchSub(left, len * 0.7, w * 0.7, currentLevel + 1);
+
+                    // Right branch
+                    const right = new THREE.Group();
+                    right.position.y = len;
+                    right.rotation.z = -0.5;
+                    mesh.add(right);
+                    drawBranchSub(right, len * 0.7, w * 0.7, currentLevel + 1);
+                    
+                    // Sometimes add a deep branch
+                    if(Math.random() > 0.5) {
+                        const front = new THREE.Group();
+                        front.position.y = len;
+                        front.rotation.x = 0.5;
+                        mesh.add(front);
+                        drawBranchSub(front, len * 0.7, w * 0.7, currentLevel + 1);
+                    }
+                }
+            };
+
+            const drawBranchSub = (parentGroup, len, w, currentLevel) => {
+                if(currentLevel > maxDepth) return;
+                
+                const geo = new THREE.CylinderGeometry(w/1.5, w, len, 8);
+                geo.translate(0, len/2, 0);
+                const mesh = new THREE.Mesh(geo, material);
+                parentGroup.add(mesh);
+
+                if(currentLevel < maxDepth) {
+                    const left = new THREE.Group();
+                    left.position.y = len;
+                    left.rotation.z = 0.5 + Math.random()*0.2;
+                    left.rotation.x = (Math.random()-0.5)*0.5;
+                    mesh.add(left);
+                    drawBranchSub(left, len * 0.7, w * 0.7, currentLevel + 1);
+
+                    const right = new THREE.Group();
+                    right.position.y = len;
+                    right.rotation.z = -0.5 - Math.random()*0.2;
+                    right.rotation.x = (Math.random()-0.5)*0.5;
+                    mesh.add(right);
+                    drawBranchSub(right, len * 0.7, w * 0.7, currentLevel + 1);
+                }
+            };
+
+            drawBranch(2, 0.4, 1);
+            treeGroup.position.set(3, 1, 0);
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(treeGroup && treeGroup.children.length > 0) {
+                treeGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.5;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

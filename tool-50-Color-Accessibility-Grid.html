@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 50 - Color Accessibility Grid - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 300px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+            white-space: nowrap;
+        }
+
+        .grid-container {
+            overflow-x: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: #ffffff;
+            /* Contrast grid needs white bg for accurate representation */
+            color: #000;
+            /* Dark mode overrides default */
+        }
+
+        .contrast-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .contrast-table th,
+        .contrast-table td {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .contrast-table th {
+            background: #f5f5f5;
+            color: #333;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .contrast-table th:first-child {
+            left: 0;
+            z-index: 20;
+        }
+
+        .contrast-cell {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100px;
+            font-family: var(--font-main);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .contrast-cell:hover {
+            transform: scale(1.05);
+            z-index: 5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .ratio-val {
+            font-size: 1.4rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            margin-bottom: 0.2rem;
+        }
+
+        .wcag-badges {
+            display: flex;
+            gap: 0.3rem;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .badge-pass {
+            background: #2ea043;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .badge-fail {
+            background: #da3633;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .sample-text {
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+        }
+
+        .sample-large {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>50. Color Accessibility Grid</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <div class="controls-panel">
+                        <div class="input-group">
+                            <label>Text Colors (Foreground)</label>
+                            <textarea id="text-colors">#000000
+#FFFFFF
+#1A202C
+#718096
+#3182CE
+#E53E3E</textarea>
+                            <small style="color:var(--text-secondary); display:block; margin-top:0.3rem;">One HEX color
+                                per line</small>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Background Colors</label>
+                            <textarea id="bg-colors">#FFFFFF
+#F7FAFC
+#EDF2F7
+#2D3748
+#1A202C
+#EBF8FF</textarea>
+                        </div>
+
+                        <p style="color:var(--text-secondary); font-size: 0.9rem; line-height:1.5;">
+                            <strong>WCAG 2.1 Guidelines:</strong><br><br>
+                            <strong>AA Normal:</strong> 4.5:1<br>
+                            <strong>AA Large:</strong> 3.0:1<br>
+                            <strong>AAA Normal:</strong> 7.0:1<br>
+                            <strong>AAA Large:</strong> 4.5:1<br>
+                            <br>
+                            <span style="opacity: 0.7">Large text is defined as 14pt (18.66px) and bold or larger, or
+                                18pt (24px) or larger.</span>
+                        </p>
+                    </div>
+
+                    <div class="grid-container">
+                        <table class="contrast-table" id="contrast-table">
+                            <!-- Matrix generated here -->
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const textColorsInput = document.getElementById('text-colors');
+        const bgColorsInput = document.getElementById('bg-colors');
+        const contrastTable = document.getElementById('contrast-table');
+
+        // Hex to RGB
+        function hexToRgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        // Relative luminance calculation
+        function getLuminance(r, g, b) {
+            let a = [r, g, b].map(function (v) {
+                v /= 255;
+                return v <= 0.03928
+                    ? v / 12.92
+                    : Math.pow((v + 0.055) / 1.055, 2.4);
+            });
+            return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+        }
+
+        // Calculate Contrast Ratio
+        function getContrastRatio(hex1, hex2) {
+            const rgb1 = hexToRgb(hex1);
+            const rgb2 = hexToRgb(hex2);
+            if (!rgb1 || !rgb2) return -1;
+
+            const lum1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+            const lum2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+
+            const brightest = Math.max(lum1, lum2);
+            const darkest = Math.min(lum1, lum2);
+
+            return (brightest + 0.05) / (darkest + 0.05);
+        }
+
+        function isValidHex(hex) {
+            return /^#([0-9A-F]{3}){1,2}$/i.test(hex.trim());
+        }
+
+        function extractColors(val) {
+            return val.split('\n').map(l => l.trim()).filter(l => isValidHex(l));
+        }
+
+        function generateGrid() {
+            const tColors = extractColors(textColorsInput.value);
+            const bColors = extractColors(bgColorsInput.value);
+
+            let html = `<thead><tr><th></th>`;
+            tColors.forEach(tc => {
+                html += `<th>Text<br><strong style="color:${tc}; background:#fff; padding:2px 4px; border-radius:3px; outline:1px solid #ddd;">${tc}</strong></th>`;
+            });
+            html += `</tr></thead><tbody>`;
+
+            const ratioDataGrid = [];
+
+            bColors.forEach((bc, bIdx) => {
+                html += `<tr><th style="background:${bc}; color:${getContrastRatio(bc, '#fff') > getContrastRatio(bc, '#000') ? '#fff' : '#000'}; border-right:2px solid #aaa;">Bg<br><strong>${bc}</strong></th>`;
+
+                const rowRatios = [];
+
+                tColors.forEach((tc, tIdx) => {
+                    const ratio = getContrastRatio(tc, bc);
+                    rowRatios.push(ratio);
+
+                    if (ratio === -1) {
+                        html += `<td>Err</td>`;
+                        return;
+                    }
+
+                    const ratioFixed = ratio.toFixed(2);
+
+                    // WCAG Rules
+                    const passAANormal = ratio >= 4.5;
+                    const passAALarge = ratio >= 3.0;
+                    const passAAANormal = ratio >= 7.0;
+
+                    let badges = '';
+                    if (passAAANormal) badges += `<span class="badge-pass">AAA</span>`;
+                    else if (passAANormal) badges += `<span class="badge-pass">AA</span>`;
+                    else if (passAALarge) badges += `<span class="badge-pass">AA LG</span>`;
+                    else badges += `<span class="badge-fail">FAIL</span>`;
+
+                    html += `
+                        <td style="padding:0;">
+                            <div class="contrast-cell" style="background:${bc}; color:${tc};">
+                                <div class="ratio-val">${ratioFixed}</div>
+                                <div class="wcag-badges">${badges}</div>
+                                <div class="sample-text">Normal</div>
+                                <div class="sample-text sample-large">Large</div>
+                            </div>
+                        </td>
+                    `;
+                });
+                ratioDataGrid.push(rowRatios);
+                html += `</tr>`;
+            });
+
+            html += `</tbody>`;
+            contrastTable.innerHTML = html;
+
+            // Trigger 3D update
+            if (window.update3DGrid) {
+                window.update3DGrid(ratioDataGrid, tColors, bColors);
+            }
+        }
+
+        textColorsInput.addEventListener('input', () => { setTimeout(generateGrid, 300); });
+        bgColorsInput.addEventListener('input', () => { setTimeout(generateGrid, 300); });
+
+
+        // 3D Visualization: A grid of 3D bars where height represents contrast ratio
+        let scene, camera, renderer, gridGroup;
+        let barMeshes = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 10, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            gridGroup = new THREE.Group();
+            scene.add(gridGroup);
+
+            // Shift whole scene left slightly
+            scene.position.x = 2;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DGrid = (ratioMatrix, tColors, bColors) => {
+            if (!gridGroup) return;
+
+            // Clear old meshes
+            while (gridGroup.children.length > 0) {
+                gridGroup.remove(gridGroup.children[0]);
+            }
+            barMeshes = [];
+
+            const rows = ratioMatrix.length;
+            if (rows === 0) return;
+            const cols = ratioMatrix[0].length;
+            if (cols === 0) return;
+
+            const spacing = 1.2;
+            const offsetX = -(cols * spacing) / 2;
+            const offsetZ = -(rows * spacing) / 2;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const ratio = ratioMatrix[r][c];
+                    // Map ratio (1 to 21) to height (0.5 to 8)
+                    const height = Math.max(0.2, (ratio / 21) * 8);
+
+                    const geo = new THREE.BoxGeometry(0.8, height, 0.8);
+
+                    // Material color based on background color being tested
+                    const baseColorHex = parseInt(bColors[r].replace('#', ''), 16);
+
+                    const mat = new THREE.MeshPhongMaterial({
+                        color: baseColorHex,
+                        shininess: 90,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+
+                    // Outline edges
+                    const edges = new THREE.EdgesGeometry(geo);
+                    const lineMat = new THREE.LineBasicMaterial({
+                        color: parseInt(tColors[c].replace('#', ''), 16), // outline with Text color
+                        linewidth: 2
+                    });
+                    const line = new THREE.LineSegments(edges, lineMat);
+
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.add(line);
+
+                    mesh.position.set(offsetX + c * spacing, height / 2 - 4 /* drop down */, offsetZ + r * spacing);
+
+                    // Animate entry logic
+                    mesh.scale.y = 0.01;
+                    mesh.userData = { targetScaleY: 1 };
+
+                    gridGroup.add(mesh);
+                    barMeshes.push(mesh);
+                }
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (gridGroup) {
+                // slowly rotate entire grid
+                gridGroup.rotation.y += 0.002;
+
+                // Animate bars growing
+                barMeshes.forEach(mesh => {
+                    mesh.scale.y += (mesh.userData.targetScaleY - mesh.scale.y) * 0.1;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            generateGrid();
+        });
+    </script>
+</body>
+
+</html>

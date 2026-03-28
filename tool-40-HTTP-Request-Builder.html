@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 40 - HTTP Request Builder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+
+        .url-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .url-bar select {
+            width: 120px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-weight: bold;
+        }
+
+        .url-bar input {
+            flex: 1;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-family: var(--font-mono);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.6rem 1.2rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .key-val-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .key-val-row input {
+            flex: 1;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.4rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        .btn-icon {
+            background: rgba(255, 85, 85, 0.1);
+            color: #ff5555;
+            border: 1px solid #ff5555;
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+
+        textarea {
+            width: 100%;
+            height: 250px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        .response-meta {
+            display: flex;
+            gap: 1rem;
+            padding: 0.8rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .meta-item { display: flex; gap: 0.5rem; }
+        .meta-label { color: var(--text-secondary); }
+        .meta-value { font-weight: bold; font-family: var(--font-mono); }
+        
+        .status-2xx { color: #7ee787; }
+        .status-3xx { color: #ffaa00; }
+        .status-4xx, .status-5xx { color: #ff5555; }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: var(--radius-sm);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>40. HTTP Request Builder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="url-bar">
+                    <select id="req-method">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                        <option value="OPTIONS">OPTIONS</option>
+                        <option value="HEAD">HEAD</option>
+                    </select>
+                    <input type="url" id="req-url" placeholder="https://api.example.com/v1/users" value="https://jsonplaceholder.typicode.com/posts/1">
+                    <button class="btn btn-primary" id="send-btn" style="width: 100px;">Send</button>
+                </div>
+
+                <div class="split-view">
+                    <!-- Request Panel -->
+                    <div style="position: relative;">
+                        <div class="tabs">
+                            <div class="tab active" data-target="tab-req-headers">Headers</div>
+                            <div class="tab" data-target="tab-req-body">Body</div>
+                            <div class="tab" data-target="tab-req-auth">Auth</div>
+                        </div>
+
+                        <div id="tab-req-headers" class="tab-content active">
+                            <div id="headers-container">
+                                <!-- Headers injected here -->
+                            </div>
+                            <button class="btn btn-sm" id="add-header-btn" style="margin-top: 0.5rem;">+ Add Header</button>
+                        </div>
+
+                        <div id="tab-req-body" class="tab-content">
+                            <div style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                                Raw JSON/Text body:
+                            </div>
+                            <textarea id="req-body-text" placeholder='{"key": "value"}'></textarea>
+                        </div>
+
+                        <div id="tab-req-auth" class="tab-content">
+                            <div style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                                Bearer Token:
+                            </div>
+                            <input type="text" id="auth-bearer" style="width: 100%; background: var(--bg-main); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.6rem; font-family: var(--font-mono);" placeholder="Optional Bearer token">
+                        </div>
+                    </div>
+                    
+                    <!-- Response Panel -->
+                    <div style="position: relative;">
+                        <div class="loading-overlay" id="loading-overlay">
+                            <div class="spinner"></div>
+                        </div>
+
+                        <div class="response-meta" id="resp-meta" style="display: none;">
+                            <div class="meta-item">
+                                <span class="meta-label">Status:</span>
+                                <span class="meta-value" id="resp-status">200 OK</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Time:</span>
+                                <span class="meta-value" id="resp-time">120ms</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Size:</span>
+                                <span class="meta-value" id="resp-size">1.2 KB</span>
+                            </div>
+                        </div>
+
+                        <div class="tabs">
+                            <div class="tab active" data-target="tab-res-body">Response Body</div>
+                            <div class="tab" data-target="tab-res-headers">Headers</div>
+                        </div>
+
+                        <div id="tab-res-body" class="tab-content active">
+                            <textarea id="res-body-text" readonly placeholder="Response will appear here..."></textarea>
+                        </div>
+
+                        <div id="tab-res-headers" class="tab-content">
+                            <textarea id="res-headers-text" readonly placeholder="Response headers will appear here..." style="font-size: 12px;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Tab logic
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.getAttribute('data-target');
+                // Deactivate neighbors
+                Array.from(tab.parentNode.children).forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Hide all contents in same panel
+                const contentWrapper = document.getElementById(targetId).parentNode;
+                Array.from(contentWrapper.children).forEach(c => {
+                    if(c.classList.contains('tab-content')) c.classList.remove('active');
+                });
+                
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        // Dynamic Headers
+        const headersContainer = document.getElementById('headers-container');
+        const addHeaderBtn = document.getElementById('add-header-btn');
+        let headerRows = [];
+
+        const createHeaderRow = (k = '', v = '') => {
+            const row = document.createElement('div');
+            row.className = 'key-val-row';
+
+            const keyInput = document.createElement('input');
+            keyInput.type = 'text';
+            keyInput.placeholder = 'Key (e.g. Content-Type)';
+            keyInput.value = k;
+
+            const valInput = document.createElement('input');
+            valInput.type = 'text';
+            valInput.placeholder = 'Value (e.g. application/json)';
+            valInput.value = v;
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-icon';
+            delBtn.innerHTML = '×';
+            delBtn.onclick = () => {
+                headersContainer.removeChild(row);
+                headerRows = headerRows.filter(r => r !== rowObj);
+            };
+
+            row.appendChild(keyInput);
+            row.appendChild(valInput);
+            row.appendChild(delBtn);
+
+            const rowObj = { keyInput, valInput, row };
+            headerRows.push(rowObj);
+            headersContainer.appendChild(row);
+        };
+
+        addHeaderBtn.addEventListener('click', () => createHeaderRow());
+
+        // Init defaults
+        createHeaderRow('Content-Type', 'application/json');
+        createHeaderRow('Accept', '*/*');
+
+        // Request Logic
+        const reqMethod = document.getElementById('req-method');
+        const reqUrl = document.getElementById('req-url');
+        const reqBodyText = document.getElementById('req-body-text');
+        const authBearer = document.getElementById('auth-bearer');
+        const sendBtn = document.getElementById('send-btn');
+        
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const respMeta = document.getElementById('resp-meta');
+        const respStatus = document.getElementById('resp-status');
+        const respTime = document.getElementById('resp-time');
+        const respSize = document.getElementById('resp-size');
+        const resBodyText = document.getElementById('res-body-text');
+        const resHeadersText = document.getElementById('res-headers-text');
+
+        const formatBytes = (bytes) => {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        const performRequest = async () => {
+            const url = reqUrl.value.trim();
+            if(!url) return alert("Please enter a valid URL");
+
+            const method = reqMethod.value;
+            const start = performance.now();
+
+            // Build Headers
+            const headers = new Headers();
+            headerRows.forEach(r => {
+                const k = r.keyInput.value.trim();
+                const v = r.valInput.value.trim();
+                if(k) headers.append(k, v);
+            });
+
+            const bearer = authBearer.value.trim();
+            if(bearer) {
+                headers.append('Authorization', `Bearer ${bearer}`);
+            }
+
+            const reqOptions = {
+                method,
+                headers,
+                mode: 'cors'
+            };
+
+            if(['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+                if(reqBodyText.value.trim()) {
+                    reqOptions.body = reqBodyText.value;
+                }
+            }
+
+            loadingOverlay.style.display = 'flex';
+            if(window.trigger3DPacketStart) window.trigger3DPacketStart();
+
+            try {
+                const response = await fetch(url, reqOptions);
+                const end = performance.now();
+                const timeStr = Math.round(end - start) + 'ms';
+
+                // Status
+                respStatus.textContent = `${response.status} ${response.statusText}`;
+                respStatus.className = 'meta-value';
+                if(response.status >= 200 && response.status < 300) respStatus.classList.add('status-2xx');
+                else if(response.status >= 300 && response.status < 400) respStatus.classList.add('status-3xx');
+                else if(response.status >= 400 && response.status < 500) respStatus.classList.add('status-4xx');
+                else respStatus.classList.add('status-5xx');
+
+                respTime.textContent = timeStr;
+
+                // Headers
+                let resHeaders = "";
+                response.headers.forEach((v, k) => {
+                    resHeaders += `${k}: ${v}\n`;
+                });
+                resHeadersText.value = resHeaders || "No Headers available (CORS?)";
+
+                // Body
+                const text = await response.text();
+                const byteSize = new Blob([text]).size;
+                respSize.textContent = formatBytes(byteSize);
+
+                try {
+                    // Try to pretty print JSON
+                    resBodyText.value = JSON.stringify(JSON.parse(text), null, 2);
+                } catch(e) {
+                    resBodyText.value = text;
+                }
+
+                if(window.trigger3DPacketSuccess) window.trigger3DPacketSuccess();
+                
+            } catch (error) {
+                const end = performance.now();
+                respStatus.textContent = "ERROR (Check Console or CORS)";
+                respStatus.className = 'meta-value status-4xx';
+                respTime.textContent = Math.round(end - start) + 'ms';
+                respSize.textContent = "0 B";
+                resHeadersText.value = "";
+                resBodyText.value = "Request failed. \n\n" + error.toString() + "\n\nNote: If requesting an external API directly from the browser, the server must support CORS (Cross-Origin Resource Sharing) or the request will fail.";
+                
+                if(window.trigger3DPacketFail) window.trigger3DPacketFail();
+            } finally {
+                loadingOverlay.style.display = 'none';
+                respMeta.style.display = 'flex';
+            }
+        };
+
+        sendBtn.addEventListener('click', performRequest);
+        reqUrl.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') performRequest();
+        });
+
+
+        // 3D Visualization: A data packet travelling through a glowing tunnel
+        let scene, camera, renderer, tunnelGroup, packetGeo, packetMat, packetMesh;
+        let isSimulating = false, simStatus = 'success'; // 'sending', 'success', 'fail'
+        let tunnelSpeed = 0.05;
+        let packetPos = 0;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 5); // looking into tunnel
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            // Slight fog for depth in tunnel
+            scene.fog = new THREE.FogExp2(0x0a101d, 0.1);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(2, 5, 2);
+            scene.add(dirLight);
+
+            tunnelGroup = new THREE.Group();
+            scene.add(tunnelGroup);
+
+            // Create tunnel rings
+            const ringGeo = new THREE.TorusGeometry(2, 0.01, 8, 32);
+            for(let i=0; i<30; i++) {
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0x224488, transparent: true, opacity: 0.5 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.position.z = -i * 1;
+                tunnelGroup.add(ring);
+            }
+
+            // Data Packet (Cube)
+            packetGeo = new THREE.BoxGeometry(0.4, 0.4, 1.5);
+            packetMat = new THREE.MeshPhongMaterial({ color: 0x00ffcc, emissive: 0x008888, emissiveIntensity: 0.5 });
+            packetMesh = new THREE.Mesh(packetGeo, packetMat);
+            packetMesh.position.z = 2; // Starts behind camera
+            packetMesh.visible = false;
+            scene.add(packetMesh);
+
+            tunnelGroup.position.set(3, 0, 0);
+            packetMesh.position.x = 3;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.trigger3DPacketStart = () => {
+            isSimulating = true;
+            simStatus = 'sending';
+            packetPos = 2; // Camera pos
+            packetMesh.visible = true;
+            packetMat.color.setHex(0x00ffcc);
+            packetMat.emissive.setHex(0x008888);
+            tunnelSpeed = 0.2; // Speed up tunnel
+        };
+
+        window.trigger3DPacketSuccess = () => {
+            simStatus = 'success';
+            packetMat.color.setHex(0x44ff44); // Green glow
+            packetMat.emissive.setHex(0x00bb00);
+            // Packet flies back quickly
+            packetPos = -20;
+            tunnelSpeed = 0.05; // Slow down
+        };
+
+        window.trigger3DPacketFail = () => {
+            simStatus = 'fail';
+            packetMat.color.setHex(0xff4444); // Red glow
+            packetMat.emissive.setHex(0xaa0000);
+            // Packet bounces back
+            tunnelSpeed = 0.02;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(tunnelGroup) {
+                // Animate rings coming towards camera
+                tunnelGroup.children.forEach(ring => {
+                    ring.position.z += tunnelSpeed;
+                    if(ring.position.z > 2) {
+                        ring.position.z = -28; // move to back
+                    }
+                    
+                    // Pulse ring opacity based on Z
+                    const dist = Math.abs(ring.position.z);
+                    ring.material.opacity = Math.max(0, 0.8 - (dist / 30));
+                });
+
+                // Animate Packet
+                if(isSimulating) {
+                    if(simStatus === 'sending') {
+                        // Fly away
+                        packetPos -= 0.5;
+                        if(packetPos < -25) {
+                            // Hit server wait
+                        }
+                    } else if (simStatus === 'success') {
+                        // Fly back
+                        packetPos += 1;
+                        if(packetPos > 2) {
+                            packetMesh.visible = false;
+                            isSimulating = false;
+                        }
+                    } else if (simStatus === 'fail') {
+                        // Bounce back slow
+                        packetPos += 0.2;
+                        if(packetPos > 2) {
+                            packetMesh.visible = false;
+                            isSimulating = false;
+                        }
+                    }
+
+                    packetMesh.position.z = packetPos;
+                    // Tumble slightly
+                    packetMesh.rotation.z += 0.05;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

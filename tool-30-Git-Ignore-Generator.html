@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 30 - Git Ignore Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-main);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box:focus {
+            border-color: var(--primary-color);
+        }
+
+        .category-list {
+            margin-bottom: 1.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: rgba(0,0,0,0.2);
+            padding: 0.5rem;
+        }
+
+        .category-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .category-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .category-item input[type="checkbox"] {
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+        }
+
+        .selected-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .code-output {
+            width: 100%;
+            height: 500px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>30. Git Ignore Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                <div class="glass-panel">
+                    <h3>Environments & Frameworks</h3>
+                    <input type="text" class="search-box" id="search-box" placeholder="Search (e.g. Node, Python)...">
+                    
+                    <div class="selected-tags" id="selected-tags">
+                        <!-- Tags inserted here -->
+                    </div>
+
+                    <div class="category-list" id="category-list">
+                        <!-- Items inserted via JS -->
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="display: flex; flex-direction: column;">
+                    <div class="toolbar">
+                        <h3>Generated .gitignore</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn" id="copy-btn">Copy Output</button>
+                            <button class="btn btn-primary" id="download-btn">Download</button>
+                        </div>
+                    </div>
+                    
+                    <textarea class="code-output" id="output-area" readonly placeholder="Select templates from the left to generate..."></textarea>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Local database of common gitignore templates
+            const templates = {
+                "Node.js": `
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript v1 declaration files
+typings/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# dotenv environment variables file
+.env
+.env.test
+
+# Next.js build output
+.next
+out/
+
+# Build output
+dist
+build
+`,
+                "Python": `
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# User-specific python IDE config
+.idea/
+.vscode/
+`,
+                "Java": `
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# IDE Specific
+.idea/
+.classpath
+.project
+.settings/
+*.iml
+`,
+                "React": `
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+`,
+                "macOS": `
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+`,
+                "Windows": `
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+`,
+                "Linux": `
+*~
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+`,
+                "Go": `
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with 'go test -c'
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+`
+            };
+
+            const searchBox = document.getElementById('search-box');
+            const categoryList = document.getElementById('category-list');
+            const selectedTags = document.getElementById('selected-tags');
+            const outputArea = document.getElementById('output-area');
+            const copyBtn = document.getElementById('copy-btn');
+            const downloadBtn = document.getElementById('download-btn');
+
+            let selectedSets = new Set();
+            const keys = Object.keys(templates).sort((a,b) => a.localeCompare(b));
+
+            const renderCategories = (filter = '') => {
+                categoryList.innerHTML = '';
+                const fLower = filter.toLowerCase();
+                
+                keys.forEach(key => {
+                    if (filter && !key.toLowerCase().includes(fLower)) return;
+
+                    const el = document.createElement('label');
+                    el.className = 'category-item';
+                    
+                    const isChecked = selectedSets.has(key);
+
+                    el.innerHTML = `
+                        <input type="checkbox" value="${key}" ${isChecked ? 'checked' : ''}>
+                        <span>${key}</span>
+                    `;
+
+                    el.querySelector('input').addEventListener('change', (e) => {
+                        if (e.target.checked) selectedSets.add(key);
+                        else selectedSets.delete(key);
+                        
+                        updateOutput();
+                        renderTags();
+                    });
+
+                    categoryList.appendChild(el);
+                });
+            };
+
+            const renderTags = () => {
+                selectedTags.innerHTML = '';
+                selectedSets.forEach(key => {
+                    const tag = document.createElement('div');
+                    tag.className = 'tag';
+                    tag.innerHTML = `${key} <span style="font-size: 1.2rem; margin-top: -2px">&times;</span>`;
+                    
+                    tag.addEventListener('click', () => {
+                        selectedSets.delete(key);
+                        renderTags();
+                        renderCategories(searchBox.value);
+                        updateOutput();
+                    });
+
+                    selectedTags.appendChild(tag);
+                });
+            };
+
+            const updateOutput = () => {
+                if (selectedSets.size === 0) {
+                    outputArea.value = '';
+                    if(window.update3DShield) window.update3DShield(0);
+                    return;
+                }
+
+                let out = `# Created by Developer Toolbox - Git Ignore Generator\n`;
+                selectedSets.forEach(key => {
+                    out += `\n### ${key} ###\n`;
+                    out += templates[key];
+                });
+
+                outputArea.value = out;
+                if(window.update3DShield) window.update3DShield(selectedSets.size);
+            };
+
+            searchBox.addEventListener('input', (e) => renderCategories(e.target.value));
+
+            copyBtn.addEventListener('click', () => {
+                if(!outputArea.value) return;
+                navigator.clipboard.writeText(outputArea.value);
+                const og = copyBtn.textContent;
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => copyBtn.textContent = og, 1500);
+            });
+
+            downloadBtn.addEventListener('click', () => {
+                if(!outputArea.value) return;
+                const blob = new Blob([outputArea.value], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = '.gitignore';
+                link.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // Initial render
+            renderCategories();
+        });
+
+        // 3D Visualization: A shield that blocks unwanted files.
+        let scene, camera, renderer, shieldGroup, particlesGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            shieldGroup = new THREE.Group();
+            scene.add(shieldGroup);
+
+            // Shield Geometry
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 2);
+            shape.quadraticCurveTo(1.5, 2, 2, 1);
+            shape.quadraticCurveTo(2, -1, 0, -2.5);
+            shape.quadraticCurveTo(-2, -1, -2, 1);
+            shape.quadraticCurveTo(-1.5, 2, 0, 2);
+
+            const extrudeSettings = { depth: 0.2, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 0.1, bevelThickness: 0.1 };
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            
+            // Center the geometry
+            geometry.computeBoundingBox();
+            const bdOffset = -0.5 * (geometry.boundingBox.max.z - geometry.boundingBox.min.z);
+            geometry.translate(0, 0, bdOffset);
+
+            const material = new THREE.MeshPhongMaterial({ color: 0x4488ff, shininess: 100, transparent: true, opacity: 0.8 });
+            const shield = new THREE.Mesh(geometry, material);
+            shieldGroup.add(shield);
+            
+            shieldGroup.position.set(3, 0, 0);
+            shieldGroup.rotation.y = -0.3;
+
+            // Particles (Blocked files)
+            particlesGroup = new THREE.Group();
+            scene.add(particlesGroup);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        let baseParticles = 0;
+        let particles = [];
+        const fileColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff];
+
+        window.update3DShield = (intensity) => {
+            if(!shieldGroup) return;
+            baseParticles = intensity * 5; // number of incoming particles
+
+            // Modify shield color based on protection level
+            const colors = [0x4488ff, 0x22aaee, 0x00ccaa, 0x00ee88, 0x00ff00];
+            const mixColor = colors[Math.min(intensity, colors.length - 1)];
+            shieldGroup.children[0].material.color.setHex(mixColor);
+        };
+
+        const createParticle = () => {
+            const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const mat = new THREE.MeshPhongMaterial({ color: fileColors[Math.floor(Math.random()*fileColors.length)] });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            // Start far left
+            mesh.position.set(-6, (Math.random() * 4) - 2, (Math.random() * 4) - 2);
+            particlesGroup.add(mesh);
+
+            particles.push({
+                mesh: mesh,
+                speedX: 0.05 + Math.random() * 0.05,
+                rotX: Math.random() * 0.1,
+                rotY: Math.random() * 0.1,
+                hit: false
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(shieldGroup) {
+                // Gentle floating
+                shieldGroup.position.y = Math.sin(Date.now() * 0.002) * 0.2;
+                
+                // Spawn particles based on baseParticles
+                if(particles.length < baseParticles && Math.random() < 0.1) {
+                    createParticle();
+                }
+
+                // Update particles
+                for(let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.mesh.rotation.x += p.rotX;
+                    p.mesh.rotation.y += p.rotY;
+
+                    if(!p.hit) {
+                        p.mesh.position.x += p.speedX;
+                        // Bounce off shield
+                        if(p.mesh.position.x > 1.5 && p.mesh.position.x < 3 && 
+                           Math.abs(p.mesh.position.y - shieldGroup.position.y) < 2.5 &&
+                           Math.abs(p.mesh.position.z) < 2) {
+                            p.hit = true;
+                            p.speedX = (-0.05 - Math.random() * 0.05); // bounce back
+                            p.mesh.material.color.setHex(0xffffff); // flash white
+                        }
+                    } else {
+                        // Flying away
+                        p.mesh.position.x += p.speedX;
+                        p.mesh.position.y -= 0.02; // fall
+                        p.mesh.scale.multiplyScalar(0.95); // shrink
+                        
+                        if(p.mesh.scale.x < 0.01 || p.mesh.position.x < -8) {
+                            particlesGroup.remove(p.mesh);
+                            particles.splice(i, 1);
+                        }
+                    }
+                    
+                    // Cleanup if missed shield
+                    if(p.mesh.position.x > 8) {
+                        particlesGroup.remove(p.mesh);
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

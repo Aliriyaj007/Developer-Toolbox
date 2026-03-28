@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 35 - SSL TLS Certificate Decoder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            resize: vertical;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .details-panel {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            height: 400px;
+            overflow-y: auto;
+        }
+
+        .data-group {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .data-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .data-group h4 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--primary-color);
+            display: inline-block;
+            padding-bottom: 2px;
+        }
+
+        .data-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            align-items: flex-start;
+        }
+
+        .data-label {
+            font-weight: bold;
+            color: var(--text-secondary);
+            width: 140px;
+            flex-shrink: 0;
+        }
+
+        .data-value {
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            word-break: break-all;
+            flex: 1;
+        }
+
+        .data-value.valid { color: #7ee787; }
+        .data-value.invalid { color: #ff5555; }
+        .data-value.warning { color: #ffaa00; }
+
+        .error-message {
+            color: #ff5555;
+            background: rgba(255, 85, 85, 0.1);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-upload-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .timeline {
+            display: flex;
+            align-items: center;
+            margin-top: 0.5rem;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .timeline-fill {
+            height: 100%;
+            background: var(--primary-color);
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .timeline-marker {
+            width: 2px;
+            height: 12px;
+            background: #fff;
+            position: absolute;
+            top: -2px;
+            z-index: 10;
+        }
+
+        .validity-status {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>35. SSL TLS Certificate Decoder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div id="error-alert" class="error-message"></div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">PEM Certificate / File</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <div class="file-upload-wrapper">
+                                    <button class="btn btn-sm">Upload .crt</button>
+                                    <input type="file" id="file-upload" accept=".crt,.pem,.cer">
+                                </div>
+                                <button class="btn btn-sm" id="clear-btn">Clear</button>
+                            </div>
+                        </div>
+                        <textarea id="cert-input" placeholder="Paste your PEM encoded certificate here (-----BEGIN CERTIFICATE-----)"></textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar" style="margin-bottom: 0;">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Decoded Details</label>
+                            <span id="header-status" class="validity-status" style="display:none;"></span>
+                        </div>
+                        <div class="details-panel" id="details-panel">
+                            <div style="color: var(--text-secondary); text-align: center; margin-top: 50px;">
+                                Enter a valid PEM certificate to see details here.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const certInput = document.getElementById('cert-input');
+        const fileUpload = document.getElementById('file-upload');
+        const clearBtn = document.getElementById('clear-btn');
+        const errorAlert = document.getElementById('error-alert');
+        const detailsPanel = document.getElementById('details-panel');
+        const headerStatus = document.getElementById('header-status');
+
+        const showError = (msg) => {
+            errorAlert.textContent = msg;
+            errorAlert.style.display = 'block';
+            detailsPanel.innerHTML = '<div style="color: var(--text-secondary); text-align: center; margin-top: 50px;">Invalid Certificate format.</div>';
+            headerStatus.style.display = 'none';
+        };
+
+        const hideError = () => {
+            errorAlert.style.display = 'none';
+        };
+
+        const formatDate = (dateStr) => {
+            // Check if it's YYMMDDHHMMSSZ or YYYYMMDDHHMMSSZ
+            let year, month, day, hour, min, sec;
+            if (dateStr.length === 13) {
+                year = "20" + dateStr.substring(0, 2); // simplistic 20xx assumption
+                month = dateStr.substring(2, 4);
+                day = dateStr.substring(4, 6);
+                hour = dateStr.substring(6, 8);
+                min = dateStr.substring(8, 10);
+                sec = dateStr.substring(10, 12);
+            } else if (dateStr.length === 15) {
+                year = dateStr.substring(0, 4);
+                month = dateStr.substring(4, 6);
+                day = dateStr.substring(6, 8);
+                hour = dateStr.substring(8, 10);
+                min = dateStr.substring(10, 12);
+                sec = dateStr.substring(12, 14);
+            } else {
+                return dateStr;
+            }
+
+            const d = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+            return {
+                formatted: d.toUTCString(),
+                getTime: () => d.getTime(),
+                dateObj: d
+            };
+        };
+
+        const generateTimeline = (notBefore, notAfter) => {
+            const now = Date.now();
+            const start = notBefore.getTime();
+            const end = notAfter.getTime();
+            const total = end - start;
+            
+            let percent = 0;
+            let statusClass = "valid";
+            let statusText = "Active";
+            
+            if (now < start) {
+                statusClass = "warning";
+                statusText = "Not Yet Valid";
+                percent = 0;
+            } else if (now > end) {
+                statusClass = "invalid";
+                statusText = "Expired";
+                percent = 100;
+            } else {
+                percent = ((now - start) / total) * 100;
+            }
+
+            headerStatus.textContent = statusText;
+            headerStatus.className = `validity-status ${statusClass}`;
+            headerStatus.style.background = statusClass === 'valid' ? 'rgba(46, 160, 67, 0.2)' : 
+                                            statusClass === 'invalid' ? 'rgba(255, 85, 85, 0.2)' : 
+                                            'rgba(255, 170, 0, 0.2)';
+            headerStatus.style.color = statusClass === 'valid' ? '#7ee787' : 
+                                       statusClass === 'invalid' ? '#ff5555' : 
+                                       '#ffaa00';
+            headerStatus.style.display = 'inline-block';
+
+            return `
+                <div class="timeline">
+                    <div class="timeline-fill" style="width: 100%;"></div>
+                    <div class="timeline-marker" style="left: ${percent}%; background: ${statusClass === 'invalid' ? '#ff5555' : '#fff'};"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size: 0.8rem; margin-top: 0.2rem; color: var(--text-secondary);">
+                    <span>${percent.toFixed(1)}% through validity period</span>
+                    <span class="${statusClass}">${statusText}</span>
+                </div>
+            `;
+        };
+
+        const decodeCert = () => {
+            hideError();
+            const pem = certInput.value.trim();
+            if (!pem) {
+                detailsPanel.innerHTML = '<div style="color: var(--text-secondary); text-align: center; margin-top: 50px;">Enter a valid PEM certificate to see details here.</div>';
+                headerStatus.style.display = 'none';
+                if(window.update3DShieldStats) window.update3DShieldStats("None", false);
+                return;
+            }
+
+            try {
+                // Ensure it's a valid PEM structure check before parsing
+                if (!pem.includes("-----BEGIN CERTIFICATE-----")) {
+                    throw new Error("Missing -----BEGIN CERTIFICATE-----");
+                }
+
+                const c = new KJUR.asn1.x509.Certificate();
+                c.readCertPEM(pem);
+
+                const subjectObj = c.getSubjectString();
+                const issuerObj = c.getIssuerString();
+                const serialHex = c.getSerialNumberHex();
+                const sigAlg = c.getSignatureAlgorithmField();
+                
+                const notBeforeStr = c.getNotBefore();
+                const notAfterStr = c.getNotAfter();
+                const notBefore = formatDate(notBeforeStr);
+                const notAfter = formatDate(notAfterStr);
+
+                // Handle SANs (Subject Alternative Names) loosely
+                let sansHtml = "<em>None found or parse error</em>";
+                try {
+                    const ext = c.getExtExtvObj("subjectAltName");
+                    if (ext && ext.array) {
+                        sansHtml = ext.array.map(item => {
+                            if(item.dns) return `DNS: ${item.dns}`;
+                            if(item.ip) return `IP: ${item.ip}`;
+                            return "Other";
+                        }).join('<br>');
+                    }
+                } catch(e) {}
+
+                // Build HTML
+                detailsPanel.innerHTML = `
+                    <div class="data-group">
+                        <h4>Validity</h4>
+                        <div class="data-row">
+                            <div class="data-label">Not Before:</div>
+                            <div class="data-value">${notBefore.formatted}</div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label">Not After:</div>
+                            <div class="data-value ${Date.now() > notAfter.getTime() ? 'invalid' : 'valid'}">${notAfter.formatted}</div>
+                        </div>
+                        ${generateTimeline(notBefore, notAfter)}
+                    </div>
+
+                    <div class="data-group">
+                        <h4>Subject</h4>
+                        <div class="data-row">
+                            <div class="data-value">${subjectObj.replace(/\//g, '<br>')}</div>
+                        </div>
+                    </div>
+
+                    <div class="data-group">
+                        <h4>Issuer</h4>
+                        <div class="data-row">
+                            <div class="data-value">${issuerObj.replace(/\//g, '<br>')}</div>
+                        </div>
+                    </div>
+
+                    <div class="data-group">
+                        <h4>Subject Alternative Names</h4>
+                        <div class="data-row">
+                            <div class="data-value">${sansHtml}</div>
+                        </div>
+                    </div>
+
+                    <div class="data-group">
+                        <h4>Fingerprints & Details</h4>
+                        <div class="data-row">
+                            <div class="data-label">Serial Number:</div>
+                            <div class="data-value" style="font-size: 0.85rem;">${serialHex.match(/.{1,2}/g).join(':')}</div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label">Signature Alg:</div>
+                            <div class="data-value">${sigAlg}</div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label">Version:</div>
+                            <div class="data-value">${c.getVersion()}</div>
+                        </div>
+                    </div>
+                `;
+
+                // Common Name Extractor for 3D
+                let cn = "Unknown";
+                const cnMatch = subjectObj.match(/CN=([^/]+)/);
+                if(cnMatch) cn = cnMatch[1];
+                
+                const isValid = Date.now() >= notBefore.getTime() && Date.now() <= notAfter.getTime();
+
+                if(window.update3DShieldStats) window.update3DShieldStats(cn, isValid);
+
+            } catch(e) {
+                showError("Failed to parse certificate. Ensure it is a valid PEM formatted X.509 certificate.");
+                if(window.update3DShieldStats) window.update3DShieldStats("ERROR", false);
+            }
+        };
+
+        certInput.addEventListener('input', decodeCert);
+
+        clearBtn.addEventListener('click', () => {
+            certInput.value = '';
+            decodeCert();
+        });
+
+        fileUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                certInput.value = ev.target.result;
+                decodeCert();
+            };
+            reader.readAsText(file);
+        });
+
+        document.addEventListener('DOMContentLoaded', decodeCert);
+
+        // 3D Visualization: A shield with a holographic display of certificate info
+        let scene, camera, renderer, shieldGroup;
+        let holoTextCtx, holoTextTexture, holoSprite;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            shieldGroup = new THREE.Group();
+            scene.add(shieldGroup);
+
+            // Detailed Shield Geometry
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 2.5);
+            shape.quadraticCurveTo(1.8, 2.5, 2.2, 1);
+            shape.quadraticCurveTo(2.2, -1.5, 0, -3.5);
+            shape.quadraticCurveTo(-2.2, -1.5, -2.2, 1);
+            shape.quadraticCurveTo(-1.8, 2.5, 0, 2.5);
+
+            const extrudeSettings = { depth: 0.3, bevelEnabled: true, bevelSegments: 3, steps: 2, bevelSize: 0.15, bevelThickness: 0.15 };
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            
+            geometry.computeBoundingBox();
+            const bdOffset = -0.5 * (geometry.boundingBox.max.z - geometry.boundingBox.min.z);
+            geometry.translate(0, 0, bdOffset);
+
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x2288ff, 
+                shininess: 120,
+                specular: 0x44aaff,
+                transparent: true, 
+                opacity: 0.9 
+            });
+            
+            const shield = new THREE.Mesh(geometry, material);
+            shieldGroup.add(shield);
+
+            // Holographic Ring
+            const ringGeo = new THREE.TorusGeometry(3.5, 0.05, 16, 100);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.5 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            shieldGroup.add(ring);
+
+            // Setup Holographic Text Canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            holoTextCtx = canvas.getContext('2d');
+            
+            holoTextTexture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: holoTextTexture, transparent: true });
+            holoSprite = new THREE.Sprite(spriteMat);
+            holoSprite.scale.set(6, 3, 1);
+            holoSprite.position.set(0, -1, 0.5); // float in front
+            shieldGroup.add(holoSprite);
+
+            updateCanvasText("Awaiting Cert", true);
+
+            shieldGroup.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        const updateCanvasText = (text, isValid) => {
+            if(!holoTextCtx) return;
+
+            holoTextCtx.clearRect(0, 0, 512, 256);
+            
+            // Draw background glow
+            holoTextCtx.fillStyle = isValid ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255, 68, 68, 0.1)';
+            holoTextCtx.fillRect(0, 0, 512, 256);
+
+            holoTextCtx.textAlign = 'center';
+            holoTextCtx.textBaseline = 'middle';
+            
+            holoTextCtx.font = 'bold 36px monospace';
+            holoTextCtx.fillStyle = isValid ? '#00ffcc' : '#ff4444';
+            holoTextCtx.fillText(isValid ? "SECURE CONNECTION" : "INVALID / EXPIRED", 256, 80);
+
+            holoTextCtx.font = '24px monospace';
+            holoTextCtx.fillStyle = '#ffffff';
+            holoTextCtx.fillText(text, 256, 140);
+
+            if(holoTextTexture) holoTextTexture.needsUpdate = true;
+            
+            if(shieldGroup) {
+                // Update shield base color
+                shieldGroup.children[0].material.color.setHex(isValid ? 0x2288ff : 0xaa2222);
+            }
+        };
+
+        window.update3DShieldStats = (cn, isValid) => {
+            updateCanvasText(cn, isValid);
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(shieldGroup) {
+                shieldGroup.position.y = Math.sin(Date.now() * 0.002) * 0.3;
+                shieldGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+                
+                // Rotate Holographic Ring
+                if(shieldGroup.children[1]) {
+                    shieldGroup.children[1].rotation.z += 0.005;
+                    shieldGroup.children[1].rotation.x = Math.sin(Date.now() * 0.001) * 0.2;
+                }
+                
+                // Bob Holographic Sprite
+                if(holoSprite) {
+                    holoSprite.position.y = -0.5 + Math.sin(Date.now() * 0.003) * 0.1;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

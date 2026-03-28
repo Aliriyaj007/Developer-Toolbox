@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 32 - HTML to Markdown Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            background: rgba(var(--primary-color-rgb), 0.1);
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .preset-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .options-group {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            width: 100%;
+        }
+
+        .options-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>32. HTML to Markdown Converter</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="controls">
+                    <span style="font-weight: bold; color: var(--text-secondary);">Sample Presets:</span>
+                    <button class="preset-btn" onclick="loadPreset('basic')">Basic Formatting</button>
+                    <button class="preset-btn" onclick="loadPreset('table')">Tables</button>
+                    <button class="preset-btn" onclick="loadPreset('code')">Code Blocks</button>
+                    <button class="preset-btn" onclick="loadPreset('lists')">Complex Lists</button>
+                    
+                    <div class="options-group">
+                        <label>
+                            <input type="checkbox" id="opt-heading-style" checked> Setext Headings (h1/h2)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="opt-hr" checked> Use *** for HR
+                        </label>
+                        <label>
+                            <input type="checkbox" id="opt-bullet" checked> Use * for lists
+                        </label>
+                    </div>
+                </div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">HTML Input</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        <textarea id="html-input" placeholder="Paste your HTML here..."></textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Markdown Output</label>
+                            <button class="btn btn-sm btn-primary" id="copy-btn">Copy Markdown</button>
+                        </div>
+                        <textarea id="markdown-output" readonly placeholder="Markdown output will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const presets = {
+            basic: `<h1>32. Main Title</h1>
+<p>This is a paragraph with <strong>bold</strong>, <em>italic</em>, and <a href="https://example.com">links</a>.</p>
+<h2>Subtitle</h2>
+<p>Another paragraph.</p>
+<img src="https://via.placeholder.com/150" alt="Placeholder Image">`,
+            table: `<h2>Data Table</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Age</th>
+      <th>City</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>John</td>
+      <td>28</td>
+      <td>New York</td>
+    </tr>
+    <tr>
+      <td>Jane</td>
+      <td>34</td>
+      <td>London</td>
+    </tr>
+  </tbody>
+</table>`,
+            code: `<h2>Code Example</h2>
+<p>Here is some inline <code>console.log()</code> code.</p>
+<pre><code class="language-javascript">function hello() {
+  console.log("Hello World");
+}</code></pre>`,
+            lists: `<h2>Task List</h2>
+<ul>
+  <li>First item</li>
+  <li>Second item
+    <ul>
+      <li>Sub item 1</li>
+      <li>Sub item 2</li>
+    </ul>
+  </li>
+  <li>Third item</li>
+</ul>
+<ol>
+  <li>Step one</li>
+  <li>Step two</li>
+</ol>`
+        };
+
+        const htmlInput = document.getElementById('html-input');
+        const mkOutput = document.getElementById('markdown-output');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        
+        const optHeading = document.getElementById('opt-heading-style');
+        const optHr = document.getElementById('opt-hr');
+        const optBullet = document.getElementById('opt-bullet');
+
+        let turndownService;
+
+        const updateConfig = () => {
+            turndownService = new TurndownService({
+                headingStyle: optHeading.checked ? 'setext' : 'atx',
+                hr: optHr.checked ? '***' : '---',
+                bulletListMarker: optBullet.checked ? '*' : '-',
+                codeBlockStyle: 'fenced'
+            });
+
+            // Add basic table support plugin if needed, but Turndown 7 has some built in
+            // For robust tables, we add a simple custom rule
+            turndownService.addRule('tableCell', {
+                filter: ['th', 'td'],
+                replacement: function (content, node) {
+                    return ' ' + content + ' |';
+                }
+            });
+
+            turndownService.addRule('tableRow', {
+                filter: 'tr',
+                replacement: function (content, node) {
+                    let borderCells = '';
+                    const alignMap = { left: ':--', right: '--:', center: ':-:' };
+
+                    if (node.parentNode.nodeName === 'THEAD') {
+                        Array.from(node.cells).forEach(cell => {
+                            const align = cell.getAttribute('align');
+                            let border = '---';
+                            if (alignMap[align]) border = alignMap[align];
+                            borderCells += ' ' + border + ' |';
+                        });
+                        return '\n|' + content + '\n|' + borderCells;
+                    }
+                    return '\n|' + content;
+                }
+            });
+
+            turndownService.addRule('table', {
+                filter: 'table',
+                replacement: function (content) {
+                    return '\n\n' + content + '\n\n';
+                }
+            });
+            turndownService.addRule('tableSection', {
+                filter: ['thead', 'tbody', 'tfoot'],
+                replacement: function (content) {
+                    return content;
+                }
+            });
+
+            convert();
+        };
+
+        window.loadPreset = (key) => {
+            htmlInput.value = presets[key];
+            convert();
+        };
+
+        const convert = () => {
+            const html = htmlInput.value;
+            if(!html.trim()) {
+                mkOutput.value = '';
+                if(window.update3DDoc) window.update3DDoc(0);
+                return;
+            }
+            try {
+                const markdown = turndownService.turndown(html);
+                mkOutput.value = markdown;
+                if(window.update3DDoc) window.update3DDoc(markdown.length);
+            } catch(e) {
+                mkOutput.value = "Error converting HTML: " + e.message;
+            }
+        };
+
+        [optHeading, optHr, optBullet].forEach(el => el.addEventListener('change', updateConfig));
+        htmlInput.addEventListener('input', convert);
+
+        clearBtn.addEventListener('click', () => {
+            htmlInput.value = '';
+            convert();
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if(!mkOutput.value) return;
+            navigator.clipboard.writeText(mkOutput.value);
+            const og = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => copyBtn.textContent = og, 1500);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateConfig();
+            loadPreset('basic');
+        });
+
+        // 3D Visualization: A document folding into a book
+        let scene, camera, renderer, docGroup, page1, page2;
+        let isFolded = false;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(-5, 4, 8);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            docGroup = new THREE.Group();
+            scene.add(docGroup);
+
+            // Document materials
+            const frontMat = new THREE.MeshPhongMaterial({ color: 0xffffff, side: THREE.FrontSide });
+            const backMat = new THREE.MeshPhongMaterial({ color: 0xdddddd, side: THREE.BackSide });
+            
+            // Text lines texture/bump simulation (using basic lines)
+            const textGeo = new THREE.BoxGeometry(1.6, 0.05, 0.05);
+            const textMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+
+            // Page 1 (Left/Bottom)
+            page1 = new THREE.Group();
+            const p1Mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5), frontMat);
+            const p1Back = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5), backMat);
+            p1Mesh.rotation.x = -Math.PI / 2;
+            p1Back.rotation.x = -Math.PI / 2;
+            page1.add(p1Mesh);
+            page1.add(p1Back);
+            
+            // Add text lines to page 1
+            for(let i=0; i<5; i++) {
+                const line = new THREE.Mesh(textGeo, textMat);
+                line.position.set(0, 0.01, -0.8 + (i * 0.3));
+                page1.add(line);
+            }
+
+            // Page 2 (Right/Top)
+            page2 = new THREE.Group();
+            const p2Mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5), frontMat);
+            const p2Back = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5), backMat);
+            p2Mesh.rotation.x = -Math.PI / 2;
+            p2Back.rotation.x = -Math.PI / 2;
+            
+            // Shift pivot to left edge
+            p2Mesh.position.x = 1;
+            p2Back.position.x = 1;
+
+            page2.add(p2Mesh);
+            page2.add(p2Back);
+
+            // Add text lines to page 2
+            for(let i=0; i<4; i++) {
+                const line = new THREE.Mesh(textGeo, textMat);
+                line.position.set(1, 0.01, -0.8 + (i * 0.4));
+                page2.add(line);
+            }
+
+            // Arrange pages
+            page1.position.set(-1, 0, 0);
+            page2.position.set(0, 0, 0); // pivot is at x=0
+
+            docGroup.add(page1);
+            docGroup.add(page2);
+
+            docGroup.position.set(2, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Toggle fold every few seconds
+            setInterval(() => {
+                isFolded = !isFolded;
+            }, 2500);
+
+            animate();
+        }
+
+        window.update3DDoc = (length) => {
+            if(!docGroup) return;
+            // The longer the text, maybe the faster it folds or we add more pages
+            // For simplicity, we just keep the folding animation running as the unique feature
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(docGroup) {
+                // Animate folding
+                const targetRotZ = isFolded ? Math.PI - 0.1 : 0; // fold over page1
+                page2.rotation.z += (targetRotZ - page2.rotation.z) * 0.1;
+
+                // Subtle floating
+                docGroup.position.y = Math.sin(Date.now() * 0.002) * 0.2;
+                docGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

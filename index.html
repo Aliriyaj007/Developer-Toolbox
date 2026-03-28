@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev Toolbox - Developer Utilities</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        :root {
+            --magenta: var(--accent-primary);
+            --grey-text: var(--text-secondary);
+            --card-bg: var(--bg-surface);
+            --card-hover: var(--bg-elevated);
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: var(--font-mono), monospace;
+            margin: 0;
+            overflow-x: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 1. Scroll Progress Bar Fill */
+        #scroll-progress {
+            position: fixed;
+            top: 0; left: 0; height: 3px;
+            background: var(--magenta);
+            width: 0%;
+            z-index: 9999;
+            box-shadow: 0 0 10px var(--magenta);
+            transition: width 0.1s;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #222;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Navbar Link Glow */
+        .logo-text { transition: text-shadow 0.3s; }
+        .logo-area:hover .logo-text {
+            text-shadow: 0 0 10px var(--magenta);
+        }
+
+        .logo-text span {
+            color: var(--magenta);
+        }
+
+        .controls-area {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .ctrl-btn, .ctrl-select {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ctrl-btn:hover {
+            border-color: var(--magenta);
+            color: var(--magenta);
+        }
+
+        /* Floating CTA Pulse */
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 255, 0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 15px 5px rgba(255, 0, 255, 0.2); transform: scale(1.02); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 255, 0); transform: scale(1); }
+        }
+
+        .ctrl-btn.fill {
+            background: var(--magenta);
+            color: #000;
+            border-color: var(--magenta);
+            font-weight: bold;
+            animation: pulseGlow 2.5s infinite;
+            transition: transform 0.2s;
+        }
+        .ctrl-btn.fill:hover { background: #d000d0; animation: none; transform: scale(0.98); }
+
+        /* Sort Dropdown Ripple */
+        .ink-ripple {
+            position: absolute;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: rippleEffect 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleEffect {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 4rem 1rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin: 0 0 1rem 0;
+            letter-spacing: 2px;
+        }
+
+        .hero h1 span {
+            color: var(--magenta);
+        }
+
+        .hero p {
+            color: var(--grey-text);
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem 4rem 1rem;
+        }
+
+        .controls-bar {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        /* Search Bar CLI Focus effect */
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+        .search-input {
+            width: 100%;
+            background: #111;
+            border: 1px solid #333;
+            padding: 0.8rem 1rem;
+            border-radius: 4px;
+            color: #fff;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: var(--magenta); }
+        
+        .cli-caret {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--magenta);
+            font-weight: bold;
+            opacity: 0;
+        }
+        .search-input:focus + .cli-caret {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } 100% { opacity: 1; } }
+
+        .view-toggles {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .view-btn {
+            background: #111; border: 1px solid #333; color: #fff; padding: 0.5rem; cursor: pointer; border-radius: 4px;
+        }
+        .view-btn.active { background: var(--magenta); color: #000; border-color: var(--magenta); }
+
+        /* Tools Grid / List */
+        .tools-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .tools-container.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        /* Card Hover Lift 4px, shadow, icon spin */
+        .tool-card {
+            background: var(--card-bg);
+            border: 1px solid #2a112a;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s, border-color 0.3s, background 0.3s;
+            position: relative;
+            opacity: 0; /* for staggered fade-in */
+        }
+
+        /* Skeleton Loaders */
+        .skeleton {
+            background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .skel-card { height: 180px; width: 100%; border-radius: 8px; opacity: 1; }
+
+        .tool-card.loaded {
+            animation: scaleUpFade 0.4s forwards;
+        }
+        @keyframes scaleUpFade {
+            0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .tool-card:hover {
+            border-color: var(--magenta);
+            box-shadow: 0 8px 25px rgba(255, 0, 255, 0.15);
+            transform: translateY(-4px);
+            background: var(--card-hover);
+            z-index: 2;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .tool-icon-box {
+            background: #1a1a20;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            border: 1px solid #333;
+            transition: transform 0.4s;
+        }
+
+        .tool-card:hover .tool-icon-box {
+            transform: rotate(90deg) scale(1.1);
+            border-color: var(--magenta);
+        }
+
+        .tool-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .tool-desc {
+            font-size: 0.85rem;
+            color: var(--grey-text);
+            margin: 0;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        /* Quick Preview Snippet */
+        .quick-preview {
+            background: #000;
+            padding: 0;
+            font-size: 0.75rem;
+            color: #56b6c2;
+            border-left: 2px solid var(--magenta);
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .tool-card:hover .quick-preview {
+            max-height: 40px;
+            padding: 0.5rem;
+            opacity: 1;
+            margin-top: 0.5rem;
+        }
+
+        /* Custom Tags and Favorites */
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .action-btn {
+            background: none; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.5; transition: all 0.2s;
+            padding: 0;
+        }
+        .action-btn:hover { opacity: 1; transform: scale(1.2); }
+        .action-btn.fav-active { color: #f1c40f; opacity: 1; }
+
+        .tags-container {
+            display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem;
+        }
+        .tag-badge {
+            background: #331133; color: var(--magenta); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--magenta);
+        }
+        .add-tag-btn {
+            background: transparent; border: 1px dashed var(--magenta); color: var(--magenta); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; cursor: pointer;
+        }
+
+        /* List View Overrides */
+        .tools-container.list-view .tool-card {
+            flex-direction: row;
+            align-items: center;
+            padding: 1rem 1.5rem;
+        }
+        .tools-container.list-view .tool-desc {
+            margin-left: 1rem;
+        }
+        .tools-container.list-view .tags-container {
+            margin-top: 0; margin-left: auto;
+        }
+        .tools-container.list-view .card-header {
+            align-items: center; gap: 1rem;
+        }
+        .tools-container.list-view .quick-preview { display: none; }
+
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--grey-text);
+            padding: 2rem;
+        }
+
+        /* Testimonials Slider */
+        .testimonials-wrapper {
+            background: rgba(15,15,20,0.8);
+            border-top: 1px solid #222;
+            border-bottom: 1px solid #222;
+            padding: 3rem 1rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .t-slide {
+            font-size: 1.3rem;
+            font-style: italic;
+            color: #ddd;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%) translateX(20px);
+            opacity: 0;
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+        .t-slide.active {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+        .t-author {
+            display: block;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--magenta);
+            font-style: normal;
+        }
+
+        /* 3D Background */
+        #hero-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 500px;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .main-content { position: relative; z-index: 10; }
+
+    </style>
+</head>
+<body class="theme-neon">
+    
+    <div id="scroll-progress"></div>
+
+    <div class="top-bar">
+        <div class="logo-area" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--magenta)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            <div class="logo-text">Dev <span>Toolbox</span></div>
+        </div>
+        <div class="controls-area">
+            <select class="ctrl-select" id="theme-select">
+                <option value="neon">Neon Glow</option>
+                <option value="dark">Dark Theme</option>
+                <option value="light">Light Theme</option>
+                <option value="solarized">Solarized</option>
+                <option value="highcontrast">High Contrast</option>
+            </select>
+            <button id="btn-backup" class="ctrl-btn btn" title="Backup Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Backup
+            </button>
+            <button id="btn-restore" class="ctrl-btn fill btn-primary" title="Restore Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              Restore
+            </button>
+            <input type="file" id="restore-file-input" accept=".json" style="display: none;">
+        </div>
+    </div>
+
+    <div id="hero-canvas"></div>
+
+    <main class="main-content">
+        <div class="hero">
+            <h1>100+ <span>Developer Utilities</span></h1>
+            <p>A premium collection of fully client-side tools designed for modern developers. Fast, private, and beautifully executed.</p>
+        </div>
+
+        <div class="container">
+            <div class="controls-bar">
+                <div class="search-container">
+                    <input type="text" id="search-input" class="search-input" placeholder="> search tools_">
+                    <span class="cli-caret">_</span>
+                </div>
+                
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <div class="view-toggles">
+                        <button class="view-btn active" id="btn-grid" title="Grid View">🔲</button>
+                        <button class="view-btn" id="btn-list" title="List View">☰</button>
+                    </div>
+
+                    <select id="sort-select" class="ctrl-select">
+                        <option value="name-asc">Sort A-Z</option>
+                        <option value="name-desc">Sort Z-A</option>
+                        <option value="popularity">Sort Popularity</option>
+                        <option value="favorites">Favorites First</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tools-container" id="tools-grid">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+        
+        <!-- Testimonials Slider -->
+        <div class="testimonials-wrapper">
+            <div style="height: 100px; position:relative; max-width:800px; margin: 0 auto;" id="t-container">
+                <div class="t-slide active">"Saved hours on regex replaces. The live visualizer is breathtaking!"<span class="t-author">- Senior Frontend Eng.</span></div>
+                <div class="t-slide">"Offline-first, blisteringly fast, and absolutely zero tracking. A masterpiece."<span class="t-author">- Security Lead</span></div>
+                <div class="t-slide">"The CSS animations and 3D scenes make debugging actually fun again."<span class="t-author">- Creative Developer</span></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer" style="text-align:center; padding: 2rem; color:#666; font-size:0.8rem; border-top:1px solid #222; border-bottom: none;">
+        Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank" style="color:var(--magenta)">Aliriyaj007</a>
+    </footer>
+
+    <!-- Load Data and Scripts -->
+    <script src="assets/tools-data.js"></script>
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const grid = document.getElementById('tools-grid');
+        const searchInput = document.getElementById('search-input');
+        const sortSelect = document.getElementById('sort-select');
+        const btnGrid = document.getElementById('btn-grid');
+        const btnList = document.getElementById('btn-list');
+        const scrollProg = document.getElementById('scroll-progress');
+
+        // Local Storage State
+        const getLS = (k,d) => { try{ return JSON.parse(localStorage.getItem(k)) || d; }catch{return d;} };
+        const setLS = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+
+        let favs = getLS('tb_favs', []);
+        let pop = getLS('tb_pop', {});
+        let tags = getLS('tb_tags', {});
+
+        let currentTools = [...TOOLS_DATA];
+
+        // Scroll Progress
+        window.addEventListener('scroll', () => {
+            const h = document.documentElement;
+            const b = document.body;
+            const st = 'scrollTop', sh = 'scrollHeight';
+            const pct = (h[st]||b[st]) / ((h[sh]||b[sh]) - h.clientHeight) * 100;
+            scrollProg.style.width = pct + '%';
+        });
+
+        // Testimonials Slider
+        let tIndex = 0;
+        const slides = document.querySelectorAll('.t-slide');
+        setInterval(() => {
+            slides[tIndex].classList.remove('active');
+            tIndex = (tIndex + 1) % slides.length;
+            slides[tIndex].classList.add('active');
+        }, 4000);
+
+        // Ripple Effect on Select
+        sortSelect.addEventListener('mousedown', function(e) {
+            let rip = document.createElement('span');
+            rip.className = 'ink-ripple';
+            let rect = this.getBoundingClientRect();
+            rip.style.left = e.clientX - rect.left + 'px';
+            rip.style.top = e.clientY - rect.top + 'px';
+            this.appendChild(rip);
+            setTimeout(() => rip.remove(), 600);
+        });
+
+        // Toggle Views
+        btnGrid.addEventListener('click', () => { grid.classList.remove('list-view'); btnGrid.classList.add('active'); btnList.classList.remove('active'); });
+        btnList.addEventListener('click', () => { grid.classList.add('list-view'); btnList.classList.add('active'); btnGrid.classList.remove('active'); });
+
+        // Global functions must be attached to window to work correctly when called via inline string handlers, or use addeventlisteners.
+        // But inline onclick="toggleFav" works if declared in global scope.
+        window.toggleFav = function(e, id) {
+            e.preventDefault();
+            e.stopPropagation();
+            if(favs.includes(id)) favs = favs.filter(x => x !== id);
+            else favs.push(id);
+            setLS('tb_favs', favs);
+            renderGrid(true);
+        };
+
+        window.addTag = function(e, id) {
+            e.preventDefault();
+            e.stopPropagation();
+            const tag = prompt("Enter a custom tag for this tool:");
+            if(tag && tag.trim()) {
+                if(!tags[id]) tags[id] = [];
+                if(!tags[id].includes(tag.trim().toLowerCase())) {
+                    tags[id].push(tag.trim().toLowerCase());
+                    setLS('tb_tags', tags);
+                    renderGrid(true);
+                }
+            }
+        };
+
+        window.handleToolClick = function(id) {
+            pop[id] = (pop[id] || 0) + 1;
+            setLS('tb_pop', pop);
+            sessionStorage.setItem('tb_scroll', window.scrollY || document.documentElement.scrollTop);
+        };
+
+        function renderGrid(skipSkeleton = false) {
+            grid.innerHTML = '';
+            
+            if (currentTools.length === 0) {
+                grid.innerHTML = '<div class="no-results">No tools found matching your search.</div>';
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            
+            currentTools.forEach((tool, index) => {
+                const a = document.createElement('a');
+                a.href = tool.file;
+                a.className = 'tool-card';
+                a.onclick = () => window.handleToolClick(tool.id);
+                
+                // Add Staggered Delay
+                a.style.animationDelay = (index * 0.05) + 's';
+
+                let icon = tool.icon || '⚡';
+                let desc = tool.desc || 'A specialized developer utility.';
+                let isFav = favs.includes(tool.id);
+                let toolTags = tags[tool.id] || [];
+
+                let tagsHTML = toolTags.map(t => `<span class="tag-badge">#${t}</span>`).join('');
+
+                a.innerHTML = `
+                    <div class="card-header">
+                        <div class="tool-icon-box">${icon}</div>
+                        <div class="card-actions">
+                            <button class="action-btn ${isFav ? 'fav-active' : ''}" onclick="window.toggleFav(event, ${tool.id})" title="Favorite">★</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="tool-title">${tool.name}</div>
+                        <div class="tags-container">
+                            ${tagsHTML}
+                            <button class="add-tag-btn" onclick="window.addTag(event, ${tool.id})">+ Tag</button>
+                        </div>
+                    </div>
+                    <div class="tool-desc">${desc}</div>
+                    <div class="quick-preview">// Load ${tool.name}() module...<br/>> ready.</div>
+                `;
+                fragment.appendChild(a);
+            });
+
+            if(!skipSkeleton) {
+                // Render skeletons first
+                for(let i=0; i<6; i++) {
+                    let s = document.createElement('div');
+                    s.className = 'skeleton skel-card';
+                    grid.appendChild(s);
+                }
+                setTimeout(() => {
+                    grid.innerHTML = '';
+                    grid.appendChild(fragment);
+                    void grid.offsetWidth; // Trigger reflow
+                    Array.from(grid.children).forEach(c => c.classList.add('loaded'));
+                }, 400);
+            } else {
+                grid.appendChild(fragment);
+                Array.from(grid.children).forEach(c => {
+                    c.style.opacity = 1;
+                    c.style.animation = 'none';
+                });
+            }
+        }
+
+        function filterAndSort() {
+            const query = searchInput.value.toLowerCase().trim();
+            const sortMethod = sortSelect.value;
+            
+            currentTools = TOOLS_DATA.filter(t => {
+                let matchName = t.name.toLowerCase().includes(query);
+                let tTags = tags[t.id] || [];
+                let matchTag = tTags.some(tag => tag.toLowerCase().includes(query));
+                return matchName || matchTag;
+            });
+
+            currentTools.sort((a, b) => {
+                if (sortMethod === 'popularity') {
+                    let pa = pop[a.id] || 0;
+                    let pb = pop[b.id] || 0;
+                    return pb - pa;
+                }
+                if (sortMethod === 'favorites') {
+                    let fa = favs.includes(a.id) ? 1 : 0;
+                    let fb = favs.includes(b.id) ? 1 : 0;
+                    if(fa !== fb) return fb - fa; // favs first
+                    return a.name.localeCompare(b.name);
+                }
+                if (sortMethod === 'name-asc') return a.name.localeCompare(b.name);
+                if (sortMethod === 'name-desc') return b.name.localeCompare(a.name);
+            });
+
+            renderRender();
+        }
+
+        let renderTimeout;
+        function renderRender() {
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => renderGrid(false), 200);
+        }
+
+        searchInput.addEventListener('input', filterAndSort);
+        sortSelect.addEventListener('change', filterAndSort);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedScroll = sessionStorage.getItem('tb_scroll');
+            
+            // Skip skeleton animation if returning to the page to prevent layout shifts
+            renderGrid(savedScroll ? true : false);
+            initHero3D();
+            
+            // Restore exact scroll position
+            if (savedScroll) {
+                setTimeout(() => {
+                    window.scrollTo(0, parseInt(savedScroll, 10));
+                    sessionStorage.removeItem('tb_scroll');
+                }, 10);
+            }
+        });
+
+        // Hero 3D Animation (Abstract Wireframe Sphere)
+        const initHero3D = () => {
+          const container = document.getElementById('hero-canvas');
+          if (!container || !window.THREE) return;
+
+          const scene = new THREE.Scene();
+          
+          const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+          camera.position.z = 5;
+
+          const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+          renderer.setSize(container.clientWidth, container.clientHeight);
+          container.appendChild(renderer.domElement);
+
+          // Create a complex wireframe geometry
+          const geometry = new THREE.IcosahedronGeometry(3, 2);
+          
+          // Get colors from CSS vars based on theme
+          const getThemeColor = () => {
+            const style = getComputedStyle(document.body);
+            const colorVar = style.getPropertyValue('--accent-primary').trim() || '#BB86FC';
+            return new THREE.Color(colorVar);
+          };
+
+          const material = new THREE.MeshBasicMaterial({ 
+            color: getThemeColor(), 
+            wireframe: true,
+            transparent: true,
+            opacity: 0.3
+          });
+          
+          const sphere = new THREE.Mesh(geometry, material);
+          scene.add(sphere);
+
+          // Listen for theme changes to update color
+          window.addEventListener('themechanged', () => {
+            setTimeout(() => { // Wait for CSS to apply
+              material.color = getThemeColor();
+            }, 50);
+          });
+
+          // Handle resize
+          window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+          });
+
+          // Mouse interaction
+          let mouseX = 0;
+          let mouseY = 0;
+          document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+          });
+
+          // Animation Loop
+          const animate = () => {
+            requestAnimationFrame(animate);
+            
+            // Base rotation
+            sphere.rotation.x += 0.001;
+            sphere.rotation.y += 0.002;
+            
+            // Interactive tilt
+            sphere.rotation.x += (mouseY * 0.5 - sphere.rotation.x) * 0.05;
+            sphere.rotation.y += (mouseX * 0.5 - sphere.rotation.y) * 0.05;
+
+            renderer.render(scene, camera);
+          };
+
+          animate();
+        };
+    </script>
+</body>
+</html>

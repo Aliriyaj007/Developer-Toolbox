@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 60 - JavaScript Error Simulator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+        }
+
+        .btn-trigger {
+            background: #ff5555;
+            color: white;
+            border: none;
+            padding: 1rem;
+            width: 100%;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(255,85,85,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-trigger:hover {
+            background: #ff3333;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,85,85,0.5);
+        }
+
+        .btn-trigger:active {
+            transform: translateY(1px);
+        }
+
+        .output-box {
+            background: var(--bg-main);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .output-header {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .console-output {
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            min-height: 250px;
+            overflow-y: auto;
+        }
+
+        .error-log {
+            color: #ffaa00; /* Start orange like console Warning but will turn red if uncaught */
+            margin-bottom: 1rem;
+            border-left: 3px solid #ff5555;
+            padding-left: 1rem;
+            background: rgba(255,85,85,0.1);
+            padding: 1rem;
+            border-radius: 0 4px 4px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log-time { color: var(--text-secondary); margin-right: 0.5rem; }
+
+        .analysis-box {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(86,182,194,0.1);
+            border: 1px solid var(--primary-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+        }
+
+    </style>
+</head>
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    
+    <main class="main-content">
+        <div class="container" style="max-width: 1100px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>60. JavaScript Error Simulator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <label>Error Type</label>
+                            <select id="err-type">
+                                <option value="TypeError">TypeError</option>
+                                <option value="ReferenceError">ReferenceError</option>
+                                <option value="SyntaxError">SyntaxError (Simulated)</option>
+                                <option value="RangeError">RangeError</option>
+                                <option value="URIError">URIError</option>
+                                <option value="CustomError">Custom Error</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Custom Message</label>
+                            <input type="text" id="err-msg" value="Cannot read property 'foo' of undefined">
+                        </div>
+
+                        <div class="control-group">
+                            <label>Trigger Environment</label>
+                            <select id="err-env">
+                                <option value="sync">Synchronous (Top Level)</option>
+                                <option value="promise">Inside Promise (Unhandled Rejection)</option>
+                                <option value="timeout">Inside setTimeout (Async)</option>
+                                <option value="trycatch">Inside try...catch</option>
+                            </select>
+                        </div>
+
+                        <button class="btn-trigger" id="btn-trigger">💣 Detonate Error</button>
+                        
+                        <div style="text-align:center; margin-top: 1rem;">
+                            <button class="btn btn-sm" id="btn-clear">🧹 Clear Console</button>
+                        </div>
+                    </div>
+
+                    <!-- Output Area -->
+                    <div>
+                        <div class="output-box">
+                            <div class="output-header">
+                                <span>💻 Simulated Console</span>
+                                <span style="color:var(--text-secondary); font-size:0.8rem;">Filter: All Levels</span>
+                            </div>
+                            <div class="console-output" id="console-out">
+                                <div style="color:var(--text-secondary); font-style:italic;">Awaiting error trigger...</div>
+                            </div>
+                        </div>
+
+                        <div class="analysis-box" id="analysis-box" style="display:none;">
+                            <h4 style="margin-top:0; color:var(--primary-color);">Behavior Analysis</h4>
+                            <p id="analysis-text" style="font-size:0.9rem; line-height:1.5; margin:0;"></p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        const errTypeSelect = document.getElementById('err-type');
+        const errMsgInput = document.getElementById('err-msg');
+        const errEnvSelect = document.getElementById('err-env');
+        const btnTrigger = document.getElementById('btn-trigger');
+        const consoleOut = document.getElementById('console-out');
+        const btnClear = document.getElementById('btn-clear');
+        const analysisBox = document.getElementById('analysis-box');
+        const analysisText = document.getElementById('analysis-text');
+
+        // Presets
+        const typePresets = {
+            'TypeError': "Cannot read properties of undefined (reading 'foo')",
+            'ReferenceError': "foo is not defined",
+            'SyntaxError': "Unexpected token 'var'",
+            'RangeError': "Maximum call stack size exceeded",
+            'URIError': "URI malformed",
+            'CustomError': "Application state went BOOM"
+        };
+
+        errTypeSelect.addEventListener('change', () => {
+             errMsgInput.value = typePresets[errTypeSelect.value];
+        });
+
+        function logToConsole(message, isError) {
+            // Remove placeholder if present
+            if(consoleOut.innerHTML.includes('Awaiting error trigger')) {
+                consoleOut.innerHTML = '';
+            }
+
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            
+            if(isError) {
+                div.className = 'error-log';
+                div.innerHTML = `<span class="log-time">[${time}]</span> <strong style="color:#ff5555">❌ Uncaught ${message}</strong>`;
+            } else {
+                div.style.marginBottom = '0.5rem';
+                div.innerHTML = `<span class="log-time">[${time}]</span> <span style="color:#7ee787">ℹ️ ${message}</span>`;
+            }
+
+            consoleOut.appendChild(div);
+            consoleOut.scrollTop = consoleOut.scrollHeight;
+        }
+
+        // We capture unhandled promise rejections and global errors for realistic simulation
+        window.addEventListener('error', (event) => {
+            // Only capture our simulated errors based on a flag
+            if(window._simulatingError) {
+                event.preventDefault(); // Stop from hitting real browser console if possible
+                logToConsole(event.error ? event.error.stack : event.message, true);
+                window._simulatingError = false;
+            }
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            if(window._simulatingError) {
+                event.preventDefault();
+                logToConsole(`(in promise) ${event.reason ? event.reason.stack : event.reason}`, true);
+                window._simulatingError = false;
+            }
+        });
+
+        function createErrorObj(type, msg) {
+            switch(type) {
+                case 'TypeError': return new TypeError(msg);
+                case 'ReferenceError': return new ReferenceError(msg);
+                case 'SyntaxError': return new SyntaxError(msg);
+                case 'RangeError': return new RangeError(msg);
+                case 'URIError': return new URIError(msg);
+                default: 
+                    const e = new Error(msg);
+                    e.name = type; // Custom Error name
+                    return e;
+            }
+        }
+
+        btnTrigger.addEventListener('click', () => {
+            const type = errTypeSelect.value;
+            const msg = errMsgInput.value;
+            const env = errEnvSelect.value;
+            const err = createErrorObj(type, msg);
+
+            window._simulatingError = true;
+
+            // Trigger 3D explosion
+            if(window.detonateBomb) window.detonateBomb();
+
+            setTimeout(() => {
+                if(env === 'sync') {
+                    analysisBox.style.display = 'block';
+                    analysisText.innerHTML = "<strong>Synchronous Top-Level:</strong> Halts execution of the current script block immediately. Bubbles up to the global <code>window.onerror</code> handler.";
+                    
+                    // We throw directly but catch it ourselves to display properly, 
+                    // or let global handler catch it. Let's let global catch it.
+                    setTimeout(() => { throw err; }, 0);
+                    
+                } else if(env === 'promise') {
+                    analysisBox.style.display = 'block';
+                    analysisText.innerHTML = "<strong>Unhandled Promise Rejection:</strong> Does NOT halt synchronous code execution. Bubbles to <code>window.onunhandledrejection</code>. In modern Node.js, this crashes the process; in browsers, it logs heavily.";
+                    
+                    new Promise((resolve, reject) => {
+                        reject(err);
+                    });
+
+                } else if(env === 'timeout') {
+                    analysisBox.style.display = 'block';
+                    analysisText.innerHTML = "<strong>Inside setTimeout:</strong> Error occurs in a completely new call stack. Cannot be caught by an enclosing try...catch block outside the timeout! Bubbles to global handler.";
+                    
+                    setTimeout(() => {
+                        throw err;
+                    }, 100);
+
+                } else if(env === 'trycatch') {
+                    analysisBox.style.display = 'block';
+                    analysisText.innerHTML = "<strong>Inside try...catch:</strong> Gracefully intercepted. The application does not crash, and the global error handler is never notified. Execution continues after the catch block.";
+                    
+                    try {
+                        throw err;
+                    } catch(e) {
+                        window._simulatingError = false;
+                        logToConsole(`Caught safely: ${e.name} - ${e.message}`, false);
+                        logToConsole(e.stack, false);
+                    }
+                }
+            }, 10);
+        });
+
+        btnClear.addEventListener('click', () => {
+            consoleOut.innerHTML = '<div style="color:var(--text-secondary); font-style:italic;">Awaiting error trigger...</div>';
+            analysisBox.style.display = 'none';
+            if(window.resetBomb) window.resetBomb();
+        });
+
+
+        // 3D Visualization: A Bomb that explodes
+        let scene, camera, renderer, bombGroup;
+        let particles = [];
+        let isExploded = false;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xff5555, 1);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            bombGroup = new THREE.Group();
+            scene.add(bombGroup);
+
+            // Shift right to balance UI layout
+            scene.position.x = 2;
+            scene.position.y = 2;
+
+            createBombBody();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function createBombBody() {
+            // Main sphere
+            const geo = new THREE.SphereGeometry(1.5, 32, 32);
+            const mat = new THREE.MeshPhongMaterial({ color: 0x222222, shininess: 80 });
+            const sphere = new THREE.Mesh(geo, mat);
+            bombGroup.add(sphere);
+
+            // Fuse cap
+            const capGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.5, 16);
+            const capMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
+            const cap = new THREE.Mesh(capGeo, capMat);
+            cap.position.y = 1.5;
+            bombGroup.add(cap);
+
+            // Fuse wire
+            const curve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 1.7, 0),
+                new THREE.Vector3(0.5, 2.2, 0),
+                new THREE.Vector3(1.2, 2.0, 0),
+                new THREE.Vector3(1.5, 2.5, 0)
+            ]);
+            const tubeGeo = new THREE.TubeGeometry(curve, 20, 0.05, 8, false);
+            const tubeMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
+            const fuse = new THREE.Mesh(tubeGeo, tubeMat);
+            bombGroup.add(fuse);
+            
+            // Spark (initially hidden)
+            const sparkGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+            const spark = new THREE.Mesh(sparkGeo, sparkMat);
+            spark.position.copy(curve.points[curve.points.length-1]);
+            spark.name = "spark";
+            bombGroup.add(spark);
+        }
+
+        window.detonateBomb = () => {
+            if(!bombGroup || isExploded) return;
+            isExploded = true;
+
+            // Flash screen
+            document.body.style.background = '#ff5555';
+            setTimeout(() => { document.body.style.background = ''; }, 100);
+
+            // Hide original bomb
+            bombGroup.visible = false;
+
+            // Create explosion particles out of nothing
+            const particleCount = 200;
+            const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            
+            for(let i=0; i<particleCount; i++) {
+                // Random hot colors
+                const colors = [0xff5555, 0xffaa00, 0xffffff, 0x333333];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const mat = new THREE.MeshPhongMaterial({ color: color });
+                const mesh = new THREE.Mesh(geo, mat);
+                
+                // Start exactly where bomb was
+                mesh.position.set(0,0,0);
+                
+                // Explode outward radially
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                
+                const speed = Math.random() * 0.5 + 0.1;
+                mesh.userData = {
+                    vx: Math.sin(phi) * Math.cos(theta) * speed,
+                    vy: Math.sin(phi) * Math.sin(theta) * speed,
+                    vz: Math.cos(phi) * speed,
+                    rotX: Math.random() * 0.2,
+                    rotY: Math.random() * 0.2,
+                    life: 1.0
+                };
+
+                scene.add(mesh); // add to scene directly to ignore bombGroup coords
+                particles.push({ mesh, group: null }); // group null means it's in scene attached to origin X:2 Y:2 approx 
+                
+                // Adjust position to match bombGroup visual origin
+                mesh.position.x = bombGroup.position.x + 2; // scene offset
+                mesh.position.y = bombGroup.position.y + 2; 
+            }
+        };
+
+        window.resetBomb = () => {
+             if(!bombGroup) return;
+             isExploded = false;
+             bombGroup.visible = true;
+
+             // Clean particles
+             particles.forEach(p => scene.remove(p.mesh));
+             particles = [];
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(bombGroup && !isExploded) {
+                // slow float and rotate
+                bombGroup.rotation.y += 0.01;
+                bombGroup.position.y = Math.sin(Date.now() * 0.002) * 0.1;
+
+                // Spark flicker
+                const spark = bombGroup.getObjectByName("spark");
+                if(spark) {
+                    spark.scale.setScalar(1 + Math.random() * 0.5);
+                    spark.material.color.setHex(Math.random() > 0.5 ? 0xffaa00 : 0xff2200);
+                }
+            }
+
+            if(isExploded) {
+                // Animate particles
+                particles.forEach((p, idx) => {
+                    const m = p.mesh;
+                    m.position.x += m.userData.vx;
+                    m.position.y += m.userData.vy;
+                    m.position.z += m.userData.vz;
+                    
+                    m.rotation.x += m.userData.rotX;
+                    m.rotation.y += m.userData.rotY;
+
+                    // gravity
+                    m.userData.vy -= 0.01;
+                    
+                    // shrink
+                    m.scale.setScalar(m.userData.life);
+                    m.userData.life -= 0.02;
+
+                    if(m.userData.life <= 0) {
+                        scene.remove(m);
+                        particles.splice(idx, 1);
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

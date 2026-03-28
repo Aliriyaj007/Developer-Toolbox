@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 23 - RSA Key Pair Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .rsa-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 2rem; }
+        @media (min-width: 900px) { .rsa-grid { grid-template-columns: 1fr 1fr; } }
+        .input-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .input-group label { font-weight: bold; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
+        .input-group select { font-family: var(--font-mono); font-size: 1.25rem; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text-primary); width: 100%; }
+        .input-group select:focus { outline: none; border-color: var(--primary-color); }
+        .key-box { padding: 1rem; background: rgba(var(--primary-color-rgb), 0.05); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: 0.85rem; height: 350px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin-bottom: 0.5rem; color: var(--text-primary); }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>23. RSA Key Pair Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel text-center mb-4">
+                <p class="text-secondary mb-4">Keys are generated locally in your browser. No data is sent to any server.</p>
+                <div class="input-group" style="max-width: 300px; margin: 0 auto;">
+                    <label for="bit-length">Key Size (bits)</label>
+                    <select id="bit-length">
+                        <option value="1024">1024 (Not recommended)</option>
+                        <option value="2048" selected>2048 (Standard Security)</option>
+                        <option value="4096">4096 (High Security)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary mt-4" id="generate-btn" style="padding: 0.75rem 2rem; font-size: 1.25rem;">Generate Keys</button>
+            </div>
+
+            <div class="rsa-grid">
+                <div class="glass-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3>Public Key</h3>
+                        <button class="btn" id="copy-public-btn" disabled>Copy</button>
+                    </div>
+                    <div class="key-box" id="public-key-out">Awaiting generation...</div>
+                </div>
+                <div class="glass-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3>Private Key</h3>
+                        <button class="btn" id="copy-private-btn" disabled>Copy</button>
+                    </div>
+                    <div class="key-box" id="private-key-out">Awaiting generation...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnGenerate = document.getElementById('generate-btn');
+            const bitLengthSelect = document.getElementById('bit-length');
+            const pubOut = document.getElementById('public-key-out');
+            const privOut = document.getElementById('private-key-out');
+            const copyPub = document.getElementById('copy-public-btn');
+            const copyPriv = document.getElementById('copy-private-btn');
+
+            let currentPub = '';
+            let currentPriv = '';
+
+            const ab2str = (buf) => String.fromCharCode.apply(null, new Uint8Array(buf));
+            
+            const spkiToPEM = (keydata) => {
+                const keydataB64 = window.btoa(ab2str(keydata));
+                const pem = keydataB64.match(/.{1,64}/g).join('\n');
+                return `-----BEGIN PUBLIC KEY-----\n${pem}\n-----END PUBLIC KEY-----`;
+            };
+
+            const pkcs8ToPEM = (keydata) => {
+                const keydataB64 = window.btoa(ab2str(keydata));
+                const pem = keydataB64.match(/.{1,64}/g).join('\n');
+                return `-----BEGIN PRIVATE KEY-----\n${pem}\n-----END PRIVATE KEY-----`;
+            };
+
+            btnGenerate.addEventListener('click', async () => {
+                const length = parseInt(bitLengthSelect.value, 10);
+                
+                btnGenerate.disabled = true;
+                btnGenerate.textContent = "Generating...";
+                pubOut.textContent = "Generating...";
+                privOut.textContent = "Generating...";
+                copyPub.disabled = true;
+                copyPriv.disabled = true;
+                
+                if(window.spinGears) window.spinGears(true);
+
+                try {
+                    const keyPair = await window.crypto.subtle.generateKey(
+                        {
+                            name: "RSASSA-PKCS1-v1_5",
+                            modulusLength: length,
+                            publicExponent: new Uint8Array([1, 0, 1]), // 65537
+                            hash: "SHA-256"
+                        },
+                        true,
+                        ["sign", "verify"]
+                    );
+
+                    const pubKeyData = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
+                    const privKeyData = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+
+                    currentPub = spkiToPEM(pubKeyData);
+                    currentPriv = pkcs8ToPEM(privKeyData);
+
+                    pubOut.textContent = currentPub;
+                    privOut.textContent = currentPriv;
+                    
+                    copyPub.disabled = false;
+                    copyPriv.disabled = false;
+                } catch (e) {
+                    pubOut.textContent = "Error generating key.";
+                    privOut.textContent = "Error generating key.";
+                    console.error(e);
+                } finally {
+                    btnGenerate.disabled = false;
+                    btnGenerate.textContent = "Generate Keys";
+                    if(window.spinGears) window.spinGears(false);
+                }
+            });
+
+            copyPub.addEventListener('click', () => {
+                navigator.clipboard.writeText(currentPub);
+                const og = copyPub.textContent;
+                copyPub.textContent = "Copied!";
+                setTimeout(() => copyPub.textContent = og, 1500);
+            });
+
+            copyPriv.addEventListener('click', () => {
+                navigator.clipboard.writeText(currentPriv);
+                const og = copyPriv.textContent;
+                copyPriv.textContent = "Copied!";
+                setTimeout(() => copyPriv.textContent = og, 1500);
+            });
+        });
+
+        // 3D Visualization: Interlocking Gears
+        let scene, camera, renderer;
+        let gear1, gear2;
+        let isSpinningFast = false;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(10, 10, 10);
+            scene.add(dirLight);
+
+            // Create gears
+            const gearGeo1 = createGearGeometry(2.5, 12);
+            const gearMat1 = new THREE.MeshPhongMaterial({ color: 0x3498db, shininess: 80 });
+            gear1 = new THREE.Mesh(gearGeo1, gearMat1);
+            
+            const gearGeo2 = createGearGeometry(2.0, 10);
+            const gearMat2 = new THREE.MeshPhongMaterial({ color: 0xe74c3c, shininess: 80 });
+            gear2 = new THREE.Mesh(gearGeo2, gearMat2);
+
+            // Position gears to interlock
+            gear1.position.set(-2, 2, 0);
+            gear2.position.set(2, -0.2, 0);
+            
+            // Adjust phase to interlock teeth perfectly
+            gear2.rotation.z = Math.PI / 10; // offset
+
+            scene.add(gear1);
+            scene.add(gear2);
+
+            // Shift everything to the right slightly so it doesn't block UI entirely
+            scene.position.x = 2;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function createGearGeometry(radius, teeth) {
+            const shape = new THREE.Shape();
+            const innerRadius = radius * 0.85;
+            const points = teeth * 2;
+            for(let i=0; i<points; i++) {
+                // Determine if it's the tip of a tooth or the valley
+                // Alternate between radius and innerRadius
+                // Make teeth slightly tapered by splitting points further
+                const r = (i % 2 === 0) ? radius : innerRadius;
+                const a = (i / points) * Math.PI * 2;
+                
+                // Add a bit of width to teeth
+                const aNext = ((i + 0.5) / points) * Math.PI * 2;
+                
+                if(i === 0) {
+                    shape.moveTo(Math.cos(a)*r, Math.sin(a)*r);
+                    shape.lineTo(Math.cos(aNext)*r, Math.sin(aNext)*r);
+                } else {
+                    shape.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+                    shape.lineTo(Math.cos(aNext)*r, Math.sin(aNext)*r);
+                }
+            }
+            shape.closePath();
+            
+            // center hole
+            const hole = new THREE.Path();
+            hole.arc(0, 0, radius * 0.25, 0, Math.PI * 2, false);
+            shape.holes.push(hole);
+
+            const extrudeSettings = { 
+                depth: 0.5, 
+                bevelEnabled: true, 
+                bevelSegments: 2, 
+                steps: 1, 
+                bevelSize: 0.05, 
+                bevelThickness: 0.05 
+            };
+            
+            const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geo.center(); // Center geometry correctly
+            return geo;
+        }
+
+        window.spinGears = (fast) => {
+            isSpinningFast = fast;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(gear1 && gear2) {
+                // Base speed vs fast speed
+                const speed = isSpinningFast ? 0.08 : 0.005;
+                
+                // Gear ratio based on teeth (12 vs 10 => ratio is 1.2)
+                gear1.rotation.z -= speed;
+                gear2.rotation.z += speed * 1.2;
+                
+                // Slow ambient tilts
+                gear1.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+                gear1.rotation.x = Math.cos(Date.now() * 0.001) * 0.2;
+                
+                gear2.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+                gear2.rotation.x = Math.cos(Date.now() * 0.001) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

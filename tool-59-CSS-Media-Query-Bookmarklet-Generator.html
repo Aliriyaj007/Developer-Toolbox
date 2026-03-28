@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 59 - CSS Media Query Bookmarklet Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: rgba(86, 182, 194, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .bookmarklet-box {
+            background: rgba(86, 182, 194, 0.1);
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .bookmark-link {
+            display: inline-block;
+            background: var(--primary-color);
+            color: #000;
+            padding: 0.8rem 1.5rem;
+            border-radius: 20px;
+            font-weight: bold;
+            text-decoration: none;
+            font-size: 1.1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            cursor: grab;
+        }
+
+        .bookmark-link:active {
+            cursor: grabbing;
+        }
+
+        .bookmark-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(86, 182, 194, 0.4);
+        }
+
+        .code-output {
+            background: var(--bg-main);
+            color: #7ee787;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            border: 1px solid var(--border-color);
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .preview-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-ruler {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid var(--primary-color);
+            background: rgba(86, 182, 194, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            color: var(--primary-color);
+            transition: width 0.3s ease;
+            height: 150px;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1100px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>59. CSS Media Query Bookmarklet Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <p style="color:var(--text-secondary); margin-top:0;">
+                    Generate a bookmarklet that injects a responsive testing overlay into any website. Drag the button
+                    to your bookmarks bar, then click it on any site to quickly resize the viewport.
+                </p>
+
+                <div class="split-view">
+
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <label>Default Presets Included</label>
+                            <div class="preset-grid">
+                                <div class="preset-btn" data-w="320">📱 Mobile S (320px)</div>
+                                <div class="preset-btn" data-w="375">📱 Mobile M (375px)</div>
+                                <div class="preset-btn" data-w="425">📱 Mobile L (425px)</div>
+                                <div class="preset-btn" data-w="768">💊 Tablet (768px)</div>
+                                <div class="preset-btn" data-w="1024">💻 Laptop (1024px)</div>
+                                <div class="preset-btn" data-w="1440">🖥️ Desktop (1440px)</div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Overlay Theme Mode</label>
+                            <select id="theme-mode"
+                                style="width:100%; padding:0.5rem; background:var(--bg-main); color:white; border:1px solid var(--border-color);">
+                                <option value="dark">Dark Mode Overlay</option>
+                                <option value="light">Light Mode Overlay</option>
+                            </select>
+                        </div>
+
+                        <div class="bookmarklet-box">
+                            <h3 style="margin-top:0; color:var(--text-primary);">Drag to Bookmarks Bar</h3>
+                            <a href="#" class="bookmark-link" id="bookmark-link"
+                                onclick="event.preventDefault(); alert('Drag this button to your browser bookmarks bar!');">
+                                📏 RWD Tester
+                            </a>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem;">
+                                Or right-click and "Copy Link Address"
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Visual / Code Output -->
+                    <div>
+                        <div class="preview-area">
+                            <div class="preview-ruler" id="ruler" style="width: 320px;">
+                                320px
+                            </div>
+                            <div
+                                style="position:absolute; bottom:10px; width:100%; text-align:center; color:var(--text-secondary); font-size:0.8rem;">
+                                Interactive Preview Width
+                            </div>
+                        </div>
+
+                        <h4 style="margin-bottom:0.5rem;">Raw JavaScript Code</h4>
+                        <div class="code-output" id="js-code">
+                            <!-- Code injected -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const btnPresets = document.querySelectorAll('.preset-btn');
+        const ruler = document.getElementById('ruler');
+        const bookmarkLink = document.getElementById('bookmark-link');
+        const jsCodeOutput = document.getElementById('js-code');
+        const themeMode = document.getElementById('theme-mode');
+
+        btnPresets.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                const w = parseInt(btn.dataset.w);
+                // Scale width down slightly for preview logic if > max width of box
+                const maxW = document.querySelector('.preview-area').clientWidth - 40;
+                let visW = w;
+                if (w > maxW) visW = maxW; // just cap visually
+
+                ruler.style.width = visW + 'px';
+                ruler.textContent = w + 'px';
+
+                // Trigger 3D ruler
+                if (window.update3DRuler) window.update3DRuler(w);
+            });
+        });
+
+        function generateBookmarklet() {
+            const isDark = themeMode.value === 'dark';
+            const bg = isDark ? '#1a1a24' : '#f0f0f0';
+            const fg = isDark ? '#ffffff' : '#333333';
+            const border = isDark ? '#56b6c2' : '#0055ff';
+
+            // Minified but readable injector code
+            const rawJs = `
+(function(){
+    var id = 'rwd-tester-overlay-v1';
+    var existing = document.getElementById(id);
+    if(existing){ existing.remove(); return; }
+
+    var container = document.createElement('div');
+    container.id = id;
+    container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:999999; background:rgba(0,0,0,0.8); display:flex; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(5px); font-family:sans-serif; transition:all 0.3s;';
+    
+    var toolbar = document.createElement('div');
+    toolbar.style.cssText = 'padding:10px; background:${bg}; border-radius:8px 8px 0 0; display:flex; gap:10px; align-items:center; color:${fg}; border:1px solid ${border}; border-bottom:none;';
+    
+    var title = document.createElement('span');
+    title.innerHTML = '<b>RWD Tester</b>';
+    title.style.marginRight = '15px';
+    toolbar.appendChild(title);
+
+    var sizes = [320, 375, 425, 768, 1024, 1440, '100%'];
+    var frame = document.createElement('iframe');
+    frame.src = window.location.href;
+    frame.style.cssText = 'width:100%; height:80vh; max-width:100%; background:#fff; border:2px solid ${border}; border-radius:0 0 8px 8px; box-shadow:0 10px 30px rgba(0,0,0,0.5); transition:width 0.3s;';
+
+    sizes.forEach(function(s){
+        var btn = document.createElement('button');
+        btn.innerText = s + (typeof s === 'number' ? 'px' : '');
+        btn.style.cssText = 'background:transparent; color:${fg}; border:1px solid #777; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px;';
+        btn.onclick = function(){
+            frame.style.width = typeof s === 'number' ? s + 'px' : s;
+        };
+        toolbar.appendChild(btn);
+    });
+
+    var closeBtn = document.createElement('button');
+    closeBtn.innerText = '✕ Close';
+    closeBtn.style.cssText = 'margin-left:auto; background:#ff5555; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px;';
+    closeBtn.onclick = function(){ container.remove(); };
+    toolbar.appendChild(closeBtn);
+
+    var wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.width = '100%';
+    wrapper.style.alignItems = 'center';
+
+    wrapper.appendChild(toolbar);
+    wrapper.appendChild(frame);
+    container.appendChild(wrapper);
+    document.body.appendChild(container);
+
+    // Initial size
+    frame.style.width = '375px';
+})();
+            `.trim();
+
+            const encoded = 'javascript:' + encodeURIComponent(rawJs);
+
+            // Set href
+            bookmarkLink.href = encoded;
+
+            // Show formatted preview
+            jsCodeOutput.textContent = rawJs;
+        }
+
+        themeMode.addEventListener('change', generateBookmarklet);
+
+        // Init
+        generateBookmarklet();
+
+        // 3D Visualization: A 3D Ruler stretching out
+        let scene, camera, renderer, rulerGroup, rulerMesh, textMesh;
+        const fontLoader = new THREE.FontLoader();
+        let loadedFont = null;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x56b6c2, 0.8);
+            dirLight.position.set(2, 5, 5);
+            scene.add(dirLight);
+
+            rulerGroup = new THREE.Group();
+            scene.add(rulerGroup);
+
+            // Shift up to balance
+            scene.position.y = 2;
+
+            // Base Ruler Body (Scale X will change)
+            const boxGeo = new THREE.BoxGeometry(1, 1, 0.2);
+            // Move origin to center for even scaling
+            const boxMat = new THREE.MeshPhongMaterial({ color: 0x222233 });
+            rulerMesh = new THREE.Mesh(boxGeo, boxMat);
+
+            // Add grid helper (tick marks)
+            const edges = new THREE.EdgesGeometry(boxGeo);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x56b6c2 });
+            const boxLines = new THREE.LineSegments(edges, lineMat);
+            rulerMesh.add(boxLines);
+
+            rulerGroup.add(rulerMesh);
+
+            // Initial data
+            rulerMesh.userData = { targetScaleX: 3.2 }; // mobile initial
+
+            fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                loadedFont = font;
+                update3DText("320PX");
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function update3DText(str) {
+            if (!loadedFont) return;
+            if (textMesh) {
+                rulerGroup.remove(textMesh);
+                textMesh.geometry.dispose();
+                textMesh.material.dispose();
+            }
+
+            const geo = new THREE.TextGeometry(str, {
+                font: loadedFont, size: 0.5, height: 0.1
+            });
+            geo.computeBoundingBox();
+            const w = geo.boundingBox.max.x - geo.boundingBox.min.x;
+            const h = geo.boundingBox.max.y - geo.boundingBox.min.y;
+            geo.translate(-w / 2, -h / 2, 0); // center
+
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+            textMesh = new THREE.Mesh(geo, mat);
+            textMesh.position.z = 0.2; // in front of ruler
+
+            rulerGroup.add(textMesh);
+        }
+
+        window.update3DRuler = (widthPx) => {
+            if (!rulerMesh) return;
+            // Map 320 -> 1440 to something like 3 -> 12 scale units
+            const scale = Math.max(2, (widthPx / 1440) * 12);
+            rulerMesh.userData.targetScaleX = scale;
+            update3DText(widthPx + "PX");
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (rulerGroup && rulerMesh) {
+                // Animate stretching
+                rulerMesh.scale.x += (rulerMesh.userData.targetScaleX - rulerMesh.scale.x) * 0.1;
+
+                // Tilt rotation
+                rulerGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+                rulerGroup.rotation.x = Math.sin(Date.now() * 0.0007) * 0.1;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+
+</html>

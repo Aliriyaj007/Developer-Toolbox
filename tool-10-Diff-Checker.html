@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 10 - Diff Checker - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+
+    <!-- CodeMirror for diffs -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/merge/merge.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/idea.min.css">
+
+    <style>
+        .diff-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            min-height: 400px;
+            /* initial height before merge view */
+        }
+
+        @media (min-width: 900px) {
+            .diff-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 100%;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        textarea {
+            flex: 1;
+            width: 100%;
+            height: 300px;
+            resize: vertical;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s;
+            line-height: 1.5;
+            white-space: pre;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.2);
+        }
+
+        .btn-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .options-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            justify-content: center;
+        }
+
+        /* Diff Viewer Container */
+        #diff-view-container {
+            margin-top: 2rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: none;
+            /* hidden until compare clicked */
+            height: 600px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .CodeMirror-merge {
+            border: none;
+            height: 100%;
+        }
+
+        .CodeMirror {
+            height: 100%;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        /* Theme overrides for CodeMirror Merge */
+        .theme-dark .CodeMirror-merge-copy {
+            color: var(--text-primary);
+        }
+
+        .theme-dark .CodeMirror-merge-l-inserted,
+        .theme-dark .CodeMirror-merge-r-inserted {
+            background-image: none;
+            background-color: rgba(51, 217, 178, 0.2);
+        }
+
+        .theme-dark .CodeMirror-merge-l-deleted,
+        .theme-dark .CodeMirror-merge-r-deleted {
+            background-image: none;
+            background-color: rgba(255, 82, 82, 0.2);
+        }
+
+        .theme-dark .CodeMirror-merge-l-chunk,
+        .theme-dark .CodeMirror-merge-r-chunk {
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-dark .CodeMirror-merge-pane-rightmost {
+            border-left: 1px solid var(--border-color);
+        }
+
+        /* 3D background container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .stats-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-weight: bold;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            margin: 0 0.5rem;
+        }
+
+        .stats-add {
+            background: rgba(51, 217, 178, 0.2);
+            color: #33d9b2;
+            border: 1px solid #33d9b2;
+        }
+
+        .stats-del {
+            background: rgba(255, 82, 82, 0.2);
+            color: #ff5252;
+            border: 1px solid #ff5252;
+        }
+
+        #diff-stats {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>10. Diff Checker</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Compare text, code, or configuration
+                        files to see what changed.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="input-section">
+                <div class="diff-grid">
+                    <!-- Original Panel -->
+                    <div class="glass-panel panel-container">
+                        <div class="panel-header">
+                            <h3>Original Text</h3>
+                            <div class="btn-controls">
+                                <button id="btn-clear-orig" class="btn">Clear</button>
+                                <button id="btn-paste-orig" class="btn">Paste</button>
+                            </div>
+                        </div>
+                        <textarea id="orig-input" placeholder="Paste the original text here..."></textarea>
+                    </div>
+
+                    <!-- Modified Panel -->
+                    <div class="glass-panel panel-container">
+                        <div class="panel-header">
+                            <h3>Modified Text</h3>
+                            <div class="btn-controls">
+                                <button id="btn-clear-mod" class="btn">Clear</button>
+                                <button id="btn-paste-mod" class="btn">Paste</button>
+                            </div>
+                        </div>
+                        <textarea id="mod-input" placeholder="Paste the modified text here..."></textarea>
+                    </div>
+                </div>
+
+                <div class="options-row">
+                    <button id="btn-compare" class="btn btn-primary"
+                        style="font-size: 1.1rem; padding: 0.8rem 2rem;">Compare Files</button>
+                </div>
+            </div>
+
+            <div id="diff-stats">
+                <span class="stats-badge stats-add"><span id="stat-add">0</span> Additions</span>
+                <span class="stats-badge stats-del"><span id="stat-del">0</span> Deletions</span>
+                <button id="btn-edit" class="btn" style="margin-left: 1rem;">Back to Edit</button>
+            </div>
+
+            <!-- CM Merge View mounts here -->
+            <div id="diff-view-container" class="glass-panel" style="padding:0;"></div>
+
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- CodeMirror dependencies for Diff -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/google-diff-match-patch/1.0.0/diff_match_patch.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/merge/merge.min.js"></script>
+
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Core Diff Logic ---
+        const origInput = document.getElementById('orig-input');
+        const modInput = document.getElementById('mod-input');
+        const btnCompare = document.getElementById('btn-compare');
+        const btnEdit = document.getElementById('btn-edit');
+        const inputSection = document.getElementById('input-section');
+        const diffStats = document.getElementById('diff-stats');
+        const diffViewContainer = document.getElementById('diff-view-container');
+        const statAdd = document.getElementById('stat-add');
+        const statDel = document.getElementById('stat-del');
+
+        let mergeViewInstance = null;
+
+        // Sync CM theme with App Theme
+        const getCmTheme = () => {
+            const isDark = document.body.classList.contains('theme-light') ? false : true;
+            return isDark ? 'monokai' : 'idea';
+        };
+
+        // Theme sync listener via MutationObserver on body
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class' && mergeViewInstance) {
+                    const theme = getCmTheme();
+                    mergeViewInstance.editor().setOption("theme", theme);
+                    mergeViewInstance.rightOriginal().setOption("theme", theme);
+                }
+            });
+        });
+        observer.observe(document.body, { attributes: true });
+
+        function calculateSimpleStats(text1, text2) {
+            const dmp = new diff_match_patch();
+            const diffs = dmp.diff_main(text1, text2);
+            dmp.diff_cleanupSemantic(diffs);
+
+            let added = 0;
+            let deleted = 0;
+
+            // Count lines approx
+            diffs.forEach(part => {
+                const lines = (part[1].match(/\n/g) || []).length + (part[1].length > 0 ? 1 : 0);
+                if (part[0] === 1) added += lines;
+                else if (part[0] === -1) deleted += lines;
+            });
+
+            return { added, deleted };
+        }
+
+        btnCompare.addEventListener('click', () => {
+            const orig = origInput.value;
+            const mod = modInput.value;
+
+            if (!orig && !mod) return;
+
+            // Hide inputs, show diff
+            inputSection.style.display = 'none';
+            diffViewContainer.style.display = 'block';
+            diffStats.style.display = 'block';
+
+            diffViewContainer.innerHTML = ''; // clear previous
+
+            mergeViewInstance = CodeMirror.MergeView(diffViewContainer, {
+                value: mod,
+                origRight: orig,
+                lineNumbers: true,
+                mode: "text/plain",
+                highlightDifferences: true,
+                connect: "align",
+                collapseIdentical: false,
+                theme: getCmTheme(),
+                revertButtons: false,
+                readOnly: true
+            });
+
+            // Stats
+            const stats = calculateSimpleStats(orig, mod);
+            statAdd.textContent = stats.added;
+            statDel.textContent = stats.deleted;
+
+            // Trigger 3D animation
+            if (window.triggerDiffAnim) window.triggerDiffAnim(stats.added, stats.deleted);
+        });
+
+        btnEdit.addEventListener('click', () => {
+            inputSection.style.display = 'block';
+            diffViewContainer.style.display = 'none';
+            diffStats.style.display = 'none';
+            if (mergeViewInstance) {
+                diffViewContainer.innerHTML = '';
+                mergeViewInstance = null;
+            }
+            if (window.triggerDiffAnim) window.triggerDiffAnim(0, 0, true); // reset
+        });
+
+        // Setup Buttons
+        const setupBtn = (id, targetInput) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.addEventListener('click', async () => {
+                if (id.includes('clear')) {
+                    targetInput.value = '';
+                } else if (id.includes('paste')) {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        targetInput.value = text;
+                    } catch (err) {
+                        console.error('Failed to read clipboard', err);
+                    }
+                }
+            });
+        };
+
+        setupBtn('btn-clear-orig', origInput);
+        setupBtn('btn-paste-orig', origInput);
+        setupBtn('btn-clear-mod', modInput);
+        setupBtn('btn-paste-mod', modInput);
+
+        // --- 3D Background Setup (Glowing Brick Walls) ---
+        let scene, camera, renderer, leftWall, rightWall;
+        let leftBricks = [];
+        let rightBricks = [];
+        const rows = 10;
+        const cols = 8;
+
+        // Colors corresponding to insertions/deletions
+        const colorAdd = new THREE.Color(0x33d9b2);
+        const colorDel = new THREE.Color(0xff5252);
+        const colorBase = new THREE.Color(0x333333);
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 25;
+            camera.position.y = 5;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(0, 10, 10);
+            scene.add(dirLight);
+
+            leftWall = new THREE.Group();
+            rightWall = new THREE.Group();
+
+            const brickGeo = new THREE.BoxGeometry(1.8, 0.8, 0.4);
+
+            // Build Left Wall (Original)
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const mat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
+                    const brick = new THREE.Mesh(brickGeo, mat);
+                    // Add slight random offset to simulate bricks
+                    const xOff = (r % 2 === 0) ? 0 : 0.9;
+                    brick.position.set((c * 2) - xOff, r, 0);
+                    // store original position
+                    brick.userData = { origPos: brick.position.clone(), isGlowing: false };
+                    leftWall.add(brick);
+                    leftBricks.push(brick);
+                }
+            }
+
+            // Build Right Wall (Modified)
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const mat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
+                    const brick = new THREE.Mesh(brickGeo, mat);
+                    const xOff = (r % 2 === 0) ? 0 : 0.9;
+                    brick.position.set((c * 2) - xOff, r, 0);
+                    brick.userData = { origPos: brick.position.clone(), isGlowing: false };
+                    rightWall.add(brick);
+                    rightBricks.push(brick);
+                }
+            }
+
+            // Position walls side by side, tilted like pages of a book
+            leftWall.position.set(-8, -4, 0);
+            leftWall.rotation.y = 0.3;
+
+            rightWall.position.set(2, -4, 0);
+            rightWall.rotation.y = -0.3;
+
+            scene.add(leftWall);
+            scene.add(rightWall);
+
+            // Animation logic based on diff stats
+            window.triggerDiffAnim = (adds, dels, reset = false) => {
+                // Reset all blocks
+                [...leftBricks, ...rightBricks].forEach(b => {
+                    gsap.to(b.material.color, { r: colorBase.r, g: colorBase.g, b: colorBase.b, duration: 0.5 });
+                    gsap.to(b.position, { z: b.userData.origPos.z, duration: 0.5 });
+                    b.material.emissive.setHex(0x000000);
+                    b.userData.isGlowing = false;
+                });
+
+                if (reset) return;
+
+                // Animate Left Wall (Deletions)
+                // Randomly select 'dels' number of blocks to turn red and push backward
+                const numDelBlocks = Math.min(dels, leftBricks.length);
+                const shuffledL = leftBricks.sort(() => 0.5 - Math.random());
+                for (let i = 0; i < numDelBlocks; i++) {
+                    const b = shuffledL[i];
+                    b.userData.isGlowing = true;
+
+                    gsap.to(b.material.color, { r: colorDel.r, g: colorDel.g, b: colorDel.b, duration: 1, delay: i * 0.05 });
+                    gsap.to(b.position, { z: -1, duration: 1, ease: "back.out(1.7)", delay: i * 0.05 });
+
+                    // Emissive
+                    setTimeout(() => { b.material.emissive.copy(colorDel).multiplyScalar(0.4); }, 1000 + (i * 50));
+                }
+
+                // Animate Right Wall (Additions)
+                // Randomly select 'adds' number of blocks to turn green and pull forward
+                const numAddBlocks = Math.min(adds, rightBricks.length);
+                const shuffledR = rightBricks.sort(() => 0.5 - Math.random());
+                for (let i = 0; i < numAddBlocks; i++) {
+                    const b = shuffledR[i];
+                    b.userData.isGlowing = true;
+
+                    gsap.to(b.material.color, { r: colorAdd.r, g: colorAdd.g, b: colorAdd.b, duration: 1, delay: i * 0.05 });
+                    gsap.to(b.position, { z: 1, duration: 1, ease: "back.out(1.7)", delay: i * 0.05 });
+
+                    // Emissive
+                    setTimeout(() => { b.material.emissive.copy(colorAdd).multiplyScalar(0.4); }, 1000 + (i * 50));
+                }
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Idle camera sway
+                camera.position.x = Math.sin(Date.now() * 0.0005) * 2;
+                camera.lookAt(0, 0, 0);
+
+                // Pulsate glowing bricks
+                const time = Date.now() * 0.005;
+                rightBricks.forEach(b => {
+                    if (b.userData.isGlowing) {
+                        b.material.emissiveIntensity = 0.4 + Math.sin(time + b.position.x) * 0.2;
+                    }
+                });
+                leftBricks.forEach(b => {
+                    if (b.userData.isGlowing) {
+                        b.material.emissiveIntensity = 0.4 + Math.sin(time + b.position.x) * 0.2;
+                    }
+                });
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                if (window.innerWidth < 900) {
+                    leftWall.position.set(-4, -8, -5);
+                    rightWall.position.set(-4, 2, -5);
+                } else {
+                    leftWall.position.set(-8, -4, 0);
+                    rightWall.position.set(2, -4, 0);
+                }
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

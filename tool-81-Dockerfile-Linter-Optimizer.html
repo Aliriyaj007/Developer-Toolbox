@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 81 - Dockerfile Linter Optimizer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        textarea.code-editor {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #e0e0e0;
+            resize: none;
+            outline: none;
+            min-height: 350px;
+        }
+
+        .issue-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .issue-item {
+            background: rgba(255,85,85,0.1);
+            border-left: 4px solid #ff5555;
+            padding: 0.8rem;
+            border-radius: 4px;
+        }
+        
+        .issue-item.warning {
+            background: rgba(255,177,66,0.1);
+            border-left-color: #ffb142;
+        }
+        
+        .issue-item.info {
+            background: rgba(52,172,224,0.1);
+            border-left-color: #34ace0;
+        }
+
+        .issue-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #fff;
+            margin-bottom: 0.2rem;
+        }
+
+        .issue-desc {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+
+        .layer-viz {
+            display: flex;
+            flex-direction: column-reverse; /* Bottom up */
+            gap: 2px;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #333;
+            border-radius: 4px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .layer-box {
+            padding: 0.5rem;
+            background: #222;
+            border: 1px solid #444;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #aaa;
+            border-left: 4px solid #33d9b2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1300px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>81. Dockerfile Linter Optimizer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <div class="header-actions">
+                        <h3>Original Dockerfile</h3>
+                        <button class="btn btn-sm" id="btn-lint">Lint & Optimize</button>
+                    </div>
+                    
+                    <textarea id="dock-input" class="code-editor" spellcheck="false">FROM node:latest
+WORKDIR /app
+ADD package.json .
+RUN npm install
+ADD . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]</textarea>
+                    
+                    <div>
+                        <h4 style="margin-bottom:0.8rem;">Layer Visualisation</h4>
+                        <div class="layer-viz" id="layer-viz">
+                            <!-- Visual layers injected here -->
+                        </div>
+                        <div style="font-size: 0.75rem; color:#888; margin-top:0.5rem; text-align:center;">
+                            Number of layers: <span id="layer-count">8</span> (fewer layers = smaller image size)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="panel">
+                    <div class="header-actions">
+                        <h3>Optimized Version</h3>
+                        <button class="btn btn-sm" id="btn-copy">Copy</button>
+                    </div>
+                    
+                    <textarea id="dock-output" class="code-editor" readonly></textarea>
+                    
+                    <div style="margin-top:0.5rem;">
+                        <h4 style="margin-bottom:0.8rem;">Issue Matrix</h4>
+                        <ul class="issue-list" id="issue-list">
+                            <li class="issue-item info">
+                                <div class="issue-title">Ready to lint</div>
+                                <div class="issue-desc">Click 'Lint & Optimize' to analyze your Dockerfile.</div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const inpDock = document.getElementById('dock-input');
+        const outDock = document.getElementById('dock-output');
+        const issueList = document.getElementById('issue-list');
+        const layerViz = document.getElementById('layer-viz');
+        const layerCount = document.getElementById('layer-count');
+        const btnLint = document.getElementById('btn-lint');
+        const btnCopy = document.getElementById('btn-copy');
+
+        function analyzeDockerfile() {
+            const raw = inpDock.value;
+            const lines = raw.split('\n');
+            let optimizedLines = [];
+            let issues = [];
+            let layers = [];
+            
+            // Linter state
+            let currentRunBlock = [];
+            
+            // regexes
+            const regexFromLatest = /^FROM\s+([^:]+)(:latest)?(\s+AS\s+.*)?$/i;
+            const regexAdd = /^ADD\s+(.*)$/i;
+            const regexRun = /^RUN\s+(.*)$/i;
+
+            // First pass: extract layers for visualization
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Track layers that add size: RUN, COPY, ADD
+                if (line.match(/^(FROM|COPY|ADD|RUN)/i)) {
+                    layers.push(line);
+                }
+
+                if (!line || line.startsWith('#')) {
+                    optimizedLines.push(lines[i]); // Keep comments and empty lines
+                    continue;
+                }
+
+                // 1. FROM :latest warning
+                let matchFrom = line.match(regexFromLatest);
+                if (matchFrom && (matchFrom[2] === ':latest' || !matchFrom[2])) {
+                    issues.push({
+                        type: 'warning',
+                        title: 'Use specific image tags',
+                        desc: `Line ${i+1}: Using ':latest' is unpredictable. Use a specific version tag (e.g., node:18-alpine).`
+                    });
+                    // Optimization: add -alpine tag as suggestion
+                    let base = matchFrom[1];
+                    let asPart = matchFrom[3] || '';
+                    optimizedLines.push(`FROM ${base}:alpine${asPart} # [Optimized] Added alpine tag`);
+                    continue;
+                }
+
+                // 2. ADD vs COPY
+                let matchAdd = line.match(regexAdd);
+                if (matchAdd && !matchAdd[1].includes('http') && !matchAdd[1].endsWith('.tar.gz')) {
+                    issues.push({
+                        type: 'error',
+                        title: 'Prefer COPY over ADD',
+                        desc: `Line ${i+1}: ADD is used but COPY is preferred for local files since it's more transparent.`
+                    });
+                    optimizedLines.push(`COPY ${matchAdd[1]}`);
+                    continue;
+                }
+
+                // 3. Collect RUN commands to chain them
+                let matchRun = line.match(regexRun);
+                if (matchRun && !line.endsWith('\\')) {
+                    currentRunBlock.push(matchRun[1]);
+                    // Don't push immediately, we might chain
+                    
+                    // Lookahead: is the next line also a RUN command? 
+                    // To be safe, we only chain if they are adjacent
+                    let nextIsRun = false;
+                    for(let j = i+1; j < lines.length; j++){
+                        if(lines[j].trim() === '') continue;
+                        if(lines[j].trim().startsWith('RUN')) nextIsRun = true;
+                        break;
+                    }
+                    
+                    if (!nextIsRun) {
+                        // Flush the chain
+                        if (currentRunBlock.length > 1) {
+                            issues.push({
+                                type: 'info',
+                                title: 'Chained RUN commands',
+                                desc: `Combined multiple RUN commands into a single layer to reduce image size.`
+                            });
+                            optimizedLines.push(`RUN ${currentRunBlock.join(' && \\ \n    ')}`);
+                        } else {
+                            optimizedLines.push(`RUN ${currentRunBlock[0]}`);
+                        }
+                        
+                        // Check for apt-get clean if apt-get update is present
+                        const runCode = currentRunBlock.join(' ');
+                        if (runCode.includes('apt-get update') && !runCode.includes('rm -rf /var/lib/apt/lists')) {
+                            issues.push({
+                                type: 'warning',
+                                title: 'Clean up package caches',
+                                desc: `Found apt-get update but no cleanup. Added cleanup to reduce layer size.`
+                            });
+                            
+                            // Append cleanup to the last optimized RUN line
+                            let lastRun = optimizedLines.pop();
+                            optimizedLines.push(lastRun + ' && \\ \n    rm -rf /var/lib/apt/lists/*');
+                        }
+                        
+                        currentRunBlock = [];
+                    }
+                    continue;
+                }
+
+                // Default: just copy the line
+                optimizedLines.push(lines[i]);
+            }
+
+            // Render output
+            outDock.value = optimizedLines.join('\n');
+            
+            // Render layers visual
+            layerCount.textContent = layers.length;
+            layerViz.innerHTML = layers.map(l => `<div class="layer-box">${l}</div>`).join('');
+            
+            // Render issues
+            if (issues.length === 0) {
+                issueList.innerHTML = `
+                    <li class="issue-item info">
+                        <div class="issue-title">All Good!</div>
+                        <div class="issue-desc">No obvious optimizations found.</div>
+                    </li>`;
+            } else {
+                issueList.innerHTML = issues.map(iss => `
+                    <li class="issue-item ${iss.type}">
+                        <div class="issue-title">${iss.title}</div>
+                        <div class="issue-desc">${iss.desc}</div>
+                    </li>
+                `).join('');
+            }
+            
+            // Trigger 3D compression
+            triggerCompression(layers.length, optimizedLines.filter(l => l.match(/^(FROM|COPY|ADD|RUN)/i)).length);
+        }
+
+        btnLint.addEventListener('click', analyzeDockerfile);
+
+        btnCopy.addEventListener('click', () => {
+            navigator.clipboard.writeText(outDock.value);
+            btnCopy.textContent = 'Copied!';
+            setTimeout(() => { btnCopy.textContent = 'Copy'; }, 2000);
+        });
+
+        // 3D Scene: Stack of layers simulating compression
+        let scene, camera, renderer, stackGrp;
+        let layerMeshes = [];
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 25;
+            camera.position.x = 10;
+            camera.position.y = 8;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            stackGrp = new THREE.Group();
+            scene.add(stackGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(-5, 10, 5);
+            scene.add(dirLight);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Initial visual (default 8 layers)
+            buildStack(8);
+
+            animate3D();
+        }
+
+        function buildStack(count) {
+            // clear
+            while(stackGrp.children.length > 0){ 
+                stackGrp.remove(stackGrp.children[0]); 
+            }
+            layerMeshes = [];
+
+            const matArr = [
+                new THREE.MeshPhongMaterial({ color: 0x34ace0, transparent: true, opacity: 0.8 }),
+                new THREE.MeshPhongMaterial({ color: 0x7ee787, transparent: true, opacity: 0.8 }),
+                new THREE.MeshPhongMaterial({ color: 0xffb142, transparent: true, opacity: 0.8 }),
+                new THREE.MeshPhongMaterial({ color: 0xff5555, transparent: true, opacity: 0.8 })
+            ];
+
+            const gap = 1.0;
+            const startY = -(count * gap) / 2;
+
+            for(let i=0; i<count; i++) {
+                const mat = matArr[i % matArr.length];
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, 8), mat);
+                
+                // Start position
+                mesh.position.y = startY + (i * gap);
+                
+                // Store target Y for compression animation
+                mesh.userData = {
+                    originalY: mesh.position.y,
+                    targetY: mesh.position.y
+                };
+                
+                stackGrp.add(mesh);
+                layerMeshes.push(mesh);
+            }
+        }
+
+        let isCompressed = false;
+
+        function triggerCompression(originalCount, optimizedCount) {
+            // Rebuild stack to original count
+            buildStack(originalCount);
+            
+            // Wait a beat, then compress down to optimized count visual
+            setTimeout(() => {
+                // Calculate new compact positions
+                const ratio = optimizedCount / Math.max(1, originalCount);
+                const newGap = 1.0 * ratio; // tighter gap
+                const startY = -(layerMeshes.length * newGap) / 2;
+
+                layerMeshes.forEach((mesh, i) => {
+                    mesh.userData.targetY = startY + (i * newGap);
+                    // Also make them slightly smaller to simulate pruning
+                    mesh.scale.x = 0.9;
+                    mesh.scale.z = 0.9;
+                });
+                isCompressed = true;
+            }, 500);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            stackGrp.rotation.y += 0.005;
+
+            // lerp positions
+            layerMeshes.forEach(mesh => {
+                mesh.position.y += (mesh.userData.targetY - mesh.position.y) * 0.1;
+                
+                // Pulse slightly when not compressed
+                if (!isCompressed) {
+                    mesh.scale.x = 1.0 + Math.sin(Date.now()*0.002 + mesh.position.y)*0.02;
+                    mesh.scale.z = 1.0 + Math.sin(Date.now()*0.002 + mesh.position.y)*0.02;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            analyzeDockerfile(); // initial run
+            
+            // Reset compression state on input
+            inpDock.addEventListener('input', () => {
+                isCompressed = false;
+                layerMeshes.forEach(m => {
+                    m.userData.targetY = m.userData.originalY;
+                    m.scale.set(1,1,1);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

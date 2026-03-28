@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 86 - Sass SCSS to CSS Playground - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        @media (min-width: 1200px) {
+            .split-view { grid-template-columns: 1fr 1fr 300px; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .code-input {
+            width: 100%;
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #ccc;
+            resize: none;
+            outline: none;
+            min-height: 400px;
+        }
+
+        .code-input.scss { color: #ffb142; }
+        .code-input.css { color: #7ee787; }
+
+        .code-input:focus { border-color: #56b6c2; }
+        
+        .preview-box {
+            background: #fff;
+            color: #000;
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            flex: 1;
+            border: 1px solid #aaa;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .var-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .var-item {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.05);
+            padding: 0.5rem 0.8rem;
+            border-radius: 3px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+        .var-name { color: #56b6c2; font-weight: bold; }
+        .var-val { color: #aaa; }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+
+        /* Demo HTML injected into preview */
+        #demo-content {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1500px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>86. Sass SCSS to CSS Playground</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- SCSS Input -->
+                <div class="panel">
+                    <h3>SCSS Editor</h3>
+                    <p style="font-size:0.8rem; color:#aaa; margin-top:-0.5rem;">Variables ($var: val) and simple nesting are supported in this demo parser.</p>
+                    <textarea id="scss-input" class="code-input scss" spellcheck="false">$primary-color: #56b6c2;
+$bg-color: #1e1e1e;
+$padding: 20px;
+
+.card {
+  background-color: $bg-color;
+  padding: $padding;
+  border-radius: 8px;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+
+  h2 {
+    color: $primary-color;
+    margin-top: 0;
+  }
+
+  p {
+    line-height: 1.5;
+    color: #ccc;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 10px 15px;
+    background: $primary-color;
+    color: #000;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    
+    &:hover {
+      background: #ffb142;
+    }
+  }
+}</textarea>
+                </div>
+
+                <!-- CSS Output -->
+                <div class="panel">
+                    <h3>Compiled CSS</h3>
+                    <p style="font-size:0.8rem; color:#aaa; margin-top:-0.5rem;">Vanilla CSS output.</p>
+                    <textarea id="css-output" class="code-input css" readonly></textarea>
+                </div>
+
+                <!-- Preview & Variables -->
+                <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                    
+                    <div class="panel" style="flex:1;">
+                        <h3>Visual Preview</h3>
+                        <div class="preview-box">
+                            <iframe id="demo-frame" style="width:100%; height:100%; border:none;"></iframe>
+                        </div>
+                    </div>
+
+                    <div class="panel" style="max-height: 250px;">
+                        <h3>Detected Variables</h3>
+                        <div style="overflow-y:auto;">
+                            <ul class="var-list" id="var-list">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const scssInput = document.getElementById('scss-input');
+        const cssOutput = document.getElementById('css-output');
+        const varList = document.getElementById('var-list');
+        const demoFrame = document.getElementById('demo-frame');
+
+        const demoHTML = `
+            <div class="card">
+                <h2>Hello SCSS</h2>
+                <p>This is a live preview of your compiled SCSS. Update the editor and see changes instantly.</p>
+                <a href="#" class="btn">Click Me</a>
+            </div>
+        `;
+
+        // Very basic client-side SCSS to CSS simulated parser.
+        // Handles: 
+        // 1. $var replacement
+        // 2. 1-level basic nesting (parent { child {} })
+        // 3. &:hover pseudo selectors
+        
+        function compileSCSS(scssStr) {
+            let css = '';
+            let vars = {};
+
+            // 1. Extract variables
+            const varRegex = /\$([\w-]+)\s*:\s*([^;]+);/g;
+            let match;
+            while ((match = varRegex.exec(scssStr)) !== null) {
+                vars['$' + match[1]] = match[2].trim();
+            }
+
+            // Clean string of variable declarations
+            scssStr = scssStr.replace(varRegex, '').trim();
+
+            // 2. Replace variables in usages
+            for (let v in vars) {
+                // escape $ for regex
+                const safeV = v.replace('$', '\\$');
+                const replaceRegex = new RegExp(safeV + '\\b', 'g');
+                scssStr = scssStr.replace(replaceRegex, vars[v]);
+            }
+
+            // 3. Parse Nesting (Naive Block Parsing)
+            let blocks = [];
+            let currentBlock = '';
+            let depth = 0;
+            
+            // Clean up comments and standardise braces
+            scssStr = scssStr.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+            
+            // We will do a regex approach for parent { props; child { props; } }
+            // This is super naive and limited to 1 level for demo.
+            
+            let finalCssRules = [];
+
+            // Match top-level blocks: .selector { content }
+            let topRegex = /([^{]+)\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g;
+            let topMatch;
+
+            while ((topMatch = topRegex.exec(scssStr)) !== null) {
+                let parentSelector = topMatch[1].trim();
+                let content = topMatch[2].trim();
+
+                // separate direct props and nested blocks inside content
+                let nestedRegex = /([^{]+)\{([^}]*)\}/g;
+                let nestedMatch;
+                let directProps = content;
+
+                let nestedRules = [];
+
+                while ((nestedMatch = nestedRegex.exec(content)) !== null) {
+                    let childSelector = nestedMatch[1].trim();
+                    let childContent = nestedMatch[2].trim();
+                    
+                    // Remove nested block from directProps
+                    directProps = directProps.replace(nestedMatch[0], '');
+                    
+                    // Handle & parent reference
+                    let fullSelector = '';
+                    if (childSelector.includes('&')) {
+                        fullSelector = childSelector.replace(/&/g, parentSelector);
+                    } else {
+                        // Cartesian product of selectors (e.g., .a, .b { .c, .d {} })
+                        let parents = parentSelector.split(',').map(s=>s.trim());
+                        let children = childSelector.split(',').map(s=>s.trim());
+                        let combos = [];
+                        parents.forEach(p => {
+                            children.forEach(c => combos.push(`${p} ${c}`));
+                        });
+                        fullSelector = combos.join(', ');
+                    }
+
+                    nestedRules.push(`${fullSelector} {\n  ${childContent.trim().replace(/;/g, ';\n  ')}\n}`);
+                }
+
+                // Add parent rule if it has direct props
+                if (directProps.trim()) {
+                    finalCssRules.push(`${parentSelector} {\n  ${directProps.trim().replace(/;/g, ';\n  ')}\n}`);
+                }
+
+                // Add nested rules
+                finalCssRules.push(...nestedRules);
+            }
+
+            // Clean up any weird double spaces or empty lines
+            css = finalCssRules.join('\n\n').replace(/\n\s*\n/g, '\n');
+
+            // Render Variables
+            renderVars(vars);
+            
+            return css;
+        }
+
+        function renderVars(vars) {
+            if(Object.keys(vars).length === 0) {
+                varList.innerHTML = `<li style="color:#666; text-align:center;">No variables found</li>`;
+                return;
+            }
+            varList.innerHTML = Object.entries(vars).map(([k,v]) => `
+                <li class="var-item">
+                    <span class="var-name">${k}</span>
+                    <span class="var-val">${v}</span>
+                </li>
+            `).join('');
+        }
+
+        function updatePreview(cssCode) {
+            const doc = demoFrame.contentDocument || demoFrame.contentWindow.document;
+            doc.open();
+            doc.write(`
+                <html>
+                <head>
+                    <style>
+                        body { font-family: sans-serif; background: #e0e0e0; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+                        ${cssCode}
+                    </style>
+                </head>
+                <body>
+                    ${demoHTML}
+                </body>
+                </html>
+            `);
+            doc.close();
+        }
+
+        function runCompiler() {
+            try {
+                const scssCode = scssInput.value;
+                const cssCode = compileSCSS(scssCode);
+                cssOutput.value = cssCode;
+                updatePreview(cssCode);
+                
+                // Trigger 3D factory animation
+                triggerFactoryFlow();
+            } catch(e) {
+                cssOutput.value = "/* Parser Error */\n" + e.message;
+            }
+        }
+
+        scssInput.addEventListener('input', runCompiler);
+
+        // 3D Scene setup: "A factory where Sass goes in and CSS comes out."
+        let scene, camera, renderer, factoryGrp;
+        let particles = [];
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 25;
+            camera.position.y = 10;
+            camera.position.x = 0;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            factoryGrp = new THREE.Group();
+            scene.add(factoryGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            // Factory Machine
+            const boxMat = new THREE.MeshPhongMaterial({ color: 0x333333, flatShading: true });
+            const p1 = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), boxMat);
+            const p2 = new THREE.Mesh(new THREE.CylinderGeometry(1, 2, 4, 8), boxMat);
+            p2.position.y = 4;
+            factoryGrp.add(p1);
+            factoryGrp.add(p2);
+            
+            // Input funnel (left)
+            const funnel1Geo = new THREE.CylinderGeometry(2, 0.5, 3, 8);
+            funnel1Geo.rotateZ(-Math.PI/2);
+            const funnelIn = new THREE.Mesh(funnel1Geo, new THREE.MeshPhongMaterial({color: 0xffb142}));
+            funnelIn.position.set(-4, 0, 0);
+            factoryGrp.add(funnelIn);
+
+            // Output pipe (right)
+            const pipeGeo = new THREE.CylinderGeometry(0.5, 0.5, 4, 8);
+            pipeGeo.rotateZ(Math.PI/2);
+            const pipeOut = new THREE.Mesh(pipeGeo, new THREE.MeshPhongMaterial({color: 0x7ee787}));
+            pipeOut.position.set(4, -1, 0);
+            factoryGrp.add(pipeOut);
+
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate3D();
+            
+            // initial run
+            runCompiler();
+        }
+
+        function triggerFactoryFlow() {
+            // Spawn 3 SCSS particles (orange sphere) entering left
+            for(let i=0; i<3; i++) {
+                setTimeout(() => spawnParticle(true), i * 300);
+            }
+            
+            // Delay, then spawn CSS blocks (green cubes) exiting right
+            setTimeout(() => {
+                for(let i=0; i<3; i++) {
+                    setTimeout(() => spawnParticle(false), i * 300);
+                }
+            }, 800);
+        }
+
+        function spawnParticle(isInput) {
+            let mesh;
+            if (isInput) {
+                mesh = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.4, 8, 8),
+                    new THREE.MeshPhongMaterial({ color: 0xffb142, emissive: 0x552200 })
+                );
+                mesh.position.set(-10, 0, 0);
+                mesh.userData = { targetX: -2, speed: 0.1, type: 'in' };
+            } else {
+                mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.8, 0.8, 0.8),
+                    new THREE.MeshPhongMaterial({ color: 0x7ee787, emissive: 0x003300 })
+                );
+                mesh.position.set(2, -1, 0);
+                mesh.userData = { targetX: 10, speed: 0.1, type: 'out' };
+            }
+            scene.add(mesh);
+            particles.push(mesh);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            factoryGrp.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
+
+            // Animate particles
+            for(let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.position.x += p.userData.speed * (p.userData.type === 'in' ? 1 : 1);
+                
+                if (p.userData.type === 'in') {
+                    p.rotation.z -= 0.1;
+                    if (p.position.x > p.userData.targetX) {
+                        scene.remove(p);
+                        particles.splice(i, 1);
+                        // factory hop
+                        factoryGrp.scale.set(1.1, 0.9, 1.1);
+                        setTimeout(() => factoryGrp.scale.set(1,1,1), 100);
+                    }
+                } else {
+                    p.rotation.x += 0.05;
+                    p.rotation.y += 0.05;
+                    p.position.y += Math.sin(p.position.x*2) * 0.05; // bouncy exit
+                    if (p.position.x > p.userData.targetX) {
+                        scene.remove(p);
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+        });
+    </script>
+</body>
+</html>

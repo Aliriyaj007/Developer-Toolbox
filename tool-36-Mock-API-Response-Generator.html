@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 36 - Mock API Response Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 450px 1fr; }
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .schema-builder {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            min-height: 400px;
+        }
+
+        .schema-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            align-items: center;
+        }
+
+        .schema-row input[type="text"] {
+            flex: 1;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        .schema-row select {
+            flex: 1;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+        }
+
+        .btn-icon {
+            background: rgba(255, 85, 85, 0.1);
+            color: #ff5555;
+            border: 1px solid #ff5555;
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-icon:hover {
+            background: #ff5555;
+            color: white;
+        }
+
+        textarea {
+            width: 100%;
+            height: 450px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .controls input[type="number"] {
+            width: 80px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem;
+            border-radius: var(--radius-sm);
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>36. Mock API Response Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="controls">
+                    <label style="font-weight: bold; color: var(--text-secondary);">Array Length:</label>
+                    <input type="number" id="array-length" value="5" min="1" max="100">
+                    <button class="btn btn-primary" id="generate-btn">Generate Data</button>
+                    <button class="btn" id="add-field-btn">+ Add Field</button>
+                </div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Schema Editor</label>
+                        </div>
+                        <div class="schema-builder" id="schema-builder">
+                            <!-- Schema rows injected here -->
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Mock Preview (JSON)</label>
+                            <button class="btn btn-sm btn-primary" id="copy-btn">Copy JSON</button>
+                        </div>
+                        <textarea id="json-output" readonly placeholder="Generated JSON will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Custom Faker Implementation
+        const faker = {
+            id: () => Math.random().toString(36).substring(2, 10),
+            uuid: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            }),
+            name: () => {
+                const first = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
+                const last = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+                return `${first[Math.floor(Math.random()*first.length)]} ${last[Math.floor(Math.random()*last.length)]}`;
+            },
+            email: () => {
+                const domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'example.com'];
+                const n = faker.name().replace(' ', '.').toLowerCase();
+                return `${n}@${domains[Math.floor(Math.random()*domains.length)]}`;
+            },
+            phone: () => `+1-${Math.floor(200+Math.random()*800)}-${Math.floor(200+Math.random()*800)}-${Math.floor(1000+Math.random()*9000)}`,
+            date: () => {
+                const start = new Date(2020, 0, 1);
+                const end = new Date();
+                return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime())).toISOString();
+            },
+            boolean: () => Math.random() > 0.5,
+            number: () => Math.floor(Math.random() * 1000),
+            price: () => (Math.random() * 1000).toFixed(2),
+            lorem: () => {
+                const words = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"];
+                let sentence = "";
+                for(let i=0; i<8; i++) sentence += words[Math.floor(Math.random()*words.length)] + " ";
+                return sentence.trim() + ".";
+            },
+            avatar: () => `https://i.pravatar.cc/150?u=${faker.id()}`
+        };
+
+        const fieldTypes = [
+            { id: 'id', label: 'ID (Short String)' },
+            { id: 'uuid', label: 'UUID' },
+            { id: 'name', label: 'Full Name' },
+            { id: 'email', label: 'Email Address' },
+            { id: 'phone', label: 'Phone Number' },
+            { id: 'date', label: 'Date (ISO 8601)' },
+            { id: 'boolean', label: 'Boolean (true/false)' },
+            { id: 'number', label: 'Random Number (0-1000)' },
+            { id: 'price', label: 'Price (Decimal)' },
+            { id: 'lorem', label: 'Lorem Sentence' },
+            { id: 'avatar', label: 'Avatar URL' }
+        ];
+
+        const schemaBuilder = document.getElementById('schema-builder');
+        const jsonOutput = document.getElementById('json-output');
+        const generateBtn = document.getElementById('generate-btn');
+        const addFieldBtn = document.getElementById('add-field-btn');
+        const arrayLength = document.getElementById('array-length');
+        const copyBtn = document.getElementById('copy-btn');
+
+        let schemaRows = [];
+
+        const createRow = (defaultKey = '', defaultType = 'name') => {
+            const row = document.createElement('div');
+            row.className = 'schema-row';
+
+            const keyInput = document.createElement('input');
+            keyInput.type = 'text';
+            keyInput.placeholder = 'Field Name (e.g. userId)';
+            keyInput.value = defaultKey;
+
+            const typeSelect = document.createElement('select');
+            fieldTypes.forEach(ft => {
+                const opt = document.createElement('option');
+                opt.value = ft.id;
+                opt.textContent = ft.label;
+                if(ft.id === defaultType) opt.selected = true;
+                typeSelect.appendChild(opt);
+            });
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-icon';
+            delBtn.innerHTML = '×';
+            delBtn.title = "Remove Field";
+            delBtn.onclick = () => {
+                schemaBuilder.removeChild(row);
+                schemaRows = schemaRows.filter(r => r !== rowObj);
+                generateData();
+            };
+
+            row.appendChild(keyInput);
+            row.appendChild(typeSelect);
+            row.appendChild(delBtn);
+
+            const rowObj = { keyInput, typeSelect, row };
+            schemaRows.push(rowObj);
+            schemaBuilder.appendChild(row);
+
+            keyInput.addEventListener('input', generateData);
+            typeSelect.addEventListener('change', generateData);
+        };
+
+        const generateData = () => {
+            const count = parseInt(arrayLength.value) || 5;
+            const data = [];
+
+            // Extract schema
+            const schema = [];
+            schemaRows.forEach(r => {
+                const k = r.keyInput.value.trim();
+                const t = r.typeSelect.value;
+                if(k) schema.push({ key: k, type: t });
+            });
+
+            if(schema.length === 0) {
+                jsonOutput.value = "[\n  // Add fields to generate data\n]";
+                if(window.update3DChart) window.update3DChart([]);
+                return;
+            }
+
+            for(let i=0; i<count; i++) {
+                const obj = {};
+                schema.forEach(field => {
+                    if(faker[field.type]) {
+                        obj[field.key] = field.type === 'number' || field.type === 'boolean' || field.type === 'price' 
+                            ? (field.type === 'price' ? parseFloat(faker[field.type]()) : faker[field.type]()) 
+                            : faker[field.type]();
+                    }
+                });
+                data.push(obj);
+            }
+
+            jsonOutput.value = JSON.stringify(data, null, 2);
+
+            // Update 3D visualization
+            if(window.update3DChart) {
+                // Determine heights based on a random number or numeric field if present
+                const heights = data.map(d => {
+                    // Try to find a numeric value
+                    const numKey = Object.keys(d).find(k => typeof d[k] === 'number');
+                    if(numKey) return d[numKey] / 1000; // normalize 0-1
+                    return 0.1 + Math.random() * 0.9;
+                });
+                window.update3DChart(heights);
+            }
+        };
+
+        addFieldBtn.addEventListener('click', () => {
+            createRow();
+            generateData();
+        });
+        generateBtn.addEventListener('click', generateData);
+        arrayLength.addEventListener('change', generateData);
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(jsonOutput.value);
+            const og = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => copyBtn.textContent = og, 1500);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Default Schema
+            createRow('id', 'uuid');
+            createRow('fullName', 'name');
+            createRow('email', 'email');
+            createRow('score', 'number');
+            generateData();
+        });
+
+
+        // 3D Visualization: A 3D bar chart that populates with mock data
+        let scene, camera, renderer, chartGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(-8, 6, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            chartGroup = new THREE.Group();
+            scene.add(chartGroup);
+
+            // Base plane
+            const baseGeo = new THREE.BoxGeometry(10, 0.2, 3);
+            const baseMat = new THREE.MeshPhongMaterial({ color: 0x334455 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            chartGroup.add(base);
+
+            chartGroup.position.set(3, -2, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        let bars = [];
+        const barColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff, 0x44ffff];
+
+        window.update3DChart = (heights) => {
+            if(!chartGroup) return;
+
+            // Remove old bars
+            bars.forEach(b => chartGroup.remove(b.mesh));
+            bars = [];
+
+            if(heights.length === 0) return;
+
+            const maxBars = Math.min(heights.length, 20); // Limit to 20 visually
+            const totalWidth = 8;
+            const spacing = totalWidth / maxBars;
+            const startX = -(totalWidth / 2) + (spacing / 2);
+
+            for(let i=0; i<maxBars; i++) {
+                const targetH = Math.max(0.2, heights[i] * 5); // scale to max 5 height
+                const geo = new THREE.BoxGeometry(spacing * 0.8, 1, 1);
+                // Shift geometry so pivot is at bottom
+                geo.translate(0, 0.5, 0);
+
+                const mat = new THREE.MeshPhongMaterial({ color: barColors[i % barColors.length] });
+                const mesh = new THREE.Mesh(geo, mat);
+                
+                mesh.position.set(startX + (i * spacing), 0.1, 0);
+                mesh.scale.y = 0.01; // start flat
+                
+                chartGroup.add(mesh);
+                bars.push({ mesh, targetH });
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(chartGroup) {
+                chartGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+                
+                // Animate bars growing
+                bars.forEach(b => {
+                    b.mesh.scale.y += (b.targetH - b.mesh.scale.y) * 0.1;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

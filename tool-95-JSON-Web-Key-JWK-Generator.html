@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 95 - JSON Web Key JWK Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-control {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: #fff;
+            width: 100%;
+            outline: none;
+        }
+        .form-control:focus { border-color: #56b6c2; }
+        
+        .btn-generate {
+            background: #ffb142;
+            color: #000;
+            border: none;
+            padding: 1rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-generate:hover { background: #ffc163; transform: translateY(-2px); }
+        .btn-generate:active { transform: translateY(0); }
+
+        .btn-generate.loading {
+            background: #555;
+            color: #ccc;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .output-box {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: #7ee787;
+            white-space: pre-wrap;
+            word-break: break-all;
+            position: relative;
+            min-height: 150px;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-copy {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid #444;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn-copy:hover { background: rgba(255,255,255,0.2); }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>95. JSON Web Key JWK Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <h3>Key Configuration</h3>
+                    
+                    <div>
+                        <label style="font-size:0.8rem; color:#aaa; margin-bottom:0.3rem; display:block;">Key Type (kty)</label>
+                        <select id="sel-kty" class="form-control">
+                            <option value="RSA">RSA (RS256)</option>
+                            <option value="EC">Elliptic Curve (EC, P-256)</option>
+                            <option value="oct">Symmetric (oct, HS256)</option>
+                        </select>
+                    </div>
+
+                    <div id="rsa-options">
+                        <label style="font-size:0.8rem; color:#aaa; margin-bottom:0.3rem; display:block;">Key Size (bits)</label>
+                        <select id="sel-size" class="form-control">
+                            <option value="2048">2048</option>
+                            <option value="4096">4096</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="font-size:0.8rem; color:#aaa; margin-bottom:0.3rem; display:block;">Key Use</label>
+                        <select id="sel-use" class="form-control">
+                            <option value="sig">Signature (sig)</option>
+                            <option value="enc">Encryption (enc)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="font-size:0.8rem; color:#aaa; margin-bottom:0.3rem; display:block;">Key ID (kid) - Optional</label>
+                        <input type="text" id="inp-kid" class="form-control" placeholder="Auto-generate if empty">
+                    </div>
+
+                    <button class="btn-generate" id="btn-generate">
+                        <div class="spinner" id="spinner"></div>
+                        <span id="btn-text">Generate Keypair</span>
+                    </button>
+                    
+                    <p style="font-size:0.75rem; color:#888; text-align:center;">Keys are generated securely in your browser using the Web Crypto API.</p>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="panel">
+                    
+                    <div class="header-actions">
+                        <h3>Public Key (JWK)</h3>
+                        <button class="btn-copy" data-target="out-pub">Copy</button>
+                    </div>
+                    <div class="output-box" id="out-pub">Generate a keypair first...</div>
+
+                    <div class="header-actions" style="margin-top:1rem;">
+                        <h3 style="color:#ff5555;">Private Key (JWK) - SECRET</h3>
+                        <button class="btn-copy" data-target="out-priv">Copy</button>
+                    </div>
+                    <div class="output-box" id="out-priv" style="border-color:#ff5555; color:#ffb142;">Generate a keypair first...</div>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const selKty = document.getElementById('sel-kty');
+        const rsaOptions = document.getElementById('rsa-options');
+        const selSize = document.getElementById('sel-size');
+        const selUse = document.getElementById('sel-use');
+        const inpKid = document.getElementById('inp-kid');
+        const btnGenerate = document.getElementById('btn-generate');
+        const spinner = document.getElementById('spinner');
+        const btnText = document.getElementById('btn-text');
+        
+        const outPub = document.getElementById('out-pub');
+        const outPriv = document.getElementById('out-priv');
+        const copyBtns = document.querySelectorAll('.btn-copy');
+
+        // Toggle UI based on Key Type
+        selKty.addEventListener('change', () => {
+            if(selKty.value === 'RSA') {
+                rsaOptions.style.display = 'block';
+                btnText.textContent = 'Generate Keypair';
+            } else if (selKty.value === 'EC') {
+                rsaOptions.style.display = 'none';
+                btnText.textContent = 'Generate Keypair';
+            } else { // oct (symmetric)
+                rsaOptions.style.display = 'none';
+                btnText.textContent = 'Generate Symmetric Key';
+            }
+        });
+
+        function generateRandomId() {
+            return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function generateKey() {
+            setLoading(true);
+            outPub.textContent = '';
+            outPriv.textContent = '';
+            
+            // Re-trigger forge animation
+            triggerForge();
+
+            try {
+                const kty = selKty.value;
+                const use = selUse.value;
+                let kid = inpKid.value.trim() || generateRandomId();
+
+                if (kty === 'RSA') {
+                    const modulusLength = parseInt(selSize.value, 10);
+                    const isSig = use === 'sig';
+                    const keyPair = await window.crypto.subtle.generateKey(
+                        {
+                            name: isSig ? "RSASSA-PKCS1-v1_5" : "RSA-OAEP",
+                            modulusLength: modulusLength,
+                            publicExponent: new Uint8Array([1, 0, 1]),
+                            hash: "SHA-256",
+                        },
+                        true,
+                        isSig ? ["sign", "verify"] : ["encrypt", "decrypt"]
+                    );
+
+                    const pubJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+                    const privJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+
+                    // Add metadata
+                    enrichJwk(pubJwk, use, kid, isSig ? 'RS256' : 'RSA-OAEP');
+                    enrichJwk(privJwk, use, kid, isSig ? 'RS256' : 'RSA-OAEP');
+
+                    outPub.textContent = JSON.stringify(pubJwk, null, 2);
+                    outPriv.textContent = JSON.stringify(privJwk, null, 2);
+
+                } else if (kty === 'EC') {
+                    const isSig = use === 'sig';
+                    const keyPair = await window.crypto.subtle.generateKey(
+                        {
+                            name: "ECDSA",
+                            namedCurve: "P-256", // widely used
+                        },
+                        true,
+                        isSig ? ["sign", "verify"] : []
+                    );
+
+                    const pubJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+                    const privJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+
+                    enrichJwk(pubJwk, use, kid, 'ES256');
+                    enrichJwk(privJwk, use, kid, 'ES256');
+
+                    outPub.textContent = JSON.stringify(pubJwk, null, 2);
+                    outPriv.textContent = JSON.stringify(privJwk, null, 2);
+
+                } else if (kty === 'oct') {
+                    const isSig = use === 'sig';
+                    const key = await window.crypto.subtle.generateKey(
+                        {
+                            name: isSig ? "HMAC" : "AES-GCM",
+                            hash: isSig ? "SHA-256" : undefined,
+                            length: 256
+                        },
+                        true,
+                        isSig ? ["sign", "verify"] : ["encrypt", "decrypt"]
+                    );
+
+                    const jwk = await crypto.subtle.exportKey("jwk", key);
+                    enrichJwk(jwk, use, kid, isSig ? 'HS256' : 'A256GCM');
+
+                    outPriv.textContent = JSON.stringify(jwk, null, 2);
+                    outPub.textContent = 'N/A (Symmetric keys do not have a public component)';
+                }
+
+            } catch (err) {
+                outPub.textContent = 'Error: ' + err.message;
+                outPriv.textContent = 'Error: ' + err.message;
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function enrichJwk(jwk, use, kid, alg) {
+            jwk.use = use;
+            jwk.kid = kid;
+            jwk.alg = alg;
+            // clean up empty ops for cleaner output sometimes
+            delete jwk.key_ops; 
+            delete jwk.ext;
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                btnGenerate.classList.add('loading');
+                spinner.style.display = 'block';
+                btnText.style.display = 'none';
+            } else {
+                btnGenerate.classList.remove('loading');
+                spinner.style.display = 'none';
+                btnText.style.display = 'inline';
+            }
+        }
+
+        btnGenerate.addEventListener('click', generateKey);
+
+        copyBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetId = e.target.dataset.target;
+                const el = document.getElementById(targetId);
+                navigator.clipboard.writeText(el.textContent);
+                const ogText = e.target.textContent;
+                e.target.textContent = 'Copied!';
+                setTimeout(() => { e.target.textContent = ogText; }, 2000);
+            });
+        });
+
+
+        // 3D Scene setup: "A literal key being forged out of glowing metal"
+        let scene, camera, renderer, keyGrp, forgeLight;
+        let isForging = false;
+        let pColorOriginal = new THREE.Color(0x334433);
+        let pColorGlow = new THREE.Color(0xffb142);
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 25;
+            camera.position.y = 5;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            keyGrp = new THREE.Group();
+            scene.add(keyGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            // The forge localized light
+            forgeLight = new THREE.PointLight(0xffb142, 0, 50);
+            forgeLight.position.set(0, 0, 0);
+            scene.add(forgeLight);
+
+            // Build the key
+            const matMetal = new THREE.MeshPhongMaterial({ color: 0x334433, emissive: 0x000000, shininess: 80 });
+            
+            // Key bow (head)
+            const bowGeo = new THREE.TorusGeometry(3, 1, 16, 30);
+            const bow = new THREE.Mesh(bowGeo, matMetal);
+            bow.position.set(-5, 0, 0);
+            keyGrp.add(bow);
+
+            // Key blade (shaft)
+            const bladeGeo = new THREE.CylinderGeometry(1, 1, 12, 16);
+            bladeGeo.rotateZ(Math.PI/2);
+            const blade = new THREE.Mesh(bladeGeo, matMetal);
+            blade.position.set(4, 0, 0);
+            keyGrp.add(blade);
+
+            // Key bits (teeth)
+            const bitGeo1 = new THREE.BoxGeometry(2, 3, 1);
+            const bit1 = new THREE.Mesh(bitGeo1, matMetal);
+            bit1.position.set(6, -2, 0);
+            keyGrp.add(bit1);
+
+            const bitGeo2 = new THREE.BoxGeometry(2, 2, 1);
+            const bit2 = new THREE.Mesh(bitGeo2, matMetal);
+            bit2.position.set(8.5, -1.5, 0);
+            keyGrp.add(bit2);
+
+            keyGrp.position.y = -2;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate3D();
+        }
+
+        function triggerForge() {
+            isForging = true;
+            forgeLight.intensity = 2;
+            
+            // Set emissive color
+            keyGrp.children.forEach(c => {
+                c.material.emissive.copy(pColorGlow);
+            });
+            
+            setTimeout(() => {
+                isForging = false;
+            }, 800);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            keyGrp.rotation.y += 0.005;
+
+            if(!isForging) {
+                // fade emissive back to black
+                if(keyGrp.children[0]) {
+                    if(keyGrp.children[0].material.emissive.r > 0) {
+                        keyGrp.children.forEach(c => {
+                            c.material.emissive.lerp(new THREE.Color(0x000000), 0.05);
+                        });
+                    }
+                }
+                
+                if(forgeLight && forgeLight.intensity > 0) {
+                    forgeLight.intensity *= 0.9;
+                }
+            } else {
+                // shake during forging
+                keyGrp.position.y = -2 + (Math.random() - 0.5) * 0.5;
+            }
+
+            if(!isForging) {
+                // gentle float
+                keyGrp.position.y = -2 + Math.sin(Date.now()*0.002) * 0.5;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            
+            // generate initial key
+            generateKey();
+        });
+    </script>
+</body>
+</html>
+

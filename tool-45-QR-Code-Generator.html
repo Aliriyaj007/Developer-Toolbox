@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 45 - QR Code Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 400px; }
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group select, .input-group input[type="text"], .input-group input[type="number"], .input-group input[type="color"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: inherit;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .color-pickers {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .color-pickers .input-group {
+            flex: 1;
+        }
+        
+        .color-pickers input[type="color"] {
+            height: 50px;
+            padding: 0.2rem;
+            cursor: pointer;
+        }
+
+        .qr-display-panel {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        #qr-container {
+            background: white; /* QR codes usually need white bg to scan reliably */
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1.5rem;
+            display: inline-block;
+        }
+
+        #qr-container img, #qr-container canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .download-actions {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .download-actions button {
+            flex: 1;
+        }
+
+        /* Specific forms */
+        .form-section { display: none; margin-bottom: 1rem; }
+        .form-section.active { display: block; }
+        
+        .wifi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>45. QR Code Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    <!-- Config Panel -->
+                    <div>
+                        <div class="input-group">
+                            <label>Content Type</label>
+                            <select id="content-type">
+                                <option value="text">Plain Text / URL</option>
+                                <option value="wifi">Wi-Fi Network</option>
+                                <option value="email">Email Address</option>
+                                <option value="phone">Phone Number</option>
+                                <option value="sms">SMS Message</option>
+                            </select>
+                        </div>
+
+                        <!-- Data Forms -->
+                        <div id="form-text" class="form-section active">
+                            <div class="input-group">
+                                <label>Text or URL</label>
+                                <textarea id="input-text" placeholder="https://example.com or any text..."></textarea>
+                            </div>
+                        </div>
+
+                        <div id="form-wifi" class="form-section">
+                            <div class="input-group">
+                                <label>SSID (Network Name)</label>
+                                <input type="text" id="wifi-ssid" placeholder="MyWiFiNetwork">
+                            </div>
+                            <div class="wifi-grid">
+                                <div class="input-group">
+                                    <label>Password</label>
+                                    <input type="text" id="wifi-pass" placeholder="Network Password">
+                                </div>
+                                <div class="input-group">
+                                    <label>Encryption</label>
+                                    <select id="wifi-enc">
+                                        <option value="WPA">WPA/WPA2</option>
+                                        <option value="WEP">WEP</option>
+                                        <option value="nopass">None</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="checkbox" id="wifi-hidden" style="width:auto;"> Hidden Network
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="form-email" class="form-section">
+                            <div class="input-group">
+                                <label>Email Address</label>
+                                <input type="text" id="email-to" placeholder="hello@example.com">
+                            </div>
+                            <div class="input-group">
+                                <label>Subject</label>
+                                <input type="text" id="email-sub" placeholder="Hello there">
+                            </div>
+                            <div class="input-group">
+                                <label>Message Body</label>
+                                <textarea id="email-body" style="height: 80px;" placeholder="Message content..."></textarea>
+                            </div>
+                        </div>
+
+                        <div id="form-phone" class="form-section">
+                            <div class="input-group">
+                                <label>Phone Number</label>
+                                <input type="text" id="phone-num" placeholder="+1234567890">
+                            </div>
+                        </div>
+
+                        <div id="form-sms" class="form-section">
+                            <div class="input-group">
+                                <label>Phone Number</label>
+                                <input type="text" id="sms-num" placeholder="+1234567890">
+                            </div>
+                            <div class="input-group">
+                                <label>Message</label>
+                                <textarea id="sms-msg" style="height: 80px;" placeholder="Text message..."></textarea>
+                            </div>
+                        </div>
+
+                        <hr style="border: 0; height: 1px; background: rgba(255,255,255,0.1); margin: 1.5rem 0;">
+
+                        <!-- Style Options -->
+                        <div class="input-group">
+                            <label>Error Correction Level</label>
+                            <select id="ec-level">
+                                <option value="L">Low (7% recovery) - Best for URLs</option>
+                                <option value="M">Medium (15% recovery)</option>
+                                <option value="Q">Quartile (25% recovery)</option>
+                                <option value="H">High (30% recovery) - Best for logos/damage resistance</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Size (px)</label>
+                            <input type="number" id="qr-size" value="300" min="100" max="1000" step="50">
+                        </div>
+
+                        <div class="color-pickers">
+                            <div class="input-group">
+                                <label>Foreground Color</label>
+                                <input type="color" id="color-dark" value="#000000">
+                            </div>
+                            <div class="input-group">
+                                <label>Background Color</label>
+                                <input type="color" id="color-light" value="#ffffff">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Output Panel -->
+                    <div class="qr-display-panel">
+                        <div id="qr-container"></div>
+                        
+                        <div class="download-actions">
+                            <button class="btn btn-primary" id="dl-png">💾 Download PNG</button>
+                            <!-- qrcode.js only outputs canvas/img easily, we can extract base64 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const contentType = document.getElementById('content-type');
+        const formSections = document.querySelectorAll('.form-section');
+        const qrContainer = document.getElementById('qr-container');
+        
+        // Settings
+        const ecLevel = document.getElementById('ec-level');
+        const qrSize = document.getElementById('qr-size');
+        const colorDark = document.getElementById('color-dark');
+        const colorLight = document.getElementById('color-light');
+
+        let currentQRCoreStr = '';
+        let qrcode = null;
+
+        contentType.addEventListener('change', (e) => {
+            formSections.forEach(s => s.classList.remove('active'));
+            document.getElementById('form-' + e.target.value).classList.add('active');
+            generateQR();
+        });
+
+        const getQRString = () => {
+            const type = contentType.value;
+            if(type === 'text') {
+                return document.getElementById('input-text').value.trim();
+            } else if (type === 'wifi') {
+                const s = document.getElementById('wifi-ssid').value.trim();
+                const p = document.getElementById('wifi-pass').value.trim();
+                const e = document.getElementById('wifi-enc').value;
+                const h = document.getElementById('wifi-hidden').checked ? 'true' : 'false';
+                if(!s) return '';
+                return `WIFI:T:${e};S:${s};P:${p};H:${h};;`;
+            } else if (type === 'email') {
+                const t = document.getElementById('email-to').value.trim();
+                const s = document.getElementById('email-sub').value.trim();
+                const b = document.getElementById('email-body').value.trim();
+                if(!t) return '';
+                return `MATMSG:TO:${t};SUB:${s};BODY:${b};;`; // Common format
+            } else if (type === 'phone') {
+                const n = document.getElementById('phone-num').value.trim();
+                if(!n) return '';
+                return `tel:${n}`;
+            } else if (type === 'sms') {
+                const n = document.getElementById('sms-num').value.trim();
+                const m = document.getElementById('sms-msg').value.trim();
+                if(!n) return '';
+                return `smsto:${n}:${m}`;
+            }
+            return '';
+        };
+
+        const generateQR = () => {
+            const dataStr = getQRString();
+            currentQRCoreStr = dataStr;
+            
+            qrContainer.innerHTML = '';
+            
+            if(!dataStr) {
+                if(window.update3DQR) window.update3DQR(null);
+                return;
+            }
+
+            const size = parseInt(qrSize.value) || 300;
+
+            qrcode = new QRCode(qrContainer, {
+                text: dataStr,
+                width: size,
+                height: size,
+                colorDark: colorDark.value,
+                colorLight: colorLight.value,
+                correctLevel: QRCode.CorrectLevel[ecLevel.value]
+            });
+
+            // Pass canvas to 3D when ready
+            setTimeout(() => {
+                const canvas = qrContainer.querySelector('canvas');
+                if(canvas && window.update3DQR) {
+                    window.update3DQR(canvas.toDataURL());
+                }
+            }, 50);
+        };
+
+        // Attach listeners to all inputs
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            if(['dl-png', 'theme-select'].includes(el.id)) return;
+            el.addEventListener('input', () => {
+                clearTimeout(window.qrTimeout);
+                window.qrTimeout = setTimeout(generateQR, 300);
+            });
+            el.addEventListener('change', generateQR);
+        });
+
+        // Download PNG
+        document.getElementById('dl-png').addEventListener('click', () => {
+            const img = qrContainer.querySelector('img');
+            const canvas = qrContainer.querySelector('canvas');
+            let dataUrl = '';
+            
+            if(canvas) {
+                // Background might be transparent if not explicitly drawn in some libs
+                dataUrl = canvas.toDataURL("image/png");
+            } else if(img) {
+                dataUrl = img.src;
+            } else {
+                return;
+            }
+
+            const link = document.createElement('download');
+            const a = document.createElement("a");
+            a.href = dataUrl;
+            a.download = "qrcode.png";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        // 3D Visualization: A 3D cube with QR patterns on each face
+        let scene, camera, renderer, cubeGroup, qrCube;
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            cubeGroup = new THREE.Group();
+            scene.add(cubeGroup);
+
+            // Default cube
+            const geo = new THREE.BoxGeometry(3, 3, 3);
+            const mat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
+            qrCube = new THREE.Mesh(geo, mat);
+            cubeGroup.add(qrCube);
+
+            // Glow rings
+            const ringGeo = new THREE.TorusGeometry(3.5, 0.05, 16, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.3 });
+            const ring1 = new THREE.Mesh(ringGeo, ringMat);
+            ring1.rotation.x = Math.PI / 2;
+            cubeGroup.add(ring1);
+
+            const ring2 = new THREE.Mesh(ringGeo, ringMat);
+            ring2.rotation.y = Math.PI / 2;
+            cubeGroup.add(ring2);
+
+            cubeGroup.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DQR = (imgDataUrl) => {
+            if(!qrCube) return;
+            
+            if(!imgDataUrl) {
+                qrCube.material = new THREE.MeshPhongMaterial({ color: 0xdddddd });
+                return;
+            }
+
+            const loader = new THREE.TextureLoader();
+            loader.load(imgDataUrl, (texture) => {
+                // Create material with the QR texture
+                const mat = new THREE.MeshPhongMaterial({ 
+                    map: texture, 
+                    color: 0xffffff,
+                    shininess: 50 
+                });
+                
+                // Set texture filtering to nearest for sharp QR blocks
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+
+                // Apply to all 6 faces
+                qrCube.material = [mat, mat, mat, mat, mat, mat];
+                
+                // Spin fast briefly to show change
+                spinCube();
+            });
+        };
+
+        let targetSpinSpeed = 0.005;
+        let currentSpinSpeed = 0.005;
+
+        const spinCube = () => {
+            currentSpinSpeed = 0.15;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(cubeGroup) {
+                // Bobbing & Rotating
+                cubeGroup.position.y = Math.sin(Date.now() * 0.002) * 0.2;
+                
+                currentSpinSpeed += (targetSpinSpeed - currentSpinSpeed) * 0.05;
+                
+                if(qrCube) {
+                    qrCube.rotation.y += currentSpinSpeed;
+                    qrCube.rotation.x += currentSpinSpeed * 0.8;
+                }
+                
+                cubeGroup.children[1].rotation.z -= 0.01;
+                cubeGroup.children[2].rotation.x += 0.01;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            generateQR(); // Generate initial state if any
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 80 - Git Hook Builder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .form-control {
+            background: #000;
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        .check-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+        .check-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            padding: 0.8rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .check-item:hover {
+            background: rgba(86, 182, 194, 0.1);
+        }
+        .check-item input[type=checkbox] {
+            accent-color: var(--primary-color);
+            width: 1.2rem;
+            height: 1.2rem;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+        .check-title {
+            color: var(--text-main);
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        .check-desc {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 0.2rem;
+        }
+        
+        .output-panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        pre.code-output {
+            background: #1e1e1e;
+            color: #7ee787;
+            padding: 1.5rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            margin: 0;
+            min-height: 250px;
+        }
+        
+        .instructions {
+            background: rgba(86, 182, 194, 0.1);
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .instructions code {
+            background: rgba(0,0,0,0.5);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: var(--font-mono);
+            color: #ffb142;
+        }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>80. Git Hook Builder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <div class="controls-panel">
+                        <div class="form-group">
+                            <label><strong>Select Hook Type</strong></label>
+                            <select id="inp-hook" class="form-control">
+                                <option value="pre-commit">pre-commit (Triggered before commit)</option>
+                                <option value="commit-msg">commit-msg (Triggered to validate message)</option>
+                                <option value="pre-push">pre-push (Triggered before push)</option>
+                                <option value="post-commit">post-commit (Triggered after commit)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><strong>Actions to Perform</strong></label>
+                            <ul class="check-list" id="actions-list">
+                                <!-- Populated dynamically based on hook type -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="output-panel">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                            <h3>Script Preview</h3>
+                            <button class="btn btn-sm" id="btn-copy">Copy Script</button>
+                        </div>
+                        
+                        <pre class="code-output" id="script-output"></pre>
+                        
+                        <div class="instructions">
+                            <strong>Installation Instructions:</strong>
+                            <ol style="margin-top: 0.5rem; padding-left: 1.5rem; margin-bottom: 0;">
+                                <li>Copy the script above.</li>
+                                <li>Save it to <code>.git/hooks/<span id="inst-hook-name">pre-commit</span></code> in your repository.</li>
+                                <li>Make it executable by running: <br><code>chmod +x .git/hooks/<span id="inst-hook-name-2">pre-commit</span></code></li>
+                            </ol>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const inpHook = document.getElementById('inp-hook');
+        const actionsList = document.getElementById('actions-list');
+        const scriptOutput = document.getElementById('script-output');
+        const btnCopy = document.getElementById('btn-copy');
+        const instHookName = document.getElementById('inst-hook-name');
+        const instHookName2 = document.getElementById('inst-hook-name-2');
+
+        const ACTIONS = {
+            'pre-commit': [
+                { id: 'lint', title: 'Run Linter', desc: 'Runs npm run lint before allowing commit.', snippet: `\n# Run Linter\necho "Running linter..."\nnpm run lint\nif [ $? -ne 0 ]; then\n  echo "Linting failed! Please fix errors before committing."\n  exit 1\nfi\necho "Linting passed."\n` },
+                { id: 'test', title: 'Run Tests', desc: 'Runs npm test checking for failures.', snippet: `\n# Run Tests\necho "Running tests..."\nnpm test\nif [ $? -ne 0 ]; then\n  echo "Tests failed! Commit aborted."\n  exit 1\nfi\necho "Tests passed."\n` },
+                { id: 'format', title: 'Check Formatting', desc: 'Checks Prettier formatting.', snippet: `\n# Check Formatting\necho "Checking formatting..."\nnpx prettier --check .\nif [ $? -ne 0 ]; then\n  echo "Formatting issues found. Run 'npx prettier --write .' to fix."\n  exit 1\nfi\n` }
+            ],
+            'commit-msg': [
+                { id: 'regex', title: 'Enforce Conventional Commits', desc: 'Validates commit message format (e.g. feat: add navbar).', snippet: `\n# Validate Commit Message\ncommit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\\([_a-zA-Z0-9-]+\\))?: .+'\nerror_msg="Aborting commit. Your commit message is invalid. Please follow Conventional Commits format (e.g., 'feat: added new feature')."\n\nif ! grep -iqE "$commit_regex" "$1"; then\n  echo "$error_msg" >&2\n  exit 1\nfi\n` },
+                { id: 'length', title: 'Check Message Length', desc: 'Ensures the first line is under 72 characters.', snippet: `\n# Check Line Length\nfirst_line=$(head -n1 "$1")\nif [ \${#first_line} -gt 72 ]; then\n  echo "Aborting commit. First line must be 72 characters or less." >&2\n  exit 1\nfi\n` }
+            ],
+            'pre-push': [
+                { id: 'master', title: 'Protect Master/Main Branch', desc: 'Prevents direct pushes to master or main.', snippet: `\n# Protect Main Branch\nprotected_branch='^(master|main)$'\ncurrent_branch=$(git rev-parse --abbrev-ref HEAD)\nif [[ "$current_branch" =~ $protected_branch ]]; then\n  echo "Direct pushing to $current_branch is prohibited. Please use a Pull Request."\n  exit 1\nfi\n` },
+                { id: 'build', title: 'Check Build Passes', desc: 'Runs the build script before pushing.', snippet: `\n# Check Build\necho "Verifying build passes..."\nnpm run build\nif [ $? -ne 0 ]; then\n  echo "Build failed! Push aborted."\n  exit 1\nfi\necho "Build successful."\n` }
+            ],
+            'post-commit': [
+                { id: 'notify', title: 'Send Notification', desc: 'Example curl request to notify a webhook or service.', snippet: `\n# Send Webhook Notification\nCOMMIT_HASH=$(git rev-parse --short HEAD)\necho "Notifying external service for commit $COMMIT_HASH..."\n# curl -X POST -H "Content-Type: application/json" -d '{"commit": "'$COMMIT_HASH'"}' https://example.com/webhook\n` }
+            ]
+        };
+
+        function renderActions() {
+            const hook = inpHook.value;
+            const availableActions = ACTIONS[hook] || [];
+            
+            instHookName.textContent = hook;
+            instHookName2.textContent = hook;
+
+            actionsList.innerHTML = availableActions.map(a => `
+                <label class="check-item">
+                    <input type="checkbox" class="chk-action" value="${a.id}">
+                    <div>
+                        <div class="check-title">${a.title}</div>
+                        <div class="check-desc">${a.desc}</div>
+                    </div>
+                </label>
+            `).join('');
+
+            // bind events
+            const chks = actionsList.querySelectorAll('.chk-action');
+            chks.forEach(chk => chk.addEventListener('change', generateScript));
+
+            generateScript();
+        }
+
+        function generateScript() {
+            const hook = inpHook.value;
+            const availableActions = ACTIONS[hook] || [];
+            
+            let script = `#!/bin/sh\n# Git ${hook} hook\n`;
+            
+            if (hook === 'commit-msg') {
+                script += `# $1 is the file containing the commit message\n`;
+            }
+
+            const chks = actionsList.querySelectorAll('.chk-action');
+            let hasActions = false;
+
+            chks.forEach(chk => {
+                if (chk.checked) {
+                    hasActions = true;
+                    const actionData = availableActions.find(a => a.id === chk.value);
+                    if (actionData) {
+                        script += actionData.snippet;
+                    }
+                }
+            });
+
+            if (!hasActions) {
+                script += `\n# No actions selected.\n# Add some actions from the builder.\n`;
+            }
+
+            script += `\nexit 0\n`;
+            
+            scriptOutput.textContent = script;
+        }
+
+        inpHook.addEventListener('change', () => {
+            renderActions();
+            simulateCatch(); // trigger 3d anim
+        });
+
+        btnCopy.addEventListener('click', () => {
+            navigator.clipboard.writeText(scriptOutput.textContent);
+            btnCopy.textContent = 'Copied!';
+            setTimeout(() => { btnCopy.textContent = 'Copy Script'; }, 2000);
+        });
+
+        // 3D Scene setup: "A hook catching commits"
+        let scene, camera, renderer, hookGrp;
+        let commits = [];
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 20;
+            camera.position.x = 10;
+            camera.position.y = 5;
+            camera.lookAt(5, 5, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(-5, 10, 5);
+            scene.add(dirLight);
+
+            // Create Hook
+            hookGrp = new THREE.Group();
+            
+            const hookMat = new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 100 });
+            // Stem
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 6), hookMat);
+            stem.position.y = 4;
+            hookGrp.add(stem);
+            
+            // Curve
+            const torus = new THREE.Mesh(new THREE.TorusGeometry(3, 0.5, 16, 32, Math.PI), hookMat);
+            torus.position.y = 1;
+            torus.position.x = 0;
+            torus.rotation.z = Math.PI;
+            hookGrp.add(torus);
+
+            hookGrp.position.set(0, 5, 0); // start high
+            scene.add(hookGrp);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // spawn commits periodically
+            setInterval(spawnCommit, 3000);
+
+            animate3D();
+        }
+
+        function spawnCommit() {
+            const mat = new THREE.MeshPhongMaterial({ color: 0x56b6c2 });
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), mat);
+            sphere.position.set(10, -5, 0);
+            scene.add(sphere);
+            commits.push({
+                mesh: sphere,
+                caught: false,
+                t: 0
+            });
+        }
+
+        let hookTargetY = 5;
+
+        function simulateCatch() {
+            // Drop hook
+            hookTargetY = -2;
+            setTimeout(() => {
+                hookTargetY = 5; // pull up
+            }, 800);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Animate hook
+            hookGrp.position.y += (hookTargetY - hookGrp.position.y) * 0.1;
+            hookGrp.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+
+            // Animate commits
+            for(let i = commits.length - 1; i >= 0; i--) {
+                const c = commits[i];
+                c.t += 0.01;
+                
+                if (!c.caught) {
+                    c.mesh.position.x -= 0.08;
+                    // Check intersection with hook curve
+                    if (hookGrp.position.y < 0 && Math.abs(c.mesh.position.x) < 2) {
+                        c.caught = true;
+                        c.mesh.material.color.setHex(0xff5555); // rejected
+                    }
+                } else {
+                    // move with hook
+                    c.mesh.position.y = hookGrp.position.y - 3;
+                    c.mesh.position.x = hookGrp.position.x - 3; // resting in curve
+                }
+
+                if (c.mesh.position.x < -15 || c.mesh.position.y > 10) {
+                    scene.remove(c.mesh);
+                    commits.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            renderActions();
+            
+            // Bind check events to trigger catch animation
+            actionsList.addEventListener('change', (e) => {
+                if (e.target && e.target.classList.contains('chk-action')) {
+                    simulateCatch();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

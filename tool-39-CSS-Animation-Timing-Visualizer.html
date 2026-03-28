@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 39 - CSS Animation Timing Visualizer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .graph-container {
+            background: rgba(0,0,0,0.3);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            position: relative;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 350px;
+        }
+
+        canvas {
+            background: var(--bg-main);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            cursor: crosshair;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+        }
+
+        .preset-btn {
+            background: rgba(var(--primary-color-rgb), 0.1);
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .preset-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .preview-pane {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            position: relative;
+        }
+
+        .track {
+            width: 100%;
+            height: 40px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            position: relative;
+            margin-top: 1rem;
+        }
+
+        .runner {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            box-shadow: 0 0 10px var(--primary-color);
+        }
+
+        .runner.animate {
+            animation: moveRight 2s forwards;
+        }
+
+        .runner.linear {
+            background: #888;
+            box-shadow: none;
+            animation: moveRight 2s linear forwards;
+        }
+
+        @keyframes moveRight {
+            0% { left: 0; }
+            100% { left: calc(100% - 40px); }
+        }
+
+        .code-output {
+            background: rgba(0,0,0,0.5);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            color: #98c379;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .slider-group label { width: 100px; color: var(--text-secondary); }
+        .slider-group input { flex: 1; accent-color: var(--primary-color); }
+        .slider-group span { width: 40px; text-align: right; }
+
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>39. CSS Animation Timing Visualizer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Bezier Editor</label>
+                        </div>
+                        <div class="graph-container">
+                            <canvas id="bezier-canvas" width="250" height="250"></canvas>
+                        </div>
+                        
+                        <div class="controls">
+                            <span style="width: 100%; color: var(--text-secondary); font-weight: bold;">Presets:</span>
+                            <button class="preset-btn" onclick="setPreset(0.25, 0.1, 0.25, 1, 'ease')">ease</button>
+                            <button class="preset-btn" onclick="setPreset(0, 0, 1, 1, 'linear')">linear</button>
+                            <button class="preset-btn" onclick="setPreset(0.42, 0, 1, 1, 'ease-in')">ease-in</button>
+                            <button class="preset-btn" onclick="setPreset(0, 0, 0.58, 1, 'ease-out')">ease-out</button>
+                            <button class="preset-btn" onclick="setPreset(0.42, 0, 0.58, 1, 'ease-in-out')">ease-in-out</button>
+                            <button class="preset-btn" onclick="setPreset(0.68, -0.55, 0.265, 1.55, 'bounce')">bounce (custom)</button>
+                        </div>
+                        
+                        <div class="slider-group">
+                            <label>Duration (s):</label>
+                            <input type="range" id="duration" min="0.1" max="5" step="0.1" value="2">
+                            <span id="dur-val">2.0s</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="preview-pane">
+                            <div>
+                                <div class="toolbar">
+                                    <label style="font-weight: bold; color: var(--text-secondary);">Custom Curve</label>
+                                    <button class="btn btn-sm btn-primary" id="play-btn">Play Animation</button>
+                                </div>
+                                <div class="track">
+                                    <div class="runner" id="runner-custom"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style="font-weight: bold; color: var(--text-secondary);">Linear (Reference)</label>
+                                <div class="track">
+                                    <div class="runner linear" id="runner-linear"></div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: auto;">
+                                <label style="font-weight: bold; color: var(--text-secondary); margin-bottom: 0.5rem; display: block;">CSS Property</label>
+                                <div class="code-output">
+                                    <span id="css-value">transition: all 2s cubic-bezier(0.25, 0.1, 0.25, 1);</span>
+                                    <button class="btn btn-sm" id="copy-btn">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const canvas = document.getElementById('bezier-canvas');
+        const ctx = canvas.getContext('2d');
+        const runnerCustom = document.getElementById('runner-custom');
+        const runnerLinear = document.getElementById('runner-linear');
+        const playBtn = document.getElementById('play-btn');
+        const cssValue = document.getElementById('css-value');
+        const copyBtn = document.getElementById('copy-btn');
+        const durationSlider = document.getElementById('duration');
+        const durVal = document.getElementById('dur-val');
+
+        const SIZE = 250;
+        const PADDING = 40;
+        const GRID_SIZE = SIZE - (PADDING * 2);
+        
+        let p1 = { x: 0.25, y: 0.1 };
+        let p2 = { x: 0.25, y: 1 };
+        let duration = 2; // seconds
+
+        let dragging = null;
+
+        const toGraphCoords = (p) => ({
+            x: PADDING + (p.x * GRID_SIZE),
+            y: PADDING + GRID_SIZE - (p.y * GRID_SIZE)
+        });
+
+        const toNormCoords = (gx, gy) => ({
+            x: Math.max(0, Math.min(1, (gx - PADDING) / GRID_SIZE)), // X must be 0-1
+            y: (PADDING + GRID_SIZE - gy) / GRID_SIZE // Y can be outside 0-1
+        });
+
+        const drawGraph = () => {
+            ctx.clearRect(0, 0, SIZE, SIZE);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 1;
+
+            ctx.beginPath();
+            // Box
+            ctx.rect(PADDING, PADDING, GRID_SIZE, GRID_SIZE);
+            // Mid lines
+            ctx.moveTo(PADDING + GRID_SIZE/2, PADDING);
+            ctx.lineTo(PADDING + GRID_SIZE/2, PADDING + GRID_SIZE);
+            ctx.moveTo(PADDING, PADDING + GRID_SIZE/2);
+            ctx.lineTo(PADDING + GRID_SIZE, PADDING + GRID_SIZE/2);
+            // Diagonal
+            ctx.moveTo(PADDING, PADDING + GRID_SIZE);
+            ctx.lineTo(PADDING + GRID_SIZE, PADDING);
+            ctx.stroke();
+
+            // Setup points
+            const start = toGraphCoords({x: 0, y: 0});
+            const end = toGraphCoords({x: 1, y: 1});
+            const cp1 = toGraphCoords(p1);
+            const cp2 = toGraphCoords(p2);
+
+            // Draw handles
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 68, 68, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(cp1.x, cp1.y);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 204, 255, 0.5)';
+            ctx.moveTo(end.x, end.y);
+            ctx.lineTo(cp2.x, cp2.y);
+            ctx.stroke();
+
+            // Draw Bezier Curve
+            ctx.beginPath();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 4;
+            ctx.moveTo(start.x, start.y);
+            ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y);
+            ctx.stroke();
+
+            // Draw control points
+            ctx.fillStyle = '#ff4444';
+            ctx.beginPath(); ctx.arc(cp1.x, cp1.y, 6, 0, Math.PI*2); ctx.fill();
+            
+            ctx.fillStyle = '#00ccff';
+            ctx.beginPath(); ctx.arc(cp2.x, cp2.y, 6, 0, Math.PI*2); ctx.fill();
+
+            updateCSS();
+            
+            // Sync with 3D if available
+            if(window.update3DPath) window.update3DPath(p1, p2);
+        };
+
+        const updateCSS = () => {
+            const val = `transition: all ${duration}s cubic-bezier(${p1.x.toFixed(2)}, ${p1.y.toFixed(2)}, ${p2.x.toFixed(2)}, ${p2.y.toFixed(2)});`;
+            cssValue.textContent = val;
+            
+            // Update Runner Animation
+            runnerCustom.style.animation = 'none'; // reset
+            runnerLinear.style.animation = 'none';
+        };
+
+        const playAnimation = () => {
+            runnerCustom.style.animation = 'none';
+            runnerLinear.style.animation = 'none';
+            
+            setTimeout(() => {
+                const ez = `cubic-bezier(${p1.x}, ${p1.y}, ${p2.x}, ${p2.y})`;
+                runnerCustom.style.animation = `moveRight ${duration}s ${ez} forwards`;
+                runnerLinear.style.animation = `moveRight ${duration}s linear forwards`;
+                
+                if(window.play3DBounce) window.play3DBounce(duration, ez);
+            }, 10);
+        };
+
+        window.setPreset = (x1, y1, x2, y2, name) => {
+            p1 = { x: x1, y: y1 };
+            p2 = { x: x2, y: y2 };
+            drawGraph();
+            playAnimation();
+        };
+
+        // Canvas Interaction
+        const getMousePos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        };
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(e);
+            const cp1 = toGraphCoords(p1);
+            const cp2 = toGraphCoords(p2);
+            
+            const dist1 = Math.hypot(pos.x - cp1.x, pos.y - cp1.y);
+            const dist2 = Math.hypot(pos.x - cp2.x, pos.y - cp2.y);
+
+            if(dist1 < 10) dragging = 'p1';
+            else if(dist2 < 10) dragging = 'p2';
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if(!dragging) return;
+            const pos = getMousePos(e);
+            let nPos = toNormCoords(pos.x, pos.y);
+
+            if(dragging === 'p1') p1 = nPos;
+            if(dragging === 'p2') p2 = nPos;
+
+            drawGraph();
+        });
+
+        canvas.addEventListener('mouseup', () => { dragging = null; });
+        canvas.addEventListener('mouseleave', () => { dragging = null; });
+
+        playBtn.addEventListener('click', playAnimation);
+        durationSlider.addEventListener('input', (e) => {
+            duration = e.target.value;
+            durVal.textContent = duration + 's';
+            updateCSS();
+        });
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(cssValue.textContent);
+            const og = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => copyBtn.textContent = og, 1500);
+        });
+
+        document.addEventListener('DOMContentLoaded', drawGraph);
+
+        // 3D Visualization: A bouncing ball tracking timing curve
+        let scene, camera, renderer, ballGroup, ball, pathLine;
+        let is3DPlaying = false;
+        let startTime = 0;
+        let animDuration = 2; // local ref
+        
+        let cp1Global = p1;
+        let cp2Global = p2;
+
+        // Simplified bezier calculation for Y coordinate in JS to sync 3D ball height
+        function getBezierY(t, y1, y2) {
+            // Cubic bezier Y coord given t [0,1]
+            const u = 1 - t;
+            const tt = t * t;
+            const uu = u * u;
+            const uuu = uu * u;
+            const ttt = tt * t;
+
+            let y = uuu * 0; // P0.y
+            y += 3 * uu * t * y1; // P1.y
+            y += 3 * u * tt * y2; // P2.y
+            y += ttt * 1; // P3.y
+            
+            return y;
+        }
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            ballGroup = new THREE.Group();
+            scene.add(ballGroup);
+
+            // Trace Path Base Line
+            const lineGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-3, -2, 0),
+                new THREE.Vector3(3, -2, 0)
+            ]);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x888888 });
+            const baseLine = new THREE.Line(lineGeo, lineMat);
+            ballGroup.add(baseLine);
+
+            // Ball
+            const bGeo = new THREE.SphereGeometry(0.3, 32, 32);
+            const bMat = new THREE.MeshPhongMaterial({ color: 0x00ffcc, shininess: 100 });
+            ball = new THREE.Mesh(bGeo, bMat);
+            ball.position.set(-3, -2, 0);
+            ballGroup.add(ball);
+
+            // Dynamic Path Trace
+            const pathMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.5 });
+            pathLine = new THREE.Line(new THREE.BufferGeometry(), pathMat);
+            ballGroup.add(pathLine);
+
+            ballGroup.position.set(3, 1, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DPath = (bp1, bp2) => {
+            cp1Global = bp1;
+            cp2Global = bp2;
+            
+            // Draw predictive path in 3D
+            if(pathLine) {
+                const pts = [];
+                for(let i=0; i<=20; i++) {
+                    const t = i/20;
+                    const x = -3 + (t * 6);
+                    const y = -2 + (getBezierY(t, bp1.y, bp2.y) * 4); // Map 0-1 to -2 to +2 height diff
+                    pts.push(new THREE.Vector3(x, y, 0));
+                }
+                pathLine.geometry.setFromPoints(pts);
+            }
+        };
+
+        window.play3DBounce = (dur, ezStr) => {
+            is3DPlaying = true;
+            startTime = Date.now();
+            animDuration = dur * 1000;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(ballGroup) {
+                ballGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+
+                if(is3DPlaying) {
+                    const elapsed = Date.now() - startTime;
+                    let t = elapsed / animDuration;
+                    
+                    if(t >= 1) {
+                        t = 1;
+                        is3DPlaying = false;
+                    }
+
+                    // Simple X movement
+                    ball.position.x = -3 + (t * 6);
+                    
+                    // Bezier Y mapping
+                    const progress = getBezierY(t, cp1Global.y, cp2Global.y);
+                    ball.position.y = -2 + (progress * 4);
+                } else {
+                    // Reset or idle animation
+                    ball.position.x = -3;
+                    ball.position.y = -2;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

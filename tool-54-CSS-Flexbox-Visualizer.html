@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 54 - CSS Flexbox Visualizer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .controls-panel h3 { margin-top: 0; color: var(--primary-color); margin-bottom: 1rem; }
+
+        .control-group { margin-bottom: 1rem; }
+        .control-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+        }
+        
+        select, input[type="number"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        /* Playground */
+        .playground-wrapper {
+            background: rgba(0,0,0,0.2);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .flex-container {
+            flex: 1;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            display: flex;
+            transition: all 0.3s ease;
+            position: relative;
+            /* Container styling variables applied via inline styles later */
+        }
+
+        .flex-item {
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            color: white;
+            font-family: var(--font-main);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            margin: 4px;
+            padding: 1rem;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .flex-item.selected {
+            border-color: #fff;
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .item-colors {
+            1: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            2: linear-gradient(135deg, #4facfe, #00f2fe);
+            3: linear-gradient(135deg, #43e97b, #38f9d7);
+            4: linear-gradient(135deg, #fa709a, #fee140);
+            5: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .css-output {
+            background: var(--bg-main);
+            color: #7ee787;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+            white-space: pre-wrap;
+            margin-top: 1rem;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+
+    </style>
+</head>
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    
+    <main class="main-content">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>54. CSS Flexbox Visualizer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="tabs">
+                            <button class="tab-btn active" id="tab-container">Container</button>
+                            <button class="tab-btn" id="tab-item">Item <span id="selected-item-label">(None)</span></button>
+                        </div>
+
+                        <!-- Container Controls -->
+                        <div id="panel-container">
+                            <div class="control-group">
+                                <label>flex-direction</label>
+                                <select id="c-dir" data-css="flex-direction">
+                                    <option value="row">row</option>
+                                    <option value="row-reverse">row-reverse</option>
+                                    <option value="column">column</option>
+                                    <option value="column-reverse">column-reverse</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>justify-content</label>
+                                <select id="c-justify" data-css="justify-content">
+                                    <option value="flex-start">flex-start</option>
+                                    <option value="flex-end">flex-end</option>
+                                    <option value="center">center</option>
+                                    <option value="space-between">space-between</option>
+                                    <option value="space-around">space-around</option>
+                                    <option value="space-evenly">space-evenly</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>align-items</label>
+                                <select id="c-align" data-css="align-items">
+                                    <option value="stretch">stretch</option>
+                                    <option value="flex-start">flex-start</option>
+                                    <option value="flex-end">flex-end</option>
+                                    <option value="center">center</option>
+                                    <option value="baseline">baseline</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>flex-wrap</label>
+                                <select id="c-wrap" data-css="flex-wrap">
+                                    <option value="nowrap">nowrap</option>
+                                    <option value="wrap">wrap</option>
+                                    <option value="wrap-reverse">wrap-reverse</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>align-content</label>
+                                <select id="c-align-content" data-css="align-content">
+                                    <option value="flex-start">flex-start</option>
+                                    <option value="flex-end">flex-end</option>
+                                    <option value="center">center</option>
+                                    <option value="space-between">space-between</option>
+                                    <option value="space-around">space-around</option>
+                                    <option value="stretch">stretch</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>gap</label>
+                                <select id="c-gap" data-css="gap">
+                                    <option value="0px">0px</option>
+                                    <option value="10px">10px</option>
+                                    <option value="20px">20px</option>
+                                    <option value="40px">40px</option>
+                                </select>
+                            </div>
+
+                            <hr style="border-color:var(--border-color); margin: 1.5rem 0;">
+                            <div style="display:flex; justify-content:space-between;">
+                                <button class="btn btn-sm" id="btn-add-item">➕ Add Box</button>
+                                <button class="btn btn-sm" id="btn-rm-item" style="color:#ff5555;border-color:#ff5555;">➖ Remove</button>
+                            </div>
+                        </div>
+
+                        <!-- Item Controls -->
+                        <div id="panel-item" style="display:none;">
+                            <p style="color:var(--text-secondary); font-size:0.85rem;">Select an item in the playground to edit its properties.</p>
+                            <div class="control-group">
+                                <label>order</label>
+                                <input type="number" id="i-order" value="0">
+                            </div>
+                            <div class="control-group">
+                                <label>flex-grow</label>
+                                <input type="number" id="i-grow" value="0" min="0" step="1">
+                            </div>
+                            <div class="control-group">
+                                <label>flex-shrink</label>
+                                <input type="number" id="i-shrink" value="1" min="0" step="1">
+                            </div>
+                            <div class="control-group">
+                                <label>flex-basis</label>
+                                <select id="i-basis">
+                                    <option value="auto">auto</option>
+                                    <option value="content">content</option>
+                                    <option value="0%">0%</option>
+                                    <option value="25%">25%</option>
+                                    <option value="50%">50%</option>
+                                    <option value="100%">100%</option>
+                                    <option value="200px">200px</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>align-self</label>
+                                <select id="i-align">
+                                    <option value="auto">auto</option>
+                                    <option value="flex-start">flex-start</option>
+                                    <option value="flex-end">flex-end</option>
+                                    <option value="center">center</option>
+                                    <option value="baseline">baseline</option>
+                                    <option value="stretch">stretch</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Playground -->
+                    <div>
+                        <div class="playground-wrapper">
+                            <div class="flex-container" id="flex-container">
+                                <!-- Items injected -->
+                            </div>
+                        </div>
+
+                        <div class="css-output" id="css-output">
+.container {
+    display: flex;
+}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        const flexContainer = document.getElementById('flex-container');
+        const cssOutput = document.getElementById('css-output');
+        
+        // Tabs
+        const tabContainer = document.getElementById('tab-container');
+        const tabItem = document.getElementById('tab-item');
+        const panelContainer = document.getElementById('panel-container');
+        const panelItem = document.getElementById('panel-item');
+        const selectedLabel = document.getElementById('selected-item-label');
+
+        // Inputs
+        const cSelects = document.querySelectorAll('#panel-container select');
+        const iInputs = document.querySelectorAll('#panel-item input, #panel-item select');
+
+        let itemCount = 3;
+        let selectedItemIdx = -1;
+        let itemsData = []; // Store item specific flex rules
+
+        const gradients = [
+            'linear-gradient(135deg, #FF6B6B, #FF8E53)',
+            'linear-gradient(135deg, #4facfe, #00f2fe)',
+            'linear-gradient(135deg, #43e97b, #38f9d7)',
+            'linear-gradient(135deg, #fa709a, #fee140)',
+            'linear-gradient(135deg, #667eea, #764ba2)',
+            'linear-gradient(135deg, #fccb90, #d57eeb)'
+        ];
+
+        function initItems() {
+            itemsData = [];
+            for(let i=0; i<itemCount; i++) {
+                itemsData.push({ order: 0, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto' });
+            }
+        }
+
+        function renderPlayground() {
+            // Apply Container CSS
+            let cCSS = '.container {\n    display: flex;\n';
+            cSelects.forEach(sel => {
+                const prop = sel.dataset.css;
+                const val = sel.value;
+                flexContainer.style[prop] = val;
+                
+                // Only show in output if not default (optional, showing all is good for learning)
+                cCSS += `    ${prop}: ${val};\n`;
+            });
+            cCSS += '}';
+
+            // Render Items
+            flexContainer.innerHTML = '';
+            let itemCSS = '';
+
+            itemsData.forEach((data, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex-item';
+                div.textContent = idx + 1;
+                div.style.background = gradients[idx % gradients.length];
+                
+                // Default sizes varying slightly to show stretching
+                div.style.minHeight = (60) + 'px';
+                div.style.minWidth = (80) + 'px';
+
+                if(idx === selectedItemIdx) {
+                    div.classList.add('selected');
+                }
+
+                div.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectItem(idx);
+                });
+
+                // Apply logic
+                if(data.order !== 0) { div.style.order = data.order; }
+                if(data.grow !== 0) { div.style.flexGrow = data.grow; }
+                if(data.shrink !== 1) { div.style.flexShrink = data.shrink; }
+                if(data.basis !== 'auto') { div.style.flexBasis = data.basis; }
+                if(data.alignSelf !== 'auto') { div.style.alignSelf = data.alignSelf; }
+
+                // Build CSS for output if it has custom rules
+                let hasRules = false;
+                let tCss = `\n.item-${idx + 1} {\n`;
+                if(data.order !== 0) { tCss += `    order: ${data.order};\n`; hasRules = true; }
+                if(data.grow !== 0) { tCss += `    flex-grow: ${data.grow};\n`; hasRules = true; }
+                if(data.shrink !== 1) { tCss += `    flex-shrink: ${data.shrink};\n`; hasRules = true; }
+                if(data.basis !== 'auto') { tCss += `    flex-basis: ${data.basis};\n`; hasRules = true; }
+                if(data.alignSelf !== 'auto') { tCss += `    align-self: ${data.alignSelf};\n`; hasRules = true; }
+                tCss += '}';
+
+                if(hasRules) itemCSS += tCss;
+
+                flexContainer.appendChild(div);
+            });
+
+            cssOutput.textContent = cCSS + itemCSS;
+
+            // Trigger 3D update
+            setTimeout(() => {
+                if(window.update3DLayout) window.update3DLayout();
+            }, 350); // wait for CSS transition
+        }
+
+        function selectItem(idx) {
+            selectedItemIdx = idx;
+            tabItem.click();
+            selectedLabel.textContent = `(${idx + 1})`;
+            
+            // Sync UI inputs with item data
+            const data = itemsData[idx];
+            document.getElementById('i-order').value = data.order;
+            document.getElementById('i-grow').value = data.grow;
+            document.getElementById('i-shrink').value = data.shrink;
+            document.getElementById('i-basis').value = data.basis;
+            document.getElementById('i-align').value = data.alignSelf;
+
+            renderPlayground();
+        }
+
+        flexContainer.addEventListener('click', () => {
+            selectedItemIdx = -1;
+            selectedLabel.textContent = `(None)`;
+            renderPlayground();
+        });
+
+        // Event bindings
+        cSelects.forEach(sel => sel.addEventListener('change', renderPlayground));
+
+        iInputs.forEach(inp => {
+            inp.addEventListener('input', () => {
+                if(selectedItemIdx === -1) return;
+                const id = inp.id;
+                if(id === 'i-order') itemsData[selectedItemIdx].order = parseInt(inp.value) || 0;
+                if(id === 'i-grow') itemsData[selectedItemIdx].grow = parseFloat(inp.value) || 0;
+                if(id === 'i-shrink') itemsData[selectedItemIdx].shrink = parseFloat(inp.value) || 0;
+                if(id === 'i-basis') itemsData[selectedItemIdx].basis = inp.value;
+                if(id === 'i-align') itemsData[selectedItemIdx].alignSelf = inp.value;
+                renderPlayground();
+            });
+        });
+
+        document.getElementById('btn-add-item').addEventListener('click', () => {
+            if(itemCount >= 10) return alert("Max 10 items for visual clarity.");
+            itemCount++;
+            itemsData.push({ order: 0, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto' });
+            renderPlayground();
+        });
+
+        document.getElementById('btn-rm-item').addEventListener('click', () => {
+            if(itemCount <= 1) return;
+            itemCount--;
+            itemsData.pop();
+            if(selectedItemIdx >= itemCount) selectedItemIdx = -1;
+            renderPlayground();
+        });
+
+        // Tabs logic
+        tabContainer.addEventListener('click', () => {
+            tabContainer.classList.add('active'); tabItem.classList.remove('active');
+            panelContainer.style.display = 'block'; panelItem.style.display = 'none';
+        });
+        tabItem.addEventListener('click', () => {
+            tabItem.classList.add('active'); tabContainer.classList.remove('active');
+            panelItem.style.display = 'block'; panelContainer.style.display = 'none';
+        });
+
+        initItems();
+        renderPlayground();
+
+
+        // 3D Visualization: 3D blocks that mirror the flex container's DOM layout
+        let scene, camera, renderer, blocksGroup;
+        let blockMeshes = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            // Turn down alpha to let background grid show
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            blocksGroup = new THREE.Group();
+            scene.add(blocksGroup);
+
+            // Add a subtle wireframe box to represent the container bounds
+            const cGeo = new THREE.BoxGeometry(6, 4, 1);
+            const cMat = new THREE.MeshBasicMaterial({ color: 0x56b6c2, wireframe: true, transparent: true, opacity: 0.2 });
+            const cBox = new THREE.Mesh(cGeo, cMat);
+            blocksGroup.add(cBox);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                window.update3DLayout();
+            });
+
+            animate();
+        }
+
+        window.update3DLayout = () => {
+            if(!blocksGroup) return;
+
+            // Clear old blocks
+            blockMeshes.forEach(b => blocksGroup.remove(b));
+            blockMeshes = [];
+
+            // Get standard scaling bounds
+            const cRect = flexContainer.getBoundingClientRect();
+            if(cRect.width === 0) return; // Not visible yet
+
+            const containerWidth3D = 6;
+            const containerHeight3D = 4;
+            
+            const scaleX = containerWidth3D / cRect.width;
+            const scaleY = containerHeight3D / cRect.height;
+
+            const items = flexContainer.querySelectorAll('.flex-item');
+            
+            items.forEach((el, idx) => {
+                const rect = el.getBoundingClientRect();
+                
+                // Calculate position relative to container center
+                const relativeX = rect.left - cRect.left;
+                const relativeY = rect.top - cRect.top;
+
+                const centerOffsetX = (relativeX + rect.width / 2) - (cRect.width / 2);
+                const centerOffsetY = (relativeY + rect.height / 2) - (cRect.height / 2);
+
+                const finalX = centerOffsetX * scaleX;
+                const finalY = -(centerOffsetY * scaleY); // Y is flipped in 3D
+                
+                const w = rect.width * scaleX;
+                const h = rect.height * scaleY;
+                
+                // Depth can just be fixed or slightly varying
+                const d = 0.5 + (idx % 2)*0.2;
+
+                const geo = new THREE.BoxGeometry(Math.max(0.1, w - 0.1), Math.max(0.1, h - 0.1), d);
+                
+                // Extract color from background gradient (simplified, just logic)
+                const colors = [0xFF6B6B, 0x4facfe, 0x43e97b, 0xfa709a, 0x667eea, 0xfccb90];
+                const mat = new THREE.MeshPhongMaterial({ color: colors[idx % colors.length], shininess: 80 });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                mesh.position.set(finalX, finalY, d/2);
+                
+                // Setup animation variables
+                mesh.userData = { targetX: finalX, targetY: finalY, targetW: w, targetH: h };
+                
+                // Start smaller for pop-in effect 
+                mesh.scale.set(0.1, 0.1, 0.1);
+
+                blocksGroup.add(mesh);
+                blockMeshes.push(mesh);
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(blocksGroup) {
+                // Gentle tilt rotation
+                blocksGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+                blocksGroup.rotation.x = Math.sin(Date.now() * 0.0005) * 0.05 + 0.1;
+
+                // Animate blocks scaling up to size
+                blockMeshes.forEach(mesh => {
+                    mesh.scale.x += (1 - mesh.scale.x) * 0.15;
+                    mesh.scale.y += (1 - mesh.scale.y) * 0.15;
+                    mesh.scale.z += (1 - mesh.scale.z) * 0.15;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            setTimeout(window.update3DLayout, 500);
+        });
+    </script>
+</body>
+</html>

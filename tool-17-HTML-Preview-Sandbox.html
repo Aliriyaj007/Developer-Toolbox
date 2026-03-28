@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 17 - HTML Preview Sandbox - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+
+    <style>
+        .sandbox-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1rem;
+            height: calc(100vh - 180px);
+            min-height: 800px;
+        }
+
+        @media (min-width: 900px) {
+            .sandbox-layout {
+                flex-direction: row;
+            }
+        }
+
+        /* Editor Section (Left) */
+        .editor-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 300px;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .pane-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .pane-header h3 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--accent-primary);
+        }
+
+        .CodeMirror {
+            flex: 1;
+            height: 100%;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            background: transparent !important;
+        }
+
+        /* Preview Section (Right) */
+        .preview-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .preview-header {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 0.8rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .preview-header select,
+        .preview-header input {
+            padding: 0.4rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            outline: none;
+        }
+
+        .preview-container {
+            flex: 2;
+            background: #fff;
+            /* iframe needs white bg usually */
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image:
+                linear-gradient(45deg, #ccc 25%, transparent 25%),
+                linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #ccc 75%),
+                linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        #preview-frame {
+            border: none;
+            background: #fff;
+            transition: width 0.3s, height 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Console Section */
+        .console-container {
+            flex: 1;
+            background: #1e1e1e;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-family: var(--font-mono);
+        }
+
+        .console-header {
+            padding: 0.5rem 1rem;
+            background: #2d2d2d;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
+        .console-output {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            color: #d4d4d4;
+            font-size: 0.85rem;
+            list-style: none;
+            margin: 0;
+        }
+
+        .console-output li {
+            padding: 0.2rem 0;
+            border-bottom: 1px solid #333;
+            word-break: break-all;
+        }
+
+        .log-error {
+            color: #f14c4c;
+        }
+
+        .log-warn {
+            color: #cca700;
+        }
+
+        .log-info {
+            color: #3794ff;
+        }
+
+        /* 3D background container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content" style="padding-bottom: 0;">
+        <div class="container" style="max-width: 1800px;">
+            <div class="tool-header" style="margin-bottom: 0;">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>17. HTML Preview Sandbox</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="sandbox-layout">
+                <!-- Editors -->
+                <div class="editor-section">
+                    <div class="editor-pane">
+                        <div class="pane-header">
+                            <h3>HTML</h3>
+                        </div>
+                        <div id="html-editor"></div>
+                    </div>
+
+                    <div class="editor-pane">
+                        <div class="pane-header">
+                            <h3>CSS</h3>
+                        </div>
+                        <div id="css-editor"></div>
+                    </div>
+
+                    <div class="editor-pane">
+                        <div class="pane-header">
+                            <h3>JS</h3>
+                        </div>
+                        <div id="js-editor"></div>
+                    </div>
+                </div>
+
+                <!-- Preview + Console -->
+                <div class="preview-section">
+
+                    <div class="preview-header">
+                        <label for="device-select" class="text-secondary" style="font-size: 0.9rem;">View:</label>
+                        <select id="device-select">
+                            <option value="100%|100%" selected>Desktop (Full)</option>
+                            <option value="768px|1024px">Tablet (Portrait)</option>
+                            <option value="1024px|768px">Tablet (Landscape)</option>
+                            <option value="375px|812px">Mobile (iPhone X)</option>
+                            <option value="414px|896px">Mobile (Large)</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+
+                        <div id="custom-dims" style="display: none; gap: 0.5rem; align-items: center;">
+                            <input type="number" id="dim-w" value="500" style="width: 70px;"> x
+                            <input type="number" id="dim-h" value="500" style="width: 70px;">
+                            <button id="btn-apply-dims" class="btn btn-sm">Apply</button>
+                        </div>
+
+                        <div style="flex:1;"></div>
+                        <button id="btn-run" class="btn btn-primary">Run Manually</button>
+                    </div>
+
+                    <div class="preview-container">
+                        <iframe id="preview-frame" style="width: 100%; height: 100%;"></iframe>
+                    </div>
+
+                    <div class="console-container">
+                        <div class="console-header">
+                            <span>Console Output (Simulated)</span>
+                            <button id="btn-clear-console" class="btn btn-sm"
+                                style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Clear</button>
+                        </div>
+                        <ul class="console-output" id="console-list">
+                            <li class="log-info">Sandbox ready. Waiting for code...</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- CodeMirror library and modes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Core Sandbox Logic ---
+
+        // Initial default content
+        const defaultHTML = `<!-- Edit HTML here -->
+<div class="hello-container">
+    <h1>17. Hello World</h1>
+    <p>Welcome to the 20-in-1 Sandbox.</p>
+    <button id="myBtn">Click me!</button>
+</div>`;
+
+        const defaultCSS = `/* Edit CSS here */
+body {
+    background-color: #f4f4f9;
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+.hello-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    text-align: center;
+}
+button {
+    background: #6200ee;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+button:hover { background: #3700b3; }`;
+
+        const defaultJS = `// Edit JavaScript here
+// Note: Console output goes to the bottom panel
+
+console.log("Script initialized!");
+console.warn("This is a warning test.");
+
+const btn = document.getElementById('myBtn');
+
+btn.addEventListener('click', () => {
+    console.info("Button was clicked!");
+    btn.textContent = "Clicked!";
+    setTimeout(() => btn.textContent = "Click me!", 1000);
+});`;
+
+        // Editor Instances
+        const baseCmOpts = {
+            theme: document.body.classList.contains('theme-light') ? "default" : "monokai",
+            lineNumbers: true,
+            lineWrapping: true
+        };
+
+        const htmlEditor = CodeMirror(document.getElementById('html-editor'), {
+            ...baseCmOpts, mode: "htmlmixed", value: defaultHTML
+        });
+        const cssEditor = CodeMirror(document.getElementById('css-editor'), {
+            ...baseCmOpts, mode: "css", value: defaultCSS
+        });
+        const jsEditor = CodeMirror(document.getElementById('js-editor'), {
+            ...baseCmOpts, mode: "javascript", value: defaultJS
+        });
+
+        const previewFrame = document.getElementById('preview-frame');
+        const consoleList = document.getElementById('console-list');
+
+        // Console Simulation Interception inside iframe via injected script
+        const interceptScript = `
+        <script>
+            const originalLog = console.log;
+            const originalWarn = console.warn;
+            const originalError = console.error;
+            const originalInfo = console.info;
+
+            function sendMsg(type, args) {
+                let msg = Array.from(args).map(t => typeof t === 'object' ? JSON.stringify(t) : t).join(' ');
+                window.parent.postMessage({source: 'sandbox', type: type, msg: msg}, '*');
+            }
+
+            console.log = function() { sendMsg('log', arguments); originalLog.apply(console, arguments); };
+            console.warn = function() { sendMsg('warn', arguments); originalWarn.apply(console, arguments); };
+            console.error = function() { sendMsg('error', arguments); originalError.apply(console, arguments); };
+            console.info = function() { sendMsg('info', arguments); originalInfo.apply(console, arguments); };
+            
+            window.onerror = function(msg, url, lineNo, columnNo, error) {
+                sendMsg('error', [msg + ' (Line: ' + lineNo + ')']);
+                return false;
+            };
+        <\/script>
+        `;
+
+        function updatePreview() {
+            const html = htmlEditor.getValue();
+            const css = cssEditor.getValue();
+            const js = jsEditor.getValue();
+
+            const combinedHTML = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>${css}</style>
+                    ${interceptScript}
+                </head>
+                <body>
+                    ${html}
+                    <script>${js}<\/script>
+                </body>
+            </html>`;
+
+            // Clear console on run unless it's just a resize
+            // Wait, let's keep it simple: just run implies fresh start
+            consoleList.innerHTML = '<li class="log-info">--- Re-rendered ---</li>';
+
+            previewFrame.srcdoc = combinedHTML;
+
+            if (window.triggerAnim) window.triggerAnim(); // Trigger 3D flash
+        }
+
+        // Listen for messages from iframe
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.source === 'sandbox') {
+                const li = document.createElement('li');
+                li.textContent = `> ${e.data.msg}`;
+                if (e.data.type === 'error') li.className = 'log-error';
+                if (e.data.type === 'warn') li.className = 'log-warn';
+                if (e.data.type === 'info') li.className = 'log-info';
+
+                consoleList.appendChild(li);
+                consoleList.scrollTop = consoleList.scrollHeight; // auto scroll
+            }
+        });
+
+        // Debounce live updates
+        let timeout;
+        const onChange = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(updatePreview, 800);
+        };
+
+        htmlEditor.on('change', onChange);
+        cssEditor.on('change', onChange);
+        jsEditor.on('change', onChange);
+
+        document.getElementById('btn-run').addEventListener('click', updatePreview);
+        document.getElementById('btn-clear-console').addEventListener('click', () => {
+            consoleList.innerHTML = '<li class="log-info">Console cleared.</li>';
+        });
+
+        // Device sizing
+        const devSelect = document.getElementById('device-select');
+        const customDims = document.getElementById('custom-dims');
+        const dimW = document.getElementById('dim-w');
+        const dimH = document.getElementById('dim-h');
+
+        const applyDims = (w, h) => {
+            previewFrame.style.width = w;
+            previewFrame.style.height = h;
+        };
+
+        devSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'custom') {
+                customDims.style.display = 'flex';
+            } else {
+                customDims.style.display = 'none';
+                const parts = val.split('|');
+                applyDims(parts[0], parts[1]);
+            }
+        });
+
+        document.getElementById('btn-apply-dims').addEventListener('click', () => {
+            applyDims(dimW.value + 'px', dimH.value + 'px');
+        });
+
+        // Initial render
+        updatePreview();
+
+        // Theme sync listener via MutationObserver on body
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class' && htmlEditor) {
+                    const isDark = document.body.classList.contains('theme-light') ? false : true;
+                    const theme = isDark ? "monokai" : "default";
+                    htmlEditor.setOption("theme", theme);
+                    cssEditor.setOption("theme", theme);
+                    jsEditor.setOption("theme", theme);
+                }
+            });
+        });
+        observer.observe(document.body, { attributes: true });
+
+
+        // --- 3D Background Setup (Floating Browser Window) ---
+        let scene, camera, renderer, browserGroup, screenMesh;
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 25;
+            camera.position.x = 10; // offset right
+            camera.position.y = 5;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            browserGroup = new THREE.Group();
+
+            // Frame
+            const frameGeo = new THREE.BoxGeometry(16, 10, 0.5);
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
+            const frame = new THREE.Mesh(frameGeo, frameMat);
+            browserGroup.add(frame);
+
+            // Screen
+            const screenGeo = new THREE.PlaneGeometry(15.2, 8.2);
+            const screenMat = new THREE.MeshStandardMaterial({
+                color: 0xBB86FC,
+                side: THREE.DoubleSide,
+                emissive: 0x000000,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+            screenMesh = new THREE.Mesh(screenGeo, screenMat);
+            screenMesh.position.z = 0.26; // slightly in front
+            screenMesh.position.y = -0.4;
+            browserGroup.add(screenMesh);
+
+            // Address bar / Header dots
+            const dotGeo = new THREE.CircleGeometry(0.2, 16);
+            const rDot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: 0xff5252 }));
+            const yDot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: 0xffb142 }));
+            const gDot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: 0x33d9b2 }));
+
+            rDot.position.set(-7, 4.3, 0.26);
+            yDot.position.set(-6.3, 4.3, 0.26);
+            gDot.position.set(-5.6, 4.3, 0.26);
+
+            browserGroup.add(rDot, yDot, gDot);
+
+            // Address bar rect
+            const barGeo = new THREE.PlaneGeometry(8, 0.5);
+            const barMat = new THREE.MeshBasicMaterial({ color: 0x555555 });
+            const addrBar = new THREE.Mesh(barGeo, barMat);
+            addrBar.position.set(0, 4.3, 0.26);
+            browserGroup.add(addrBar);
+
+            browserGroup.rotation.y = -0.3;
+            browserGroup.rotation.x = -0.1;
+
+            scene.add(browserGroup);
+
+            // Animation
+            window.triggerAnim = () => {
+                // Flash the screen green momentarily to signify update
+                gsap.to(screenMesh.material.emissive, {
+                    r: 0.2, g: 0.8, b: 0.5,
+                    duration: 0.2,
+                    yoyo: true,
+                    repeat: 1,
+                    ease: "power1.inOut"
+                });
+
+                // Slight bump to whole browser
+                gsap.to(browserGroup.position, {
+                    z: 1,
+                    duration: 0.2,
+                    yoyo: true,
+                    repeat: 1,
+                    ease: "power1.inOut"
+                });
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Idle floating
+                const time = Date.now() * 0.001;
+                browserGroup.position.y = Math.sin(time) * 0.5;
+                browserGroup.rotation.x = Math.sin(time * 0.5) * 0.05 - 0.1;
+                browserGroup.rotation.y = Math.cos(time * 0.3) * 0.05 - 0.3;
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                if (window.innerWidth < 900) {
+                    camera.position.x = 0;
+                    camera.position.z = 40;
+                } else {
+                    camera.position.x = 10;
+                    camera.position.z = 25;
+                }
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

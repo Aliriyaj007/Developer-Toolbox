@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 26 - Box Shadow Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .tool-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 2rem; }
+        @media (min-width: 900px) { .tool-grid { grid-template-columns: 350px 1fr; } }
+        
+        .preview-box {
+            width: 200px;
+            height: 200px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-md);
+            margin: 3rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: box-shadow 0.2s;
+        }
+
+        .preview-container {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+            background: rgba(255,255,255,0.02);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--text-secondary);
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        input[type="range"] {
+            flex: 1;
+        }
+
+        input[type="number"] {
+            width: 70px;
+            font-family: var(--font-mono); font-size: 1rem; padding: 0.3rem; 
+            border: 1px solid var(--border-color); border-radius: var(--radius-sm); 
+            background: var(--bg-main); color: var(--text-primary);
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            background: none;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid var(--border-color); border-radius: var(--radius-sm); }
+        
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            cursor: pointer;
+        }
+
+        .shadow-layer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .shadow-layer-item.active {
+            border-color: var(--primary-color);
+            background: rgba(var(--primary-color-rgb), 0.1);
+        }
+
+        .shadow-layer-item .layer-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .code-output {
+            padding: 1rem;
+            background: rgba(var(--primary-color-rgb), 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: var(--primary-color);
+            white-space: pre-wrap;
+            word-break: break-all;
+            position: relative;
+            margin-top: 1rem;
+        }
+        
+        .shadow-layers-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>26. Box Shadow Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tool-grid">
+                <div class="glass-panel">
+                    <div class="shadow-layers-header">
+                        <h3>Shadow Layers</h3>
+                        <button class="btn btn-sm" id="add-layer-btn">+ Add Layer</button>
+                    </div>
+                    
+                    <div id="layers-list" style="margin-bottom: 1.5rem;">
+                        <!-- Shadow layers generated via JS -->
+                    </div>
+
+                    <h3>Properties</h3>
+                    <div class="control-group">
+                        <div class="control-header">
+                            <label>X Offset</label>
+                        </div>
+                        <div class="slider-row">
+                            <input type="range" id="x-slider" min="-100" max="100" value="0">
+                            <input type="number" id="x-input" value="0">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-header">
+                            <label>Y Offset</label>
+                        </div>
+                        <div class="slider-row">
+                            <input type="range" id="y-slider" min="-100" max="100" value="10">
+                            <input type="number" id="y-input" value="10">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-header">
+                            <label>Blur</label>
+                        </div>
+                        <div class="slider-row">
+                            <input type="range" id="blur-slider" min="0" max="100" value="15">
+                            <input type="number" id="blur-input" min="0" value="15">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-header">
+                            <label>Spread</label>
+                        </div>
+                        <div class="slider-row">
+                            <input type="range" id="spread-slider" min="-100" max="100" value="-3">
+                            <input type="number" id="spread-input" value="-3">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="color-row">
+                            <label>Color</label>
+                            <input type="color" id="color-input" value="#000000">
+                            <input type="range" id="alpha-slider" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+                            <span id="alpha-val" style="font-family: var(--font-mono); width: 40px; text-align: right;">0.50</span>
+                        </div>
+                        <label class="checkbox-row">
+                            <input type="checkbox" id="inset-checkbox"> Inset
+                        </label>
+                    </div>
+
+                </div>
+
+                <div class="glass-panel" style="display: flex; flex-direction: column;">
+                    <h3>Preview</h3>
+                    <div class="preview-container">
+                        <div class="preview-box" id="preview-box"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+                        <h3>CSS Code</h3>
+                        <button class="btn" id="copy-btn">Copy CSS</button>
+                    </div>
+                    <div class="code-output" id="css-output">
+box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.5);
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let shadows = [
+                { x: 0, y: 10, blur: 15, spread: -3, color: '#000000', alpha: 0.5, inset: false }
+            ];
+            let activeIndex = 0;
+
+            const xSlider = document.getElementById('x-slider');
+            const xInput = document.getElementById('x-input');
+            const ySlider = document.getElementById('y-slider');
+            const yInput = document.getElementById('y-input');
+            const blurSlider = document.getElementById('blur-slider');
+            const blurInput = document.getElementById('blur-input');
+            const spreadSlider = document.getElementById('spread-slider');
+            const spreadInput = document.getElementById('spread-input');
+            const colorInput = document.getElementById('color-input');
+            const alphaSlider = document.getElementById('alpha-slider');
+            const alphaVal = document.getElementById('alpha-val');
+            const insetCheckbox = document.getElementById('inset-checkbox');
+            
+            const layersList = document.getElementById('layers-list');
+            const previewBox = document.getElementById('preview-box');
+            const cssOutput = document.getElementById('css-output');
+            const copyBtn = document.getElementById('copy-btn');
+            const addLayerBtn = document.getElementById('add-layer-btn');
+
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            };
+
+            const getShadowString = (s) => {
+                const rgb = hexToRgb(s.color);
+                const colorStr = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${s.alpha})`;
+                return `${s.inset ? 'inset ' : ''}${s.x}px ${s.y}px ${s.blur}px ${s.spread}px ${colorStr}`;
+            };
+
+            const updateUI = () => {
+                const active = shadows[activeIndex];
+                if (!active) return;
+                
+                xSlider.value = xInput.value = active.x;
+                ySlider.value = yInput.value = active.y;
+                blurSlider.value = blurInput.value = active.blur;
+                spreadSlider.value = spreadInput.value = active.spread;
+                colorInput.value = active.color;
+                alphaSlider.value = active.alpha;
+                alphaVal.textContent = parseFloat(active.alpha).toFixed(2);
+                insetCheckbox.checked = active.inset;
+
+                renderLayers();
+                updatePreview();
+            };
+
+            const updatePreview = () => {
+                const cssVal = shadows.map(getShadowString).join(',\n    ');
+                previewBox.style.boxShadow = shadows.map(getShadowString).join(', ');
+                cssOutput.textContent = `box-shadow: \n    ${cssVal};`;
+                
+                if(window.update3DShadows) {
+                    window.update3DShadows(shadows);
+                }
+            };
+
+            const renderLayers = () => {
+                layersList.innerHTML = '';
+                shadows.forEach((s, idx) => {
+                    const el = document.createElement('div');
+                    el.className = `shadow-layer-item ${idx === activeIndex ? 'active' : ''}`;
+                    
+                    const rgb = hexToRgb(s.color);
+                    const cStr = `rgba(${rgb.r},${rgb.g},${rgb.b},${s.alpha})`;
+                    
+                    el.innerHTML = `
+                        <div class="layer-info" onclick="window.setActiveLayer(${idx})">
+                            <div class="color-dot" style="background: ${cStr};"></div>
+                            <span>Shadow ${idx + 1}</span>
+                        </div>
+                        <button class="btn btn-sm" onclick="window.removeLayer(${idx})" style="padding: 0.2rem 0.5rem; ${shadows.length === 1 ? 'display:none;' : ''}">✕</button>
+                    `;
+                    layersList.appendChild(el);
+                });
+            };
+
+            window.setActiveLayer = (idx) => {
+                activeIndex = idx;
+                updateUI();
+            };
+
+            window.removeLayer = (idx) => {
+                if(shadows.length > 1) {
+                    shadows.splice(idx, 1);
+                    if(activeIndex >= shadows.length) activeIndex = shadows.length - 1;
+                    updateUI();
+                }
+            };
+
+            addLayerBtn.addEventListener('click', () => {
+                shadows.push({
+                    x: 0, y: 10, blur: 15, spread: -3, color: '#000000', alpha: 0.5, inset: false
+                });
+                activeIndex = shadows.length - 1;
+                updateUI();
+            });
+
+            // Bind inputs to active shadow
+            const bindInput = (slider, input, prop, isFloat = false) => {
+                const update = (val) => {
+                    shadows[activeIndex][prop] = isFloat ? parseFloat(val) : parseInt(val);
+                    slider.value = input.value = val;
+                    updatePreview();
+                    if(prop === 'alpha') alphaVal.textContent = parseFloat(val).toFixed(2);
+                };
+                slider.addEventListener('input', (e) => update(e.target.value));
+                if(input) input.addEventListener('input', (e) => update(e.target.value || 0));
+            };
+
+            bindInput(xSlider, xInput, 'x');
+            bindInput(ySlider, yInput, 'y');
+            bindInput(blurSlider, blurInput, 'blur');
+            bindInput(spreadSlider, spreadInput, 'spread');
+            bindInput(alphaSlider, null, 'alpha', true);
+
+            colorInput.addEventListener('input', (e) => {
+                shadows[activeIndex].color = e.target.value;
+                updatePreview();
+                renderLayers();
+            });
+
+            insetCheckbox.addEventListener('change', (e) => {
+                shadows[activeIndex].inset = e.target.checked;
+                updatePreview();
+            });
+
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(cssOutput.textContent);
+                const og = copyBtn.textContent;
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => copyBtn.textContent = og, 1500);
+            });
+
+            updateUI();
+        });
+
+        // 3D Visualization: Cube casting multiple shadows
+        let scene, camera, renderer, cube, shadowsGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(-8, 5, 8);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            // The main cube
+            const geo = new THREE.BoxGeometry(3, 3, 3);
+            const mat = new THREE.MeshPhongMaterial({ 
+                color: 0x2288ff,
+                shininess: 80,
+                transparent: true,
+                opacity: 0.9
+            });
+            cube = new THREE.Mesh(geo, mat);
+            cube.position.set(2, 2, 0);
+            scene.add(cube);
+
+            // Group for planes (shadows)
+            shadowsGroup = new THREE.Group();
+            scene.add(shadowsGroup);
+
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(20, 20);
+            const floorMat = new THREE.MeshPhongMaterial({ 
+                color: 0x111111,
+                transparent: true,
+                opacity: 0.2
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            scene.add(floor);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DShadows = (shadowsList) => {
+            if(!shadowsGroup) return;
+            
+            // clear old shadows
+            while(shadowsGroup.children.length > 0){ 
+                shadowsGroup.remove(shadowsGroup.children[0]); 
+            }
+
+            // create a shadow plane for each shadow (stylized)
+            shadowsList.forEach((s, i) => {
+                if(s.inset) return; // Ignore inset in 3D for simplicity
+                
+                const c = new THREE.Color(s.color);
+                const sGeo = new THREE.PlaneGeometry(3 + s.spread/10, 3 + s.spread/10);
+                const sMat = new THREE.MeshBasicMaterial({ 
+                    color: c, 
+                    transparent: true, 
+                    opacity: s.alpha * 0.5,
+                    depthWrite: false
+                });
+                const sPlane = new THREE.Mesh(sGeo, sMat);
+                sPlane.rotation.x = -Math.PI / 2;
+                
+                // map x,y offset to 3d plane
+                sPlane.position.set(2 + s.x / 20, 0.01 + (i * 0.01), (-s.y / 20));
+                
+                // Simulate blur by scaling up slightly and lowering opacity
+                const blurScale = 1 + (s.blur / 50);
+                sPlane.scale.set(blurScale, blurScale, 1);
+                
+                shadowsGroup.add(sPlane);
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(cube) {
+                cube.rotation.y += 0.01;
+                cube.rotation.x += 0.005;
+                cube.position.y = 2 + Math.sin(Date.now() * 0.002) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

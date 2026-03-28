@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 2 - Base64 Encoder Decoder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .layout-split {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 900px) {
+            .layout-split {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Input/Output Areas */
+        .io-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .io-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .io-textarea {
+            flex: 1;
+            width: 100%;
+            min-height: 250px;
+            resize: vertical;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            padding: 1rem;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 1rem;
+        }
+
+        .io-textarea:focus {
+            border-color: var(--accent-primary);
+            outline: none;
+        }
+
+        /* File Drop Zone */
+        .file-drop {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            background: var(--bg-surface);
+            transition: all 0.2s;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .file-drop:hover,
+        .file-drop.drag-over {
+            border-color: var(--accent-primary);
+            background: rgba(187, 134, 252, 0.05);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        /* Direction Switcher */
+        .switcher-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        @media (min-width: 900px) {
+            .switcher-container {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 10;
+                padding: 0;
+            }
+        }
+
+        .btn-switch {
+            background: var(--bg-elevated);
+            border: 2px solid var(--accent-primary);
+            color: var(--text-primary);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-switch:hover {
+            transform: scale(1.1) rotate(180deg);
+        }
+
+        .mode-decode {
+            flex-direction: row-reverse !important;
+        }
+
+        /* File Preview (if decoding to image) */
+        .img-preview {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 1rem;
+            border-radius: var(--radius-sm);
+            display: none;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 3D Container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.2;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container relative">
+
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>2. Base64 Encoder Decoder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="layout-split position-relative" id="main-layout">
+
+                <!-- Left Column (Input) -->
+                <div class="glass-panel io-container">
+                    <div class="io-header">
+                        <h3 id="label-primary">Plain Text / File</h3>
+                        <button class="btn" id="btn-clear"
+                            style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">Clear</button>
+                    </div>
+
+                    <div class="file-drop" id="file-drop">
+                        📁 Drag & Drop a file here to encode (< 5MB) <input type="file" id="file-input">
+                    </div>
+
+                    <textarea class="io-textarea" id="text-input" placeholder="Type or paste text here..."></textarea>
+
+                    <div class="stats-bar">
+                        <span id="stat-input-len">Chars: 0</span>
+                        <span id="stat-input-size">Size: 0 B</span>
+                    </div>
+                </div>
+
+                <!-- Center Switcher (Desktop) or Middle (Mobile) -->
+                <div class="switcher-container">
+                    <button class="btn-switch" id="btn-switch" title="Swap Encode/Decode">⇄</button>
+                </div>
+
+                <!-- Right Column (Output) -->
+                <div class="glass-panel io-container">
+                    <div class="io-header">
+                        <h3 id="label-secondary">Base64 Output</h3>
+                        <div class="flex gap-2">
+                            <button class="btn" id="btn-copy"
+                                style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">Copy</button>
+                            <button class="btn btn-primary" id="btn-download"
+                                style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">Download</button>
+                        </div>
+                    </div>
+
+                    <textarea class="io-textarea" id="text-output" readonly
+                        placeholder="Result will appear here..."></textarea>
+                    <img id="img-preview" class="img-preview">
+
+                    <div class="stats-bar">
+                        <span id="stat-output-len">Chars: 0</span>
+                        <span id="stat-output-size">Size: 0 B</span>
+                    </div>
+
+                    <div id="error-msg" class="text-accent mt-2" style="font-size:0.85rem; display:none;"></div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script>
+        // State
+        let mode = 'encode'; // 'encode' or 'decode'
+        let currentInputMode = 'text'; // 'text' or 'file' (file means output is data URI)
+        let rawFileData = null;
+        let fileMimeType = '';
+
+        // DOM
+        const mainLayout = document.getElementById('main-layout');
+        const labelPrimary = document.getElementById('label-primary');
+        const labelSecondary = document.getElementById('label-secondary');
+
+        const textInput = document.getElementById('text-input');
+        const textOutput = document.getElementById('text-output');
+
+        const fileDrop = document.getElementById('file-drop');
+        const fileInput = document.getElementById('file-input');
+        const imgPreview = document.getElementById('img-preview');
+        const errorMsg = document.getElementById('error-msg');
+
+        const statInLen = document.getElementById('stat-input-len');
+        const statInSize = document.getElementById('stat-input-size');
+        const statOutLen = document.getElementById('stat-output-len');
+        const statOutSize = document.getElementById('stat-output-size');
+
+        // Utility
+        const formatBytes = (bytes) => {
+            if (bytes === 0) return '0 B';
+            const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        const updateStats = (inStr, outStr) => {
+            const inBytes = new Blob([inStr]).size;
+            const outBytes = new Blob([outStr]).size;
+
+            statInLen.textContent = `Chars: ${inStr.length}`;
+            statInSize.textContent = `Size: ${formatBytes(inBytes)}`;
+            statOutLen.textContent = `Chars: ${outStr.length}`;
+            statOutSize.textContent = `Size: ${formatBytes(outBytes)}`;
+
+            // 3D trigger based on length ratio
+            if (window.update3DTunnel) window.update3DTunnel(mode, inStr.length, outStr.length);
+        };
+
+        // Core Logic
+        const processContent = () => {
+            errorMsg.style.display = 'none';
+            imgPreview.style.display = 'none';
+
+            try {
+                if (mode === 'encode') {
+                    if (currentInputMode === 'text') {
+                        // utf-8 encoding safe btoa
+                        const utf8str = unescape(encodeURIComponent(textInput.value));
+                        const b64 = btoa(utf8str);
+                        textOutput.value = b64;
+                        updateStats(textInput.value, b64);
+                    } else if (currentInputMode === 'file' && rawFileData) {
+                        textOutput.value = rawFileData; // It's already Data URL
+                        updateStats("File Binary", rawFileData);
+                    }
+                } else { // DECODE
+                    const inputB64 = textInput.value.trim();
+                    if (!inputB64) {
+                        textOutput.value = ''; updateStats('', ''); return;
+                    }
+
+                    // Check if it's a data url
+                    if (inputB64.startsWith('data:')) {
+                        textOutput.value = "Data URI detected. Download the file or preview if it's an image.";
+                        const mime = inputB64.split(';')[0].split(':')[1];
+                        if (mime.startsWith('image/')) {
+                            imgPreview.src = inputB64;
+                            imgPreview.style.display = 'block';
+                        }
+                        updateStats(inputB64, `Data URI [${mime}]`);
+                    } else {
+                        // Try to decode as utf-8 string
+                        const rawStr = atob(inputB64);
+                        const decoded = decodeURIComponent(escape(rawStr));
+                        textOutput.value = decoded;
+                        updateStats(inputB64, decoded);
+                    }
+                }
+            } catch (e) {
+                errorMsg.textContent = "Invalid Input: " + e.message;
+                errorMsg.style.display = 'block';
+                textOutput.value = '';
+            }
+        };
+
+        // Mode Switcher
+        document.getElementById('btn-switch').addEventListener('click', () => {
+            mode = mode === 'encode' ? 'decode' : 'encode';
+
+            // Visually swap layout (Flex direction reverse)
+            if (mode === 'decode') {
+                mainLayout.classList.add('mode-decode');
+                labelPrimary.textContent = "Base64 Input";
+                labelSecondary.textContent = "Plain Text / File Preview Output";
+                fileDrop.innerHTML = `📁 Drag & Drop valid Base64 .txt file <input type="file" id="file-input" accept=".txt">`;
+                textInput.placeholder = "Paste Base64 string here...";
+            } else {
+                mainLayout.classList.remove('mode-decode');
+                labelPrimary.textContent = "Plain Text / File";
+                labelSecondary.textContent = "Base64 Output";
+                fileDrop.innerHTML = `📁 Drag & Drop a file here to encode (< 5MB) <input type="file" id="file-input">`;
+                textInput.placeholder = "Type or paste text here...";
+            }
+
+            // Re-bind file since innerHTML replaced it
+            bindFileEvents();
+
+            // Clear logic or swap text? Usually better to just clear or try to convert. Let's clear for safety.
+            textInput.value = '';
+            textOutput.value = '';
+            currentInputMode = 'text';
+            rawFileData = null;
+            imgPreview.style.display = 'none';
+
+            processContent();
+        });
+
+        // File Handling
+        const bindFileEvents = () => {
+            const drop = document.getElementById('file-drop');
+            const finput = document.getElementById('file-input');
+
+            drop.addEventListener('click', () => finput.click());
+            drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag-over'); });
+            drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+            drop.addEventListener('drop', (e) => {
+                e.preventDefault();
+                drop.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+            });
+            finput.addEventListener('change', (e) => {
+                if (e.target.files.length) handleFile(e.target.files[0]);
+            });
+        };
+
+        const handleFile = (file) => {
+            if (file.size > 5 * 1024 * 1024) {
+                if (window.AppCore) AppCore.showToast('File too large (limit 5MB)');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentInputMode = 'file';
+                rawFileData = e.target.result;
+                fileMimeType = file.type;
+
+                if (mode === 'encode') {
+                    textInput.value = `[Loaded File: ${file.name}]`;
+                    processContent();
+                } else {
+                    // expecting a text file containing base64
+                    textInput.value = e.target.result;
+                    processContent();
+                }
+            };
+
+            if (mode === 'encode') {
+                reader.readAsDataURL(file); // Produces base64 string
+            } else {
+                reader.readAsText(file); // Reads text base64
+            }
+        };
+
+        // Bindings
+        textInput.addEventListener('input', () => { currentInputMode = 'text'; processContent(); });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            textInput.value = ''; textOutput.value = ''; currentInputMode = 'text';
+            rawFileData = null; imgPreview.style.display = 'none'; errorMsg.style.display = 'none';
+            updateStats('', '');
+        });
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            navigator.clipboard.writeText(textOutput.value).then(() => {
+                if (window.AppCore) AppCore.showToast('Output copied to clipboard!');
+            });
+        });
+
+        document.getElementById('btn-download').addEventListener('click', () => {
+            if (!textOutput.value) return;
+
+            let url, filename;
+            if (mode === 'encode') {
+                // download as txt
+                const blob = new Blob([textOutput.value], { type: 'text/plain' });
+                url = URL.createObjectURL(blob);
+                filename = 'base64_encode.txt';
+            } else {
+                // If we entered data uri
+                const val = textInput.value.trim();
+                if (val.startsWith('data:')) {
+                    url = val; // Native browser download for data uri
+                    const ext = val.split(';')[0].split('/')[1] || 'bin';
+                    filename = `decoded_file.${ext}`;
+                } else {
+                    // download decoded text
+                    const blob = new Blob([textOutput.value], { type: 'text/plain' });
+                    url = URL.createObjectURL(blob);
+                    filename = 'decoded_text.txt';
+                }
+            }
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+
+            if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+        });
+
+        // Init
+        bindFileEvents();
+
+    </script>
+
+    <!-- Three.js Scene: Encryption Matrix Tunnel / Data flow -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, tunnelGroup;
+        let particles = [];
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 5;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+            // FOG for tunnel depth
+            scene.fog = new THREE.Fog(0x121212, 1, 20);
+
+            tunnelGroup = new THREE.Group();
+            scene.add(tunnelGroup);
+
+            const themeColor = new THREE.Color(getComputedStyle(document.body).getPropertyValue('--accent-primary').trim() || '#BB86FC');
+
+            // Create flowing particles setup
+            const geo = new THREE.BoxGeometry(0.1, 0.1, 0.5); // blocky data stream
+            const mat = new THREE.MeshBasicMaterial({ color: themeColor });
+
+            for (let i = 0; i < 100; i++) {
+                const mesh = new THREE.Mesh(geo, mat);
+
+                // Cylinder spawn distribution
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 2 + Math.random() * 2; // hollow center
+
+                mesh.position.x = Math.cos(angle) * radius;
+                mesh.position.y = Math.sin(angle) * radius;
+                mesh.position.z = (Math.random() * 40) - 20; // Spread along Z deep into fog
+
+                mesh.userData = { speed: 0.1 + (Math.random() * 0.1) };
+
+                tunnelGroup.add(mesh);
+                particles.push(mesh);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        };
+
+        let simDirection = 1; // 1 = encode (forward), -1 = decode (backward)
+
+        window.update3DTunnel = (modeStr, inLen, outLen) => {
+            if (!scene) return;
+            simDirection = modeStr === 'encode' ? 1 : -1;
+
+            // Speed up particles based on data size (cap it)
+            const density = Math.min((inLen + outLen) / 500, 50);
+
+            particles.forEach((p, i) => {
+                // Activate/Deactivate particles based on density mapped to volume
+                p.visible = i < (50 + density);
+                p.userData.speed = (0.05 + Math.random() * 0.1) + (density * 0.005);
+            });
+        };
+
+        const animate = () => {
+            requestAnimationFrame(animate);
+            if (tunnelGroup) {
+                tunnelGroup.rotation.z += 0.002 * simDirection; // twist
+
+                // Data flow
+                particles.forEach(p => {
+                    if (!p.visible) return;
+                    p.position.z += p.userData.speed * simDirection;
+
+                    // wrap around bounds
+                    if (simDirection === 1 && p.position.z > 10) p.position.z = -20;
+                    if (simDirection === -1 && p.position.z < -20) p.position.z = 10;
+                });
+            }
+            renderer.render(scene, camera);
+        };
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+
+</html>

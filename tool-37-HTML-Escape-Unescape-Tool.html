@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 37 - HTML Escape Unescape Tool - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 350px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--radius-md);
+        }
+
+        .swap-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+
+        .swap-btn:hover {
+            transform: scale(1.1) rotate(180deg);
+        }
+
+        .ref-table-container {
+            margin-top: 2rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .ref-table-header {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ref-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ref-table th, .ref-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .ref-table th {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .ref-table td {
+            font-family: var(--font-mono);
+        }
+
+        .ref-table td.char {
+            font-size: 1.2rem;
+            text-align: center;
+            font-family: var(--font-main);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>37. HTML Escape Unescape Tool</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="controls">
+                    <span style="color: var(--text-secondary); font-weight: bold;" id="mode-text">Mode: Escape HTML</span>
+                    <button class="swap-btn" id="swap-btn" title="Swap Mode">⇄</button>
+                </div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);" id="input-label">Unescaped HTML (Input)</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        <textarea id="input-area" placeholder="Enter text here..."></textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);" id="output-label">Escaped HTML (Output)</label>
+                            <button class="btn btn-sm btn-primary" id="copy-btn">Copy Output</button>
+                        </div>
+                        <textarea id="output-area" readonly placeholder="Result will appear here..."></textarea>
+                    </div>
+                </div>
+
+                <div class="ref-table-container">
+                    <div class="ref-table-header">Common HTML Character References</div>
+                    <table class="ref-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: center;">Character</th>
+                                <th>Name</th>
+                                <th>Entity Name</th>
+                                <th>Decimal</th>
+                                <th>Hex</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="char">&amp;</td><td>Ampersand</td><td>&amp;amp;</td><td>&amp;#38;</td><td>&amp;#x26;</td></tr>
+                            <tr><td class="char">&lt;</td><td>Less than</td><td>&amp;lt;</td><td>&amp;#60;</td><td>&amp;#x3C;</td></tr>
+                            <tr><td class="char">&gt;</td><td>Greater than</td><td>&amp;gt;</td><td>&amp;#62;</td><td>&amp;#x3E;</td></tr>
+                            <tr><td class="char">&quot;</td><td>Double quote</td><td>&amp;quot;</td><td>&amp;#34;</td><td>&amp;#x22;</td></tr>
+                            <tr><td class="char">&apos;</td><td>Single quote / Apostrophe</td><td>&amp;apos;</td><td>&amp;#39;</td><td>&amp;#x27;</td></tr>
+                            <tr><td class="char">&copy;</td><td>Copyright</td><td>&amp;copy;</td><td>&amp;#169;</td><td>&amp;#xA9;</td></tr>
+                            <tr><td class="char">&reg;</td><td>Registered trademark</td><td>&amp;reg;</td><td>&amp;#174;</td><td>&amp;#xAE;</td></tr>
+                            <tr><td class="char">&euro;</td><td>Euro sign</td><td>&amp;euro;</td><td>&amp;#8364;</td><td>&amp;#x20AC;</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="toast" class="toast">Copied to clipboard!</div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const inputArea = document.getElementById('input-area');
+        const outputArea = document.getElementById('output-area');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const swapBtn = document.getElementById('swap-btn');
+        const modeText = document.getElementById('mode-text');
+        const inputLabel = document.getElementById('input-label');
+        const outputLabel = document.getElementById('output-label');
+        const toast = document.getElementById('toast');
+
+        let isEscapeMode = true;
+
+        const escapeHtml = (text) => {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            };
+            return text.replace(/[&<>"']/g, (m) => map[m]);
+        };
+
+        const unescapeHtml = (text) => {
+            // Use browser DOM for robust unescaping (handles named and numeric entities)
+            const doc = new DOMParser().parseFromString(text, "text/html");
+            return doc.documentElement.textContent;
+        };
+
+        const processText = () => {
+            const val = inputArea.value;
+            if(!val) {
+                outputArea.value = '';
+                if(window.update3DMasks) window.update3DMasks(false); // Idle
+                return;
+            }
+
+            if (isEscapeMode) {
+                outputArea.value = escapeHtml(val);
+                if(window.update3DMasks) window.update3DMasks(true, true); // Putting on mask
+            } else {
+                outputArea.value = unescapeHtml(val);
+                if(window.update3DMasks) window.update3DMasks(true, false); // Taking off mask
+            }
+        };
+
+        swapBtn.addEventListener('click', () => {
+            isEscapeMode = !isEscapeMode;
+            if(isEscapeMode) {
+                modeText.textContent = 'Mode: Escape HTML';
+                inputLabel.textContent = 'Unescaped HTML (Input)';
+                outputLabel.textContent = 'Escaped HTML (Output)';
+                if(window.setSystemState) window.setSystemState('escape');
+            } else {
+                modeText.textContent = 'Mode: Unescape HTML';
+                inputLabel.textContent = 'Escaped HTML (Input)';
+                outputLabel.textContent = 'Unescaped HTML (Output)';
+                if(window.setSystemState) window.setSystemState('unescape');
+            }
+            
+            // Swap Contents
+            const currentOutput = outputArea.value;
+            inputArea.value = currentOutput;
+            processText();
+        });
+
+        inputArea.addEventListener('input', processText);
+
+        clearBtn.addEventListener('click', () => {
+            inputArea.value = '';
+            processText();
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if(!outputArea.value) return;
+            navigator.clipboard.writeText(outputArea.value);
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        });
+
+        // 3D Visualization: Characters that put on/remove masks
+        let scene, camera, renderer, charGroup, maskGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            // Container for the character
+            const mainContainer = new THREE.Group();
+            scene.add(mainContainer);
+
+            // The "Character" (a blocky stylized person)
+            charGroup = new THREE.Group();
+            
+            const headGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+            const head = new THREE.Mesh(headGeo, bodyMat);
+            head.position.y = 2;
+            charGroup.add(head);
+            
+            // Eyes
+            const eyeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.1);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(-0.3, 2.2, 0.8);
+            const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeR.position.set(0.3, 2.2, 0.8);
+            charGroup.add(eyeL);
+            charGroup.add(eyeR);
+
+            const bodyGeo = new THREE.BoxGeometry(2, 2.5, 1);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0;
+            charGroup.add(body);
+
+            mainContainer.add(charGroup);
+
+            // The "Mask" (Entity form)
+            maskGroup = new THREE.Group();
+            
+            const maskShape = new THREE.Shape();
+            maskShape.moveTo(-0.9, 0.9);
+            maskShape.lineTo(0.9, 0.9);
+            maskShape.lineTo(0.6, -0.9);
+            maskShape.lineTo(0, -1.2);
+            maskShape.lineTo(-0.6, -0.9);
+            maskShape.lineTo(-0.9, 0.9);
+
+            const extSettings = { depth: 0.2, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: 0.1, bevelThickness: 0.05 };
+            const mGeo = new THREE.ExtrudeGeometry(maskShape, extSettings);
+            mGeo.center();
+
+            const mMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, shininess: 100 });
+            const maskBase = new THREE.Mesh(mGeo, mMat);
+            maskGroup.add(maskBase);
+            
+            // Mask details (e.g. glowing eyes or text symbol)
+            const mEyeL = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            mEyeL.position.set(-0.3, 0.2, 0.15);
+            const mEyeR = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            mEyeR.position.set(0.3, 0.2, 0.15);
+            maskGroup.add(mEyeL);
+            maskGroup.add(mEyeR);
+
+            maskGroup.position.set(0, 2, 2); // default floating in front
+            mainContainer.add(maskGroup);
+
+            mainContainer.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        let targetMaskZ = 0.8; // On face
+        let currentMaskZ = 0.8;
+        let isSystemEscape = true;
+        let isTyping = false;
+        let typingTimeout;
+
+        window.setSystemState = (state) => {
+            isSystemEscape = (state === 'escape');
+            targetMaskZ = isSystemEscape ? 0.8 : 2.5; // Face vs Floating
+        };
+
+        window.update3DMasks = (active, puttingOn) => {
+            if(!maskGroup) return;
+            isTyping = active;
+            
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => { isTyping = false; }, 500);
+            
+            // puttingOn = true means text is being escaped -> mask moves to face
+            // puttingOn = false means text is unescaped -> mask moves away
+            if(active) {
+                targetMaskZ = puttingOn ? 0.8 : 2.5;
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(maskGroup) {
+                // Animate mask position
+                currentMaskZ += (targetMaskZ - currentMaskZ) * 0.1;
+                maskGroup.position.z = currentMaskZ;
+
+                // Bobbing animation
+                if(!isTyping) {
+                    charGroup.parent.position.y = Math.sin(Date.now() * 0.002) * 0.1;
+                    charGroup.parent.rotation.y = Math.sin(Date.now() * 0.001) * 0.15;
+                } else {
+                    // Shaking slightly when typing
+                    charGroup.parent.position.y = (Math.random() - 0.5) * 0.05;
+                }
+                
+                // Rotate mask slightly if it's floating
+                if(targetMaskZ > 1.5) {
+                    maskGroup.rotation.y = Math.sin(Date.now() * 0.003) * 0.3;
+                    maskGroup.position.y = 2 + Math.sin(Date.now() * 0.004) * 0.2;
+                } else {
+                    maskGroup.rotation.y = 0;
+                    maskGroup.position.y = 2; // Locked to head
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            processText(); // initial state
+        });
+    </script>
+</body>
+</html>

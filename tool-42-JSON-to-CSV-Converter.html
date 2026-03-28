@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 42 - JSON to CSV Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            resize: vertical;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--radius-md);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .control-group select {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.4rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .error-message {
+            color: #ff5555;
+            text-align: center;
+            margin-top: 1rem;
+            display: none;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>42. JSON to CSV Converter</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Delimiter:</label>
+                        <select id="delimiter-select">
+                            <option value=",">Comma (,)</option>
+                            <option value=";">Semicolon (;)</option>
+                            <option value="\t">Tab</option>
+                            <option value="|">Pipe (|)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Quotes:</label>
+                        <select id="quotes-select">
+                            <option value="false">Minimal</option>
+                            <option value="true">All Fields</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <input type="checkbox" id="flatten-toggle" checked style="accent-color: var(--primary-color);">
+                        <label for="flatten-toggle">Flatten Nested Objects</label>
+                    </div>
+                </div>
+
+                <div id="error-msg" class="error-message"></div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">JSON Array (Input)</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        <textarea id="json-input" placeholder='[
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "address": {
+      "city": "New York",
+      "zip": "10001"
+    }
+  }
+]'></textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">CSV (Output)</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-primary" id="copy-btn">Copy Output</button>
+                            </div>
+                        </div>
+                        <textarea id="csv-output" readonly placeholder="Result will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="toast" class="toast">Copied to clipboard!</div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const jsonInput = document.getElementById('json-input');
+        const csvOutput = document.getElementById('csv-output');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const delimiterSelect = document.getElementById('delimiter-select');
+        const quotesSelect = document.getElementById('quotes-select');
+        const flattenToggle = document.getElementById('flatten-toggle');
+        const errorMsg = document.getElementById('error-msg');
+        const toast = document.getElementById('toast');
+
+        // Helper to flatten nested JSON objects into dot notation
+        function flattenObject(ob) {
+            var toReturn = {};
+
+            for (var i in ob) {
+                if (!ob.hasOwnProperty(i)) continue;
+
+                if ((typeof ob[i]) === 'object' && ob[i] !== null && !Array.isArray(ob[i])) {
+                    var flatObject = flattenObject(ob[i]);
+                    for (var x in flatObject) {
+                        if (!flatObject.hasOwnProperty(x)) continue;
+                        toReturn[i + '.' + x] = flatObject[x];
+                    }
+                } else {
+                    // Convert arrays or non-objects to string
+                    toReturn[i] = (typeof ob[i] === 'object' && ob[i] !== null) ? JSON.stringify(ob[i]) : ob[i];
+                }
+            }
+            return toReturn;
+        }
+
+        const processJSON = () => {
+            const val = jsonInput.value.trim();
+            errorMsg.style.display = 'none';
+
+            if(!val) {
+                csvOutput.value = '';
+                if(window.animateFold) window.animateFold(false);
+                return;
+            }
+
+            try {
+                let parsed = JSON.parse(val);
+                
+                // Ensure it's an array
+                if(!Array.isArray(parsed)) {
+                    if(typeof parsed === 'object' && parsed !== null) {
+                        parsed = [parsed]; // wrap single object
+                    } else {
+                        throw new Error("Input must be a JSON array or object.");
+                    }
+                }
+
+                // Flatten
+                if(flattenToggle.checked) {
+                    parsed = parsed.map(item => flattenObject(item));
+                }
+
+                // Generate CSV
+                const csv = Papa.unparse(parsed, {
+                    delimiter: delimiterSelect.value,
+                    quotes: quotesSelect.value === 'true',
+                    header: true
+                });
+
+                csvOutput.value = csv;
+                if(window.animateFold) window.animateFold(true);
+            } catch(e) {
+                errorMsg.textContent = "Invalid JSON: " + e.message;
+                errorMsg.style.display = 'block';
+                if(window.animateFold) window.animateFold(false);
+            }
+        };
+
+        jsonInput.addEventListener('input', () => {
+            clearTimeout(window.convertTimeout);
+            window.convertTimeout = setTimeout(processJSON, 500);
+        });
+
+        delimiterSelect.addEventListener('change', processJSON);
+        quotesSelect.addEventListener('change', processJSON);
+        flattenToggle.addEventListener('change', processJSON);
+
+        clearBtn.addEventListener('click', () => {
+            jsonInput.value = '';
+            csvOutput.value = '';
+            errorMsg.style.display = 'none';
+            if(window.animateFold) window.animateFold(false);
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if(!csvOutput.value) return;
+            navigator.clipboard.writeText(csvOutput.value);
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        });
+
+        // 3D Visualization: A cube unfolding into a flat grid
+        let scene, camera, renderer, cubeGroup;
+        let faces = [];
+        let isUnfolded = false;
+        let animationProgress = 0;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            cubeGroup = new THREE.Group();
+            scene.add(cubeGroup);
+
+            // Create 6 faces of a cube as separate planes so they can unfold
+            const faceGeo = new THREE.PlaneGeometry(1.9, 1.9); // slight gap
+            
+            // Array to hold face meshes and their folded/unfolded states
+            // Face definitions: front, back, top, bottom, right, left
+            const faceDefs = [
+                { fPos: [0, 0, 1], fRot: [0, 0, 0], uPos: [0, 0, 0], uRot: [0, 0, 0], col: 0xee4444 }, // Front (Center tile)
+                { fPos: [0, 0, -1], fRot: [Math.PI, 0, 0], uPos: [0, -4, 0], uRot: [0, 0, 0], col: 0x44ee44 }, // Back -> Far bottom
+                { fPos: [0, 1, 0], fRot: [-Math.PI/2, 0, 0], uPos: [0, 2, 0], uRot: [0, 0, 0], col: 0x4444ee }, // Top -> Top
+                { fPos: [0, -1, 0], fRot: [Math.PI/2, 0, 0], uPos: [0, -2, 0], uRot: [0, 0, 0], col: 0xeeee44 }, // Bottom -> Bottom
+                { fPos: [1, 0, 0], fRot: [0, Math.PI/2, 0], uPos: [2, 0, 0], uRot: [0, 0, 0], col: 0xee44ee }, // Right -> Right
+                { fPos: [-1, 0, 0], fRot: [0, -Math.PI/2, 0], uPos: [-2, 0, 0], uRot: [0, 0, 0], col: 0x44eeee }  // Left -> Left
+            ];
+
+            faceDefs.forEach(def => {
+                const mat = new THREE.MeshPhongMaterial({ color: def.col, side: THREE.DoubleSide });
+                const mesh = new THREE.Mesh(faceGeo, mat);
+                
+                // Start folded
+                mesh.position.set(...def.fPos);
+                mesh.rotation.set(...def.fRot);
+                
+                cubeGroup.add(mesh);
+                faces.push({ mesh, def });
+            });
+
+            cubeGroup.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.animateFold = (unfold) => {
+            isUnfolded = unfold;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(cubeGroup) {
+                // Bobbing & Rotating (only when folded)
+                if(!isUnfolded) {
+                    cubeGroup.position.y = Math.sin(Date.now() * 0.002) * 0.2;
+                    cubeGroup.rotation.y += 0.01;
+                    cubeGroup.rotation.x += 0.005;
+                    cubeGroup.scale.set(1.5, 1.5, 1.5);
+                } else {
+                    // Straighten out when unfolded
+                    cubeGroup.position.y += (0 - cubeGroup.position.y) * 0.05;
+                    cubeGroup.rotation.x += (0 - cubeGroup.rotation.x) * 0.05;
+                    cubeGroup.rotation.y += (0 - cubeGroup.rotation.y) * 0.05;
+                    cubeGroup.scale.set(0.8, 0.8, 0.8); // Fit on screen
+                }
+
+                // Interpolate state
+                const targetProgress = isUnfolded ? 1 : 0;
+                animationProgress += (targetProgress - animationProgress) * 0.05;
+
+                faces.forEach(face => {
+                    const { mesh, def } = face;
+                    
+                    // LERP Position
+                    mesh.position.x = def.fPos[0] + (def.uPos[0] - def.fPos[0]) * animationProgress;
+                    mesh.position.y = def.fPos[1] + (def.uPos[1] - def.fPos[1]) * animationProgress;
+                    mesh.position.z = def.fPos[2] + (def.uPos[2] - def.fPos[2]) * animationProgress;
+                    
+                    // LERP Rotation
+                    mesh.rotation.x = def.fRot[0] + (def.uRot[0] - def.fRot[0]) * animationProgress;
+                    mesh.rotation.y = def.fRot[1] + (def.uRot[1] - def.fRot[1]) * animationProgress;
+                    mesh.rotation.z = def.fRot[2] + (def.uRot[2] - def.fRot[2]) * animationProgress;
+
+                    // Fade to CSV icon appearance (turn white-ish grid)
+                    const baseColor = new THREE.Color(def.col);
+                    const flatColor = new THREE.Color(0xffffff); // white tiles
+                    mesh.material.color.lerpColors(baseColor, flatColor, animationProgress);
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            processJSON(); // handle demo data
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 49 - SVG Path Editor - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .svg-canvas-wrapper {
+            background: #ffffff;
+            /* SVG editing Usually needs white bg to see clearly */
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            aspect-ratio: 1;
+            position: relative;
+            overflow: hidden;
+            background-image: linear-gradient(#e5e5e5 1px, transparent 1px), linear-gradient(90deg, #e5e5e5 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        path {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 3;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+        .drawing-point {
+            fill: #ffaa00;
+            stroke: #fff;
+            stroke-width: 2;
+            cursor: grab;
+        }
+
+        .guide-line {
+            stroke: rgba(255, 170, 0, 0.5);
+            stroke-width: 1.5;
+            stroke-dasharray: 4;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .cmd-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .cmd-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .help-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .path-history {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: #ff5555;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>49. SVG Path Editor</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <div>
+                        <div class="toolbar">
+                            <button class="cmd-btn active" data-cmd="M">Move To (M)</button>
+                            <button class="cmd-btn" data-cmd="L">Line To (L)</button>
+                            <button class="cmd-btn" data-cmd="Q">Quad Curve (Q)</button>
+                            <button class="cmd-btn" data-cmd="Z">Close Path (Z)</button>
+                            <button class="cmd-btn" id="btn-clear"
+                                style="margin-left:auto; background: rgba(255,85,85,0.2); border-color:#ff5555; color:#ff5555">Clear</button>
+                        </div>
+
+                        <div class="help-text" id="help-text">Click to set the starting point (Move To).</div>
+
+                        <div class="svg-canvas-wrapper" id="svg-wrapper">
+                            <svg id="svg-canvas" viewBox="0 0 500 500">
+                                <g id="guide-layer"></g>
+                                <path id="main-path" d="" />
+                                <g id="points-layer"></g>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 style="margin-top:0; color:var(--text-secondary);">Path Commands</h4>
+                        <div class="path-history" id="path-history">
+                            <!-- Commands list -->
+                        </div>
+
+                        <h4 style="color:var(--text-secondary);">Generated SVG Code</h4>
+                        <textarea id="svg-output" readonly></textarea>
+
+                        <div style="display:flex; gap:1rem; margin-top:1rem;">
+                            <button class="btn btn-primary" id="btn-copy">Copy to Clipboard</button>
+                            <button class="btn" id="btn-dl">Download .svg</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const svgCanvas = document.getElementById('svg-canvas');
+        const mainPath = document.getElementById('main-path');
+        const pointsLayer = document.getElementById('points-layer');
+        const guideLayer = document.getElementById('guide-layer');
+        const svgOutput = document.getElementById('svg-output');
+        const pathHistoryList = document.getElementById('path-history');
+        const cmdBtns = document.querySelectorAll('.cmd-btn[data-cmd]');
+        const helpText = document.getElementById('help-text');
+
+        let commands = []; // { type: 'M', pts: [{x,y}] }
+        let currentCmd = 'M';
+        let pendingPoints = []; // For commands that need multiple clicks (e.g. Q curves)
+        let isDragging = false;
+        let dragTarget = null; // { cmdIndex, pointIndex }
+
+        // Help messages
+        const hints = {
+            'M': 'Click anywhere to move the pen without drawing a line.',
+            'L': 'Click to draw a straight line to the new point.',
+            'Q': 'Click once to place the control point, then click again for the end point.',
+            'Z': 'Closes the current subpath by drawing a straight line back to the last M command.'
+        };
+
+        cmdBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.cmd === 'Z') {
+                    // Immediate execution
+                    commands.push({ type: 'Z', pts: [] });
+                    updateSVG();
+                    return;
+                }
+
+                cmdBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCmd = btn.dataset.cmd;
+                pendingPoints = [];
+                helpText.textContent = hints[currentCmd];
+                renderGuides();
+            });
+        });
+
+        // Get coordinates relative to SVG viewBox (0-500)
+        function getSvgPoint(e) {
+            const pt = svgCanvas.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            return pt.matrixTransform(svgCanvas.getScreenCTM().inverse());
+        }
+
+        // Add a point visually
+        function createPointVisual(x, y, cmdIdx, ptIdx, isControl = false) {
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+            circle.setAttribute('cx', x);
+            circle.setAttribute('cy', y);
+            circle.setAttribute('r', isControl ? 6 : 8);
+            circle.setAttribute('class', 'drawing-point');
+            if (isControl) {
+                circle.style.fill = '#56b6c2'; // different color for control points
+                circle.style.strokeDasharray = '2';
+            }
+            circle.dataset.cmd = cmdIdx;
+            circle.dataset.pt = ptIdx;
+
+            // Interaction for dragging
+            circle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                isDragging = true;
+                dragTarget = { cmdIdx, ptIdx };
+            });
+
+            return circle;
+        }
+
+        function createGuideLine(x1, y1, x2, y2) {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('class', 'guide-line');
+            return line;
+        }
+
+        function updateSVG() {
+            let d = "";
+            pointsLayer.innerHTML = "";
+            guideLayer.innerHTML = "";
+            pathHistoryList.innerHTML = "";
+
+            // Calculate 'd' string
+            commands.forEach((cmd, i) => {
+                const type = cmd.type;
+                let str = type + " ";
+                let readable = type + " ";
+
+                if (type === 'M' || type === 'L') {
+                    const pt = cmd.pts[0];
+                    if (pt) {
+                        str += `${pt.x},${pt.y} `;
+                        readable += `${Math.round(pt.x)}, ${Math.round(pt.y)}`;
+                        pointsLayer.appendChild(createPointVisual(pt.x, pt.y, i, 0));
+                    }
+                } else if (type === 'Q') {
+                    const ctrl = cmd.pts[0];
+                    const end = cmd.pts[1];
+                    if (ctrl && end) {
+                        str += `${ctrl.x},${ctrl.y} ${end.x},${end.y} `;
+                        readable += `ctrl: ${Math.round(ctrl.x)},${Math.round(ctrl.y)} end: ${Math.round(end.x)},${Math.round(end.y)}`;
+
+                        // prev point for guide line
+                        let startPt = (i > 0 && commands[i - 1].pts.length > 0) ? commands[i - 1].pts[commands[i - 1].pts.length - 1] : { x: 0, y: 0 };
+
+                        guideLayer.appendChild(createGuideLine(startPt.x, startPt.y, ctrl.x, ctrl.y));
+                        guideLayer.appendChild(createGuideLine(ctrl.x, ctrl.y, end.x, end.y));
+
+                        pointsLayer.appendChild(createPointVisual(ctrl.x, ctrl.y, i, 0, true));
+                        pointsLayer.appendChild(createPointVisual(end.x, end.y, i, 1));
+                    }
+                } else if (type === 'Z') {
+                    str += " ";
+                    readable += "Close Path";
+                }
+
+                d += str;
+
+                // History list
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `<span>${readable}</span> <button class="btn-icon" data-idx="${i}">×</button>`;
+                pathHistoryList.appendChild(item);
+            });
+
+            // Handle pending point for Q curve
+            if (currentCmd === 'Q' && pendingPoints.length === 1) {
+                const ctrl = pendingPoints[0];
+                pointsLayer.appendChild(createPointVisual(ctrl.x, ctrl.y, -1, 0, true)); // -1 denotes temp
+
+                let startPt = commands.length > 0 ? commands[commands.length - 1].pts[commands[commands.length - 1].pts.length - 1] : { x: 0, y: 0 };
+                if (startPt) guideLayer.appendChild(createGuideLine(startPt.x, startPt.y, ctrl.x, ctrl.y));
+            }
+
+            // Remove command logic
+            document.querySelectorAll('.btn-icon').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx);
+                    commands.splice(idx, 1);
+                    updateSVG();
+                });
+            });
+
+            mainPath.setAttribute('d', d.trim());
+
+            const svgCodeStr = `<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">\n  <path fill="none" stroke="#555" stroke-width="3" d="${d.trim()}" />\n</svg>`;
+            svgOutput.value = svgCodeStr;
+
+            // Update 3D path
+            if (window.update3DPath) window.update3DPath(commands);
+        }
+
+        // Render guides for mouse move pending points
+        let mouseTrackerPoint = { x: 0, y: 0 };
+        function renderGuides() {
+            // Re-render SVG to show temporary guide lines to the cursor if needed
+            updateSVG();
+            if (currentCmd === 'L' && commands.length > 0) {
+                const lastLine = commands[commands.length - 1];
+                if (lastLine.pts.length > 0) {
+                    const startX = lastLine.pts[lastLine.pts.length - 1].x;
+                    const startY = lastLine.pts[lastLine.pts.length - 1].y;
+                    guideLayer.appendChild(createGuideLine(startX, startY, mouseTrackerPoint.x, mouseTrackerPoint.y));
+                }
+            } else if (currentCmd === 'Q') {
+                if (pendingPoints.length === 0 && commands.length > 0) {
+                    // Guide to expected control point
+                    const lastLine = commands[commands.length - 1];
+                    if (lastLine.pts.length > 0) {
+                        const startX = lastLine.pts[lastLine.pts.length - 1].x;
+                        const startY = lastLine.pts[lastLine.pts.length - 1].y;
+                        guideLayer.appendChild(createGuideLine(startX, startY, mouseTrackerPoint.x, mouseTrackerPoint.y));
+                    }
+                } else if (pendingPoints.length === 1) {
+                    // Guide from control point to expected end point
+                    guideLayer.appendChild(createGuideLine(pendingPoints[0].x, pendingPoints[0].y, mouseTrackerPoint.x, mouseTrackerPoint.y));
+                }
+            }
+        }
+
+        svgCanvas.addEventListener('mousedown', (e) => {
+            if (isDragging) return; // clicking a point
+
+            const pt = getSvgPoint(e);
+
+            if (currentCmd === 'M' || currentCmd === 'L') {
+                commands.push({ type: currentCmd, pts: [{ x: Math.round(pt.x), y: Math.round(pt.y) }] });
+                updateSVG();
+            } else if (currentCmd === 'Q') {
+                pendingPoints.push({ x: Math.round(pt.x), y: Math.round(pt.y) });
+                if (pendingPoints.length === 2) {
+                    commands.push({ type: 'Q', pts: [pendingPoints[0], pendingPoints[1]] });
+                    pendingPoints = [];
+                    updateSVG();
+                } else {
+                    helpText.textContent = "Click to set the end point of the Quadratic curve.";
+                    updateSVG();
+                }
+            }
+        });
+
+        svgCanvas.addEventListener('mousemove', (e) => {
+            const pt = getSvgPoint(e);
+            mouseTrackerPoint = { x: pt.x, y: pt.y };
+
+            if (isDragging && dragTarget) {
+                // Update point
+                if (dragTarget.cmdIdx !== -1) {
+                    commands[dragTarget.cmdIdx].pts[dragTarget.ptIdx] = { x: Math.round(pt.x), y: Math.round(pt.y) };
+                }
+                updateSVG();
+            } else {
+                renderGuides();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragTarget = null;
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            commands = [];
+            pendingPoints = [];
+            updateSVG();
+        });
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            navigator.clipboard.writeText(svgOutput.value);
+            alert("Copied to clipboard!");
+        });
+
+        document.getElementById('btn-dl').addEventListener('click', () => {
+            const blob = new Blob([svgOutput.value], { type: "image/svg+xml" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "path.svg";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // initial empty UI update
+        updateSVG();
+
+
+        // 3D Visualization: A 3D curve that can be manipulated by dragging points
+        // We will read from 'commands' and generate a THREE.Path extruded into a tube.
+        let scene, camera, renderer, pathGroup;
+        let mainTubeMesh = null;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 8);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            pathGroup = new THREE.Group();
+            scene.add(pathGroup);
+
+            // Shift whole scene right
+            scene.position.x = 3;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DPath = (cmdArray) => {
+            if (!pathGroup) return;
+
+            // Remove existing tube
+            if (mainTubeMesh) {
+                pathGroup.remove(mainTubeMesh);
+                mainTubeMesh.geometry.dispose();
+                mainTubeMesh.material.dispose();
+                mainTubeMesh = null;
+            }
+
+            if (cmdArray.length === 0) return;
+
+            // Build THREE.Path
+            const tp = new THREE.Path();
+
+            // Map 0...500 coordinate system to -2...2 in 3D Space
+            const mapPt = (pt) => {
+                return new THREE.Vector2((pt.x / 500) * 4 - 2, -((pt.y / 500) * 4 - 2));
+            };
+
+            cmdArray.forEach(c => {
+                if (c.type === 'M' && c.pts[0]) {
+                    const p = mapPt(c.pts[0]);
+                    tp.moveTo(p.x, p.y);
+                } else if (c.type === 'L' && c.pts[0]) {
+                    const p = mapPt(c.pts[0]);
+                    tp.lineTo(p.x, p.y);
+                } else if (c.type === 'Q' && c.pts.length === 2) {
+                    const ctrl = mapPt(c.pts[0]);
+                    const end = mapPt(c.pts[1]);
+                    tp.quadraticCurveTo(ctrl.x, ctrl.y, end.x, end.y);
+                }
+            });
+
+            // Convert Path to 3D Points, then to Tube
+            try {
+                const points = tp.getPoints(50); // resolution
+                if (points.length > 1) {
+                    // Create a 3D curve
+                    const curve3D = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, 0)));
+                    curve3D.curveType = 'chordal'; // match sharp edge lines better if any
+
+                    const tubeGeo = new THREE.TubeGeometry(curve3D, 64, 0.1, 8, false);
+                    const tubeMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, shininess: 100 });
+                    mainTubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+                    pathGroup.add(mainTubeMesh);
+                }
+            } catch (e) {
+                // If path is invalid or too short to extrude, skip
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (pathGroup && mainTubeMesh) {
+                // Gently rotate the path around Y so we can see its 3D depth
+                pathGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.4;
+                pathGroup.rotation.x = Math.sin(Date.now() * 0.0005) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+
+</html>

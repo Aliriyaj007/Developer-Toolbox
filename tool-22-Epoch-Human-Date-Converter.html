@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 22 - Epoch Human Date Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .converter-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        @media (min-width: 900px) {
+            .converter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-group input {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-main);
+            color: var(--text-primary);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+        }
+
+        .result-box {
+            padding: 1.5rem;
+            background: rgba(var(--primary-color-rgb), 0.1);
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--radius-md);
+            text-align: center;
+            font-size: 1.25rem;
+            font-family: var(--font-mono);
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
+            margin-bottom: 1rem;
+            gap: 0.5rem;
+        }
+
+        .now-btn {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: var(--radius-sm);
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .now-btn:hover {
+            opacity: 0.8;
+        }
+        
+        .unit-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .unit-btn {
+            flex: 1;
+            padding: 0.5rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .unit-btn.active {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+        }
+
+        .result-local { font-weight: bold; color: var(--text-primary); }
+        .result-utc { font-size: 1rem; color: var(--text-secondary); }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>22. Epoch Human Date Converter</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="converter-grid">
+                <div class="glass-panel">
+                    <h3>Epoch to Human Date</h3>
+                    <div class="unit-selector" id="epoch-unit-selector">
+                        <button class="unit-btn active" data-unit="s">Seconds (s)</button>
+                        <button class="unit-btn" data-unit="ms">Millis (ms)</button>
+                        <button class="unit-btn" data-unit="us">Micros (μs)</button>
+                    </div>
+                    <div class="input-group">
+                        <label for="epoch-input">Timestamp <button class="now-btn" id="btn-epoch-now">Now</button></label>
+                        <input type="number" id="epoch-input" placeholder="e.g. 1718292831" autocomplete="off">
+                    </div>
+                    <div class="result-box" id="human-result">
+                        <span class="result-local">Awaiting input...</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel">
+                    <h3>Human Date to Epoch</h3>
+                    <div class="input-group mt-4">
+                        <label for="date-input">Local Date & Time <button class="now-btn" id="btn-date-now">Now</button></label>
+                        <input type="datetime-local" step="1" id="date-input">
+                    </div>
+                    <div class="result-box" id="epoch-result">
+                        <span class="result-local">Awaiting input...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const epochInput = document.getElementById('epoch-input');
+            const dateInput = document.getElementById('date-input');
+            const humanResult = document.getElementById('human-result');
+            const epochResult = document.getElementById('epoch-result');
+            const btnEpochNow = document.getElementById('btn-epoch-now');
+            const btnDateNow = document.getElementById('btn-date-now');
+            
+            let currentUnit = 's';
+            const unitBtns = document.querySelectorAll('#epoch-unit-selector .unit-btn');
+
+            unitBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    unitBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentUnit = btn.dataset.unit;
+                    handleEpochInput();
+                });
+            });
+
+            const pad = (num) => num.toString().padStart(2, '0');
+
+            const toDateTimeLocal = (date) => {
+                return date.getFullYear() +
+                    '-' + pad(date.getMonth() + 1) +
+                    '-' + pad(date.getDate()) +
+                    'T' + pad(date.getHours()) +
+                    ':' + pad(date.getMinutes()) +
+                    ':' + pad(date.getSeconds());
+            };
+
+            const setNow = () => {
+                const now = new Date();
+                
+                // Set epoch
+                let epochVal = Math.floor(now.getTime() / 1000);
+                if(currentUnit === 'ms') epochVal = now.getTime();
+                if(currentUnit === 'us') epochVal = now.getTime() * 1000;
+                epochInput.value = epochVal;
+                handleEpochInput();
+
+                // Set date
+                dateInput.value = toDateTimeLocal(now);
+                handleDateInput();
+            };
+
+            const handleEpochInput = () => {
+                const val = epochInput.value;
+                if (!val) {
+                    humanResult.innerHTML = '<span class="result-local text-secondary">Awaiting input...</span>';
+                    return;
+                }
+
+                let ms = parseInt(val, 10);
+                if (currentUnit === 's') ms *= 1000;
+                else if (currentUnit === 'us') ms = Math.floor(ms / 1000);
+
+                const date = new Date(ms);
+                if (isNaN(date.getTime())) {
+                    humanResult.innerHTML = '<span class="result-local" style="color:#ff5252">Invalid Timestamp</span>';
+                    return;
+                }
+
+                humanResult.innerHTML = `
+                    <span class="result-local"><b>Local:</b> ${date.toLocaleString()}</span>
+                    <span class="result-utc"><b>GMT:</b> ${date.toUTCString()}</span>
+                `;
+                if(window.flipPage) window.flipPage();
+            };
+
+            const handleDateInput = () => {
+                const val = dateInput.value;
+                if (!val) {
+                    epochResult.innerHTML = '<span class="result-local text-secondary">Awaiting input...</span>';
+                    return;
+                }
+
+                const date = new Date(val);
+                if (isNaN(date.getTime())) {
+                    epochResult.innerHTML = '<span class="result-local" style="color:#ff5252">Invalid Date</span>';
+                    return;
+                }
+
+                const ms = date.getTime();
+                const sec = Math.floor(ms / 1000);
+
+                epochResult.innerHTML = `
+                    <span class="result-local" style="font-size:1.8rem;">${sec}</span>
+                    <span class="result-utc">Seconds since Jan 1, 1970</span>
+                    <hr style="width:100%; border-color:var(--border-color); margin: 0.5rem 0;">
+                    <span class="result-utc"><b>Millis:</b> ${ms}</span>
+                `;
+                if(window.flipPage) window.flipPage();
+            };
+
+            epochInput.addEventListener('input', handleEpochInput);
+            dateInput.addEventListener('input', handleDateInput);
+            btnEpochNow.addEventListener('click', setNow);
+            btnDateNow.addEventListener('click', setNow);
+
+            // Init
+            setNow();
+        });
+    </script>
+    <script>
+        // Three.js 3D Visualization - Calendar with flipping pages
+        let scene, camera, renderer, calendarBase, pages = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(6, 4, 10); // Offset right
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+            dirLight.position.set(5, 10, 8);
+            scene.add(dirLight);
+
+            // Calendar Group
+            const calendarGroup = new THREE.Group();
+            
+            // Backboard
+            const boardGeo = new THREE.BoxGeometry(4, 5, 0.2);
+            const boardMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const board = new THREE.Mesh(boardGeo, boardMat);
+            calendarGroup.add(board);
+
+            // Top rings
+            const ringGeo = new THREE.TorusGeometry(0.2, 0.05, 8, 16);
+            const ringMat = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+            
+            const ring1 = new THREE.Mesh(ringGeo, ringMat);
+            ring1.position.set(-1, 2.5, 0);
+            ring1.rotation.y = Math.PI / 2;
+            calendarGroup.add(ring1);
+
+            const ring2 = new THREE.Mesh(ringGeo, ringMat);
+            ring2.position.set(1, 2.5, 0);
+            ring2.rotation.y = Math.PI / 2;
+            calendarGroup.add(ring2);
+
+            // Pages
+            for(let i=0; i<3; i++) {
+                const pageGroup = new THREE.Group();
+                pageGroup.position.set(0, 2.5, 0.15 + (i * 0.05)); // Hinge at top
+                
+                const pageGeo = new THREE.PlaneGeometry(3.6, 4.4);
+                // Slight red tint to look like a calendar page
+                const colors = [0xffffff, 0xf0f0f0, 0xe0e0e0];
+                const pageMat = new THREE.MeshPhongMaterial({ color: colors[i], side: THREE.DoubleSide });
+                const page = new THREE.Mesh(pageGeo, pageMat);
+                page.position.y = -2.2; // Offset so group revolves around top hinge
+
+                // Top red banner on the page
+                const bannerGeo = new THREE.PlaneGeometry(3.6, 0.8);
+                const bannerMat = new THREE.MeshPhongMaterial({ color: 0xe74c3c, side: THREE.DoubleSide });
+                const banner = new THREE.Mesh(bannerGeo, bannerMat);
+                banner.position.set(0, -0.4, 0.01);
+                pageGroup.add(page);
+                pageGroup.add(banner);
+
+                pageGroup.userData = { targetRot: 0, currentRot: 0, isFlipping: false };
+                pages.push(pageGroup);
+                calendarGroup.add(pageGroup);
+            }
+
+            calendarGroup.position.x = 4;
+            calendarGroup.rotation.y = -0.3;
+            scene.add(calendarGroup);
+            calendarBase = calendarGroup;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.flipPage = () => {
+            if(!pages.length) return;
+            // Find the top-most page that is not flipped
+            let p = pages.slice().reverse().find(page => page.userData.targetRot === 0);
+            if(p) {
+                p.userData.targetRot = Math.PI * 0.9; // rotate up and back
+            } else {
+                // If all flipped, reset them
+                pages.forEach(pg => pg.userData.targetRot = 0);
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            pages.forEach(p => {
+                p.currentRot = THREE.MathUtils.lerp(p.currentRot, p.userData.targetRot, 0.1);
+                p.rotation.x = p.currentRot;
+            });
+
+            if(calendarBase) {
+                calendarBase.rotation.x = Math.sin(Date.now() * 0.001) * 0.05;
+                calendarBase.rotation.y = -0.3 + Math.cos(Date.now() * 0.0008) * 0.05;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

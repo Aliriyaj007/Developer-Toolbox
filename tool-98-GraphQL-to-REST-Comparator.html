@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 98 - GraphQL to REST Comparator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+            height: calc(100vh - 250px);
+            min-height: 600px;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+        }
+
+        .code-area {
+            flex: 1;
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+            white-space: pre;
+            overflow: auto;
+        }
+
+        .hl-gql { color: #ff79c6; }
+        .hl-rest { color: #8be9fd; }
+
+        .stat-bar {
+            background: #111;
+            padding: 0.8rem 1rem;
+            font-size: 0.85rem;
+            color: #aaa;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-hl { color: var(--accent-primary); font-weight: bold; }
+
+        /* 3D background wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>98. GraphQL to REST Comparator</h1>
+                    <p style="color:var(--text-secondary);">Visualize the efficiency difference: 1 GraphQL payload vs Multiple REST calls.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                <!-- GraphQL Panel -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 style="margin:0; font-size:1.1rem; color:#ff79c6;">GraphQL Query</h3>
+                        <span class="badge" style="background:rgba(255,121,198,0.2); color:#ff79c6; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.8rem;">1 Request</span>
+                    </div>
+                    <textarea class="code-area" id="gql-input" spellcheck="false">
+# Requesting User with nested Posts and Comments
+query {
+  user(id: "123") {
+    name
+    email
+    posts(limit: 5) {
+      title
+      comments(limit: 2) {
+        text
+        author {
+          name
+        }
+      }
+    }
+  }
+}
+                    </textarea>
+                    <div class="stat-bar">
+                        <span>Total Requests: <span class="stat-hl">1</span></span>
+                        <span>Over-fetching: <span class="stat-hl" style="color:#50fa7b;">None</span></span>
+                    </div>
+                </div>
+
+                <!-- REST Panel -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 style="margin:0; font-size:1.1rem; color:#8be9fd;">REST API Equivalents</h3>
+                        <span class="badge" id="rest-req-count" style="background:rgba(139,233,253,0.2); color:#8be9fd; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.8rem;">~12 Requests</span>
+                    </div>
+                    <div class="code-area" id="rest-output" style="background: rgba(0,0,0,0.3);">
+// 1. Fetch User Data
+GET /api/users/123
+>> Returns: { id, name, email, address, phone, dob, ssn... } // Over-fetching
+
+// 2. Fetch User Posts
+GET /api/users/123/posts?limit=5
+>> Returns: [ {id:1}, {id:2}, {id:3}, {id:4}, {id:5} ] // N+1 Problem starts
+
+// 3. For Post 1, Fetch Comments
+GET /api/posts/1/comments?limit=2
+
+// 4. For Comment 1, Fetch Author
+GET /api/users/456
+
+... continuing for each nested edge
+                    </div>
+                    <div class="stat-bar">
+                        <span>Total Requests: <span class="stat-hl" id="rest-stat-num" style="color:#ff5555;">1 + 1 + 5x2 = ~12</span></span>
+                        <span>Under-fetching: <span class="stat-hl" style="color:#ff5555;">High (N+1 Issue)</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        const gqlInput = document.getElementById('gql-input');
+        const restOutput = document.getElementById('rest-output');
+        const countBadge = document.getElementById('rest-req-count');
+        const reqStat = document.getElementById('rest-stat-num');
+
+        // Simple mock parse to estimate REST requests needed
+        const updateRestEquivalent = () => {
+            const query = gqlInput.value;
+            // Count nesting blocks {}
+            const blocks = (query.match(/\{/g) || []).length;
+            
+            // Heuristics
+            let reqCount = 1;
+            let outputText = "// 1. Initial Root Entity Fetch\nGET /api/roots\n>> Heavy payload\n\n";
+
+            if(blocks > 1) {
+                reqCount += blocks * 2; // rough N+1 simulation
+                outputText += `// Additional Fetching Required (Depth ${blocks})\n`;
+                for(let i=2; i<=Math.min(blocks+1, 10); i++) {
+                    outputText += `// ${i}. Fetch related entities\nGET /api/relationships/${i}\n`;
+                }
+                if(blocks > 9) outputText += `// ... and ${blocks - 8} more requests.\n`;
+            }
+
+            countBadge.textContent = `~${reqCount} Requests`;
+            reqStat.textContent = reqCount;
+            restOutput.textContent = outputText;
+            
+            // trigger 3d
+            if(window.triggerAnim) window.triggerAnim(reqCount);
+        };
+
+        gqlInput.addEventListener('input', updateRestEquivalent);
+
+        // 3D Scene - Abstract Comparison
+        // GraphQL = 1 unified sphere
+        // REST = Cluster of scattered spheres
+        let scene, camera, renderer, gqlSphere, restGroup;
+        let targetRestCount = 12;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 25;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // GQL Side (Left)
+            const gGeo = new THREE.IcosahedronGeometry(4, 1);
+            const gMat = new THREE.MeshPhongMaterial({ color: 0xff79c6, wireframe:true });
+            gqlSphere = new THREE.Mesh(gGeo, gMat);
+            gqlSphere.position.set(-8, 0, 0);
+            scene.add(gqlSphere);
+
+            // REST Side (Right)
+            restGroup = new THREE.Group();
+            restGroup.position.set(8, 0, 0);
+            scene.add(restGroup);
+
+            window.triggerAnim = (count) => {
+                targetRestCount = count;
+                // Rebuild right side array
+                while(restGroup.children.length > 0) restGroup.remove(restGroup.children[0]);
+                
+                const rMat = new THREE.MeshPhongMaterial({ color: 0x8be9fd, wireframe:true });
+                for(let i=0; i<Math.min(count, 50); i++) {
+                    const rGeo = new THREE.SphereGeometry(1, 4, 4);
+                    const mesh = new THREE.Mesh(rGeo, rMat);
+                    mesh.position.set(
+                        (Math.random() - 0.5) * 8,
+                        (Math.random() - 0.5) * 8,
+                        (Math.random() - 0.5) * 8
+                    );
+                    mesh.userData = {
+                        rx: Math.random() * 0.05,
+                        ry: Math.random() * 0.05
+                    };
+                    restGroup.add(mesh);
+                }
+            };
+            
+            triggerAnim(targetRestCount);
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+                
+                gqlSphere.rotation.x += 0.005;
+                gqlSphere.rotation.y += 0.005;
+
+                restGroup.rotation.y -= 0.002;
+                restGroup.children.forEach(c => {
+                    c.rotation.x += c.userData.rx;
+                    c.rotation.y += c.userData.ry;
+                });
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

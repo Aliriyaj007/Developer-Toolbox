@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 84 - HTTP Header Security Checker - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .header-input {
+            width: 100%;
+            height: 200px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #ccc;
+            resize: vertical;
+            outline: none;
+        }
+
+        .header-input:focus {
+            border-color: #56b6c2;
+        }
+
+        .score-display {
+            text-align: center;
+            background: rgba(86, 182, 194, 0.05);
+            border: 1px solid rgba(86, 182, 194, 0.3);
+            border-radius: var(--radius-md);
+            padding: 2rem 1rem;
+        }
+
+        .score-val {
+            font-size: 4rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            line-height: 1;
+        }
+
+        .score-lbl {
+            font-size: 0.9rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0.5rem;
+        }
+
+        .check-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .check-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #333;
+            border-left: 4px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .check-card.pass {
+            border-left-color: #7ee787;
+            background: rgba(126, 231, 135, 0.05);
+        }
+
+        .check-card.fail {
+            border-left-color: #ff5555;
+            background: rgba(255, 85, 85, 0.05);
+        }
+
+        .check-card.warn {
+            border-left-color: #ffb142;
+            background: rgba(255, 177, 66, 0.05);
+        }
+
+        .check-title {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 0.2rem;
+            color: #fff;
+        }
+        
+        .check-desc {
+            font-size: 0.8rem;
+            color: #aaa;
+            max-width: 80%;
+        }
+
+        .check-status {
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            padding: 0.3rem 0.6rem;
+            border-radius: 3px;
+        }
+
+        .pass .check-status { background: #7ee787; color: #000; }
+        .fail .check-status { background: #ff5555; color: #fff; }
+        .warn .check-status { background: #ffb142; color: #000; }
+
+        .config-picker {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .config-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .config-btn.active {
+            background: #56b6c2;
+            color: #000;
+            border-color: #56b6c2;
+            font-weight: bold;
+        }
+
+        .code-output {
+            background: #1e1e1e;
+            color: #7ee787;
+            padding: 1.5rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            min-height: 200px;
+            white-space: pre-wrap;
+        }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>84. HTTP Header Security Checker</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <h3>Analyze Headers</h3>
+                    <p style="font-size:0.85rem; color:#aaa; margin-top:-0.5rem; margin-bottom:0.5rem;">Paste raw HTTP response headers below.</p>
+                    
+                    <textarea id="header-input" class="header-input" spellcheck="false" placeholder="Content-Type: text/html; charset=utf-8
+Content-Encoding: gzip
+Age: 52187
+X-Powered-By: Express"></textarea>
+
+                    <button class="btn" id="btn-analyze" style="width:100%; margin-top:0.5rem;">Analyze Security Options</button>
+
+                    <div class="score-display">
+                        <div class="score-val" id="score-val" style="color:#ff5555;">D</div>
+                        <div class="score-lbl" id="score-lbl">Poor Security</div>
+                    </div>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="panel" style="background:rgba(0,0,0,0.8);">
+                    <h3>Security Scorecard</h3>
+                    <div class="check-grid" id="check-grid">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <h3 style="margin-top:2rem;">Server Config Generator</h3>
+                    <p style="font-size:0.85rem; color:#aaa; margin-top:-0.5rem; margin-bottom:0.5rem;">Apply the missing headers safely to your server.</p>
+                    
+                    <div class="config-picker">
+                        <div class="config-btn active" data-server="nginx">Nginx</div>
+                        <div class="config-btn" data-server="apache">Apache</div>
+                        <div class="config-btn" data-server="express">Express (Node.js)</div>
+                    </div>
+
+                    <div style="position:relative;">
+                        <button class="btn btn-sm" id="btn-copy" style="position:absolute; top:0.5rem; right:0.5rem;">Copy config</button>
+                        <div class="code-output" id="config-output"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const headerInput = document.getElementById('header-input');
+        const btnAnalyze = document.getElementById('btn-analyze');
+        const checkGrid = document.getElementById('check-grid');
+        const scoreVal = document.getElementById('score-val');
+        const scoreLbl = document.getElementById('score-lbl');
+        const configOutput = document.getElementById('config-output');
+        const btnCopy = document.getElementById('btn-copy');
+
+        let currentServer = 'nginx';
+        const configBtns = document.querySelectorAll('.config-btn');
+
+        const SECURITY_HEADERS = [
+            {
+                key: 'strict-transport-security',
+                title: 'Strict-Transport-Security (HSTS)',
+                desc: 'Forces browsers to only connect via HTTPS.',
+                passVal: 'max-age=31536000; includeSubDomains',
+                check: (val) => val && val.includes('max-age=')
+            },
+            {
+                key: 'content-security-policy',
+                title: 'Content-Security-Policy (CSP)',
+                desc: 'Prevents XSS by controlling which resources can be loaded.',
+                passVal: "default-src 'self';",
+                check: (val) => val && val.length > 5
+            },
+            {
+                key: 'x-frame-options',
+                title: 'X-Frame-Options',
+                desc: 'Prevents Clickjacking by disallowing framing.',
+                passVal: 'SAMEORIGIN',
+                check: (val) => val && (val.includes('DENY') || val.includes('SAMEORIGIN'))
+            },
+            {
+                key: 'x-content-type-options',
+                title: 'X-Content-Type-Options',
+                desc: 'Prevents MIME-sniffing vulnerabilities.',
+                passVal: 'nosniff',
+                check: (val) => val && val.includes('nosniff')
+            },
+            {
+                key: 'referrer-policy',
+                title: 'Referrer-Policy',
+                desc: 'Controls how much referrer info is included with requests.',
+                passVal: 'strict-origin-when-cross-origin',
+                check: (val) => val && val.length > 5
+            },
+            {
+                key: 'permissions-policy',
+                title: 'Permissions-Policy',
+                desc: 'Controls which browser features and APIs can be used.',
+                passVal: "geolocation=(), microphone=(), camera=()",
+                check: (val) => val && val.length > 5
+            }
+        ];
+
+        function parseHeaders(text) {
+            const lines = text.split('\n');
+            const headers = {};
+            lines.forEach(line => {
+                const parts = line.split(':');
+                if (parts.length >= 2) {
+                    const key = parts[0].trim().toLowerCase();
+                    const val = parts.slice(1).join(':').trim();
+                    headers[key] = val;
+                }
+            });
+            return headers;
+        }
+
+        let missingHeaders = [];
+        let scorePct = 0;
+
+        function analyze() {
+            const headers = parseHeaders(headerInput.value);
+            
+            checkGrid.innerHTML = '';
+            missingHeaders = [];
+            
+            let passedCount = 0;
+            let totalChecks = SECURITY_HEADERS.length;
+
+            SECURITY_HEADERS.forEach(req => {
+                const val = headers[req.key];
+                const passed = req.check(val);
+                
+                let statusCls = 'fail';
+                let statusTxt = 'Missing';
+                
+                if (passed) {
+                    statusCls = 'pass';
+                    statusTxt = 'Passed';
+                    passedCount++;
+                } else {
+                    missingHeaders.push(req);
+                }
+
+                // Warn for exposing server info
+                if (req.key === 'x-powered-by' || req.key === 'server') return;
+
+                checkGrid.innerHTML += `
+                    <div class="check-card ${statusCls}">
+                        <div>
+                            <div class="check-title">${req.title}</div>
+                            <div class="check-desc">${req.desc}</div>
+                        </div>
+                        <div class="check-status">${statusTxt}</div>
+                    </div>
+                `;
+            });
+
+            // Extra check for exposed info
+            if (headers['x-powered-by'] || headers['server']) {
+                scorePct = Math.max(0, passedCount / totalChecks) - 0.1; // penalty
+                checkGrid.innerHTML += `
+                    <div class="check-card warn">
+                        <div>
+                            <div class="check-title">Information Exposure</div>
+                            <div class="check-desc">Server or X-Powered-By header is exposing backend tech.</div>
+                        </div>
+                        <div class="check-status">Warning</div>
+                    </div>
+                `;
+            } else {
+                scorePct = passedCount / totalChecks;
+            }
+
+            // Calculate Grade
+            let grade = 'F';
+            let color = '#ff5555';
+            let lbl = 'Poor Security';
+            
+            if (scorePct >= 0.9) { grade = 'A+'; color = '#7ee787'; lbl = 'Excellent'; }
+            else if (scorePct >= 0.8) { grade = 'A'; color = '#7ee787'; lbl = 'Secure'; }
+            else if (scorePct >= 0.6) { grade = 'B'; color = '#33d9b2'; lbl = 'Good'; }
+            else if (scorePct >= 0.4) { grade = 'C'; color = '#feca57'; lbl = 'Needs Work'; }
+            else if (scorePct >= 0.2) { grade = 'D'; color = '#ff9f43'; lbl = 'Vulnerable'; }
+
+            scoreVal.textContent = grade;
+            scoreVal.style.color = color;
+            scoreLbl.textContent = lbl;
+
+            generateConfig();
+            update3DShield(scorePct); // Trigger 3D changes
+        }
+
+        function generateConfig() {
+            if (missingHeaders.length === 0) {
+                configOutput.textContent = "# Your headers look great!\n# No further configuration needed.";
+                return;
+            }
+
+            let out = '';
+            
+            if (currentServer === 'nginx') {
+                out += 'server {\n    # Add inside your server block\n\n';
+                missingHeaders.forEach(h => {
+                    out += `    add_header ${h.title.split(' ')[0]} "${h.passVal}" always;\n`;
+                });
+                out += '\n    # Optional: Hide Server Version\n    server_tokens off;\n}';
+            } 
+            else if (currentServer === 'apache') {
+                out += '<IfModule mod_headers.c>\n    # Add to your .htaccess or VirtualHost\n\n';
+                missingHeaders.forEach(h => {
+                    out += `    Header always set ${h.title.split(' ')[0]} "${h.passVal}"\n`;
+                });
+                out += '\n    # Optional: Hide Server Signature\n    ServerSignature Off\n</IfModule>';
+            }
+            else if (currentServer === 'express') {
+                out += '// Quickest way is using the Helmet middleware\n// npm install helmet\n\n';
+                out += 'const helmet = require("helmet");\nconst express = require("express");\nconst app = express();\n\n';
+                out += 'app.use(helmet());\n';
+                out += '\n// Helmet automatically sets secure defaults for:\n// CSP, HSTS, X-Frame-Options, DNS Prefetch Control, etc.';
+            }
+
+            configOutput.textContent = out;
+        }
+
+        btnAnalyze.addEventListener('click', analyze);
+        
+        configBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                configBtns.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentServer = e.target.getAttribute('data-server');
+                generateConfig();
+            });
+        });
+
+        btnCopy.addEventListener('click', () => {
+            navigator.clipboard.writeText(configOutput.textContent);
+            btnCopy.textContent = 'Copied!';
+            setTimeout(() => { btnCopy.textContent = 'Copy config'; }, 2000);
+        });
+
+        // 3D Scene setup: "A shield with bars that fill up"
+        let scene, camera, renderer, shieldGrp, bars = [];
+        let targetFills = [0,0,0,0,0,0]; // 0 to 1
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 25;
+            camera.position.x = 10;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            shieldGrp = new THREE.Group();
+            scene.add(shieldGrp);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 15);
+            scene.add(dirLight);
+
+            // Create Shield Path
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 8);
+            shape.lineTo(6, 8);
+            shape.bezierCurveTo(6, 4, 3, -6, 0, -8);
+            shape.bezierCurveTo(-3, -6, -6, 4, -6, 8);
+            shape.lineTo(0, 8);
+
+            const extrudeSettings = { depth: 1, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 0.2, bevelThickness: 0.2 };
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            
+            // Shield Body (dark)
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x333333, 
+                transparent: true, 
+                opacity: 0.7,
+                wireframe: true
+            });
+            const shieldMesh = new THREE.Mesh(geometry, material);
+            shieldMesh.position.z = -1;
+            shieldGrp.add(shieldMesh);
+
+            // Progress Bars inside shield
+            const barGeo = new THREE.BoxGeometry(8, 0.5, 1.5);
+            const barBgMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+            
+            const startY = 4;
+            const gap = 1.5;
+
+            for(let i=0; i<6; i++) {
+                // Background track
+                const bg = new THREE.Mesh(barGeo, barBgMat);
+                bg.position.y = startY - (i * gap);
+                
+                // Foreground fill
+                const fgMat = new THREE.MeshPhongMaterial({ color: 0xff5555 });
+                const fg = new THREE.Mesh(barGeo, fgMat);
+                fg.position.y = startY - (i * gap);
+                fg.position.z = 0.1;
+                fg.scale.x = 0.05; // start empty
+                fg.position.x = -4 + (8 * 0.05 / 2); // align left
+                
+                shieldGrp.add(bg);
+                shieldGrp.add(fg);
+                
+                bars.push({ mesh: fg, targetScale: 0.05, mat: fgMat });
+            }
+
+            shieldGrp.position.set(-2, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate3D();
+            
+            // Initial state based on textarea (likely all fail initially)
+            analyze();
+        }
+
+        function update3DShield(pct) {
+            // Distribute passed score across the 6 bars
+            // if pct = 0, all 0. if pct = 1, all 1
+            const count = Math.floor(pct * 6);
+            
+            for(let i=0; i<6; i++) {
+                if (i < count) {
+                    bars[i].targetScale = 1;
+                    bars[i].mat.color.setHex(0x7ee787); // Green passed
+                } else if (i === count && pct * 6 > count) {
+                    const partial = (pct * 6) - count;
+                    bars[i].targetScale = partial;
+                    bars[i].mat.color.setHex(0xffb142); // orange partial
+                } else {
+                    bars[i].targetScale = 0.05;
+                    bars[i].mat.color.setHex(0xff5555); // red failed
+                }
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            shieldGrp.rotation.y = Math.sin(Date.now() * 0.0005) * 0.3;
+            shieldGrp.rotation.x = Math.sin(Date.now() * 0.0007) * 0.1;
+
+            // animate bars filling
+            bars.forEach(b => {
+                const diff = b.targetScale - b.mesh.scale.x;
+                if (Math.abs(diff) > 0.01) {
+                    b.mesh.scale.x += diff * 0.1;
+                    // Keep anchored to left side (-4 + half width)
+                    b.mesh.position.x = -4 + (8 * b.mesh.scale.x / 2);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+        });
+    </script>
+</body>
+</html>

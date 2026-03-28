@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 70 - Shell Script Builder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <!-- Using sortable.js for drag and drop list -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .panels-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .tools-panel, .canvas-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+        }
+
+        h3 { margin-top: 0; color: var(--primary-color); font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;}
+
+        /* Blocks */
+        .block-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 50px;
+        }
+
+        .block {
+            background: rgba(86,182,194,0.1);
+            border: 1px solid #56b6c2;
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            transition: transform 0.1s;
+        }
+        .block:active { cursor: grabbing; }
+        
+        .block.type-cmd { border-color: #bb86fc; background: rgba(187,134,252,0.1); }
+        .block.type-cond { border-color: #ffaa00; background: rgba(255,170,0,0.1); }
+        .block.type-loop { border-color: #7ee787; background: rgba(126,231,135,0.1); }
+
+        .block-title { font-weight: bold; font-size: 0.85rem; color: var(--text-main); }
+        .block-add {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+            border: none;
+            width: 24px; height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .block-add:hover { background: rgba(255,255,255,0.2); }
+
+        /* Canvas Blocks */
+        .canvas-block {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #56b6c2;
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            cursor: grab;
+            position: relative;
+        }
+        .canvas-block.type-cmd { border-color: #bb86fc; border-left: 4px solid #bb86fc;}
+        .canvas-block.type-cond { border-color: #ffaa00; border-left: 4px solid #ffaa00;}
+        .canvas-block.type-loop { border-color: #7ee787; border-left: 4px solid #7ee787;}
+
+        .canvas-block-header {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .canvas-block-remove {
+            background: transparent; border: none; color: #ff5555; cursor: pointer; font-size: 1rem; opacity: 0.6;
+        }
+        .canvas-block-remove:hover { opacity: 1; }
+
+        .block-input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 0.4rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            width: 100%;
+        }
+
+        .canvas-area {
+            min-height: 200px;
+            border: 2px dashed rgba(255,255,255,0.1);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            background: rgba(0,0,0,0.2);
+        }
+
+        /* Output & Editor */
+        .output-panel {
+            background: #111;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: flex; flex-direction: column;
+        }
+
+        .code-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333; margin-bottom: 0.5rem; padding-bottom: 0.5rem;
+        }
+        .code-area {
+            flex: 1;
+            background: transparent;
+            color: #7ee787;
+            border: none;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+            white-space: pre;
+            min-height: 300px;
+        }
+
+        .btn-copy {
+            background: var(--primary-color);
+            color: #000; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
+        }
+
+        /* Options */
+        .option-lbl {
+            font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;
+            cursor: pointer;
+        }
+
+        /* 3D Container */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 200px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+            margin-top: 1rem;
+        }
+
+    </style>
+</head>
+<body class="theme-dark">
+    
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>70. Shell Script Builder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Left: Palette -->
+                    <div class="tools-panel">
+                        <h3>Block Palette</h3>
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem;">Click '+' to add to canvas</div>
+                        
+                        <div class="block-list" id="palette">
+                            <div class="block type-cmd" data-type="echo">
+                                <span class="block-title">Echo Message</span>
+                                <button class="block-add">+</button>
+                            </div>
+                            <div class="block type-cmd" data-type="custom">
+                                <span class="block-title">Custom Command</span>
+                                <button class="block-add">+</button>
+                            </div>
+                            <div class="block type-cond" data-type="check_file">
+                                <span class="block-title">If File Exists</span>
+                                <button class="block-add">+</button>
+                            </div>
+                            <div class="block type-cond" data-type="check_var">
+                                <span class="block-title">If Var is Set (Zero)</span>
+                                <button class="block-add">+</button>
+                            </div>
+                            <div class="block type-loop" data-type="loop_files">
+                                <span class="block-title">For File in Dir</span>
+                                <button class="block-add">+</button>
+                            </div>
+                            <div class="block type-cmd" data-type="set_var">
+                                <span class="block-title">Set Variable</span>
+                                <button class="block-add">+</button>
+                            </div>
+                            <div class="block type-cmd" data-type="exit">
+                                <span class="block-title">Exit Subshell/Script</span>
+                                <button class="block-add">+</button>
+                            </div>
+                        </div>
+
+                        <!-- 3D Visualization -->
+                        <div class="graph-container" id="graph-container">
+                            <!-- 3D Flowchart -> Text goes here -->
+                        </div>
+                    </div>
+
+                    <!-- Middle: Canvas -->
+                    <div class="canvas-panel">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3>Script Canvas <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:normal;">(Drag to Reorder)</span></h3>
+                            <button id="btn-clear" style="background:transparent; border:none; color:#ff5555; cursor:pointer;" title="Clear Canvas">🗑</button>
+                        </div>
+
+                        <div style="margin-bottom: 1rem;">
+                            <label class="option-lbl"><input type="checkbox" id="opt-errexit" checked> set -e (Exit on error)</label>
+                            <label class="option-lbl"><input type="checkbox" id="opt-nounset" checked> set -u (Exit on unset var)</label>
+                            <label class="option-lbl"><input type="checkbox" id="opt-pipefail" checked> set -o pipefail</label>
+                        </div>
+                        
+                        <div class="canvas-area" id="script-canvas">
+                            <div style="color:#555; text-align:center; padding-top:2rem; pointer-events:none; position:absolute; width:calc(100% - 2rem);" id="canvas-empty-msg">
+                                Add blocks from palette to build script
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Output -->
+                    <div class="output-panel">
+                        <div class="code-header">
+                            <h3 style="margin:0; border:none; padding:0;">Generated bash</h3>
+                            <button class="btn-copy" id="btn-copy">Copy</button>
+                        </div>
+                        <textarea class="code-area" id="code-output" readonly></textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        const canvasArea = document.getElementById('script-canvas');
+        const codeOutput = document.getElementById('code-output');
+        const emptyMsg = document.getElementById('canvas-empty-msg');
+        
+        let sortableCanvas;
+
+        // Block Definitions
+        const blockDefs = {
+            echo: {
+                type: 'type-cmd',
+                title: 'Echo Message',
+                html: `<input type="text" class="block-input data-1" placeholder="Message string..." value='"Hello World"'>`,
+                gen: (d) => `echo ${d[0]}`
+            },
+            custom: {
+                type: 'type-cmd',
+                title: 'Custom Command',
+                html: `<input type="text" class="block-input data-1" placeholder="e.g. tar -czf arch.tar.gz ./dir">`,
+                gen: (d) => `${d[0]}`
+            },
+            check_file: {
+                type: 'type-cond',
+                title: 'If File Exists',
+                html: `
+                    <input type="text" class="block-input data-1" placeholder="File path e.g. /etc/hosts">
+                    <div style="font-size:0.75rem; color:#888; margin-top:4px;">Then Execute:</div>
+                    <input type="text" class="block-input data-2" placeholder="Command to run">
+                `,
+                gen: (d) => `if [ -f "${d[0]}" ]; then\n    ${d[1] || ':'}\nfi`
+            },
+            check_var: {
+                type: 'type-cond',
+                title: 'If Var is Unset',
+                html: `
+                    <input type="text" class="block-input data-1" placeholder="Var name e.g. MY_VAR">
+                    <div style="font-size:0.75rem; color:#888; margin-top:4px;">Then Execute:</div>
+                    <input type="text" class="block-input data-2" placeholder="Command to run">
+                `,
+                gen: (d) => `if [ -z "\${${d[0]}:-}" ]; then\n    ${d[1] || ':'}\nfi`
+            },
+            loop_files: {
+                type: 'type-loop',
+                title: 'For File in Dir',
+                html: `
+                    <input type="text" class="block-input data-1" placeholder="Pattern e.g. *.txt" value="*.txt">
+                    <div style="font-size:0.75rem; color:#888; margin-top:4px;">Do Command (use $f):</div>
+                    <input type="text" class="block-input data-2" placeholder="e.g. cat $f">
+                `,
+                gen: (d) => `for f in ${d[0]}; do\n    ${d[1] || ':'}\ndone`
+            },
+            set_var: {
+                type: 'type-cmd',
+                title: 'Set Variable',
+                html: `
+                    <div style="display:flex; gap:0.5rem;">
+                        <input type="text" class="block-input data-1" style="width:100px;" placeholder="NAME">
+                        <span style="color:#fff; align-self:center;">=</span>
+                        <input type="text" class="block-input data-2" placeholder="VALUE">
+                    </div>
+                `,
+                gen: (d) => `${d[0]}=${d[1]}`
+            },
+            exit: {
+                type: 'type-cmd',
+                title: 'Exit',
+                html: `
+                    <input type="number" class="block-input data-1" placeholder="Exit code (0-255)" value="1">
+                `,
+                gen: (d) => `exit ${d[0]}`
+            }
+        };
+
+        // UI Setup
+        document.querySelectorAll('.block-add').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.target.closest('.block').dataset.type;
+                addBlockToCanvas(type);
+            });
+        });
+
+        function addBlockToCanvas(type) {
+            const def = blockDefs[type];
+            if(!def) return;
+
+            const el = document.createElement('div');
+            el.className = `canvas-block ${def.type}`;
+            el.dataset.type = type;
+            
+            el.innerHTML = `
+                <div class="canvas-block-header">
+                    <span class="block-title">${def.title}</span>
+                    <button class="canvas-block-remove">×</button>
+                </div>
+                ${def.html}
+            `;
+
+            el.querySelector('.canvas-block-remove').addEventListener('click', () => {
+                el.remove();
+                generateCode();
+                updateEmptyMsg();
+            });
+
+            // Re-gen on input
+            el.querySelectorAll('.block-input').forEach(inp => {
+                inp.addEventListener('input', generateCode);
+            });
+
+            canvasArea.appendChild(el);
+            updateEmptyMsg();
+            generateCode();
+            pulse3D(); // effect
+        }
+
+        function updateEmptyMsg() {
+            const blocks = canvasArea.querySelectorAll('.canvas-block');
+            emptyMsg.style.display = blocks.length > 0 ? 'none' : 'block';
+        }
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            canvasArea.querySelectorAll('.canvas-block').forEach(b => b.remove());
+            updateEmptyMsg();
+            generateCode();
+        });
+
+        // Setup Sortable
+        sortableCanvas = new Sortable(canvasArea, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: generateCode
+        });
+
+        const chkErrExit = document.getElementById('opt-errexit');
+        const chkNoUnset = document.getElementById('opt-nounset');
+        const chkPipeFail = document.getElementById('opt-pipefail');
+
+        [chkErrExit, chkNoUnset, chkPipeFail].forEach(cb => cb.addEventListener('change', generateCode));
+
+        function generateCode() {
+            let code = '#!/usr/bin/env bash\n\n';
+
+            // Options
+            if(chkErrExit.checked) code += 'set -e\n';
+            if(chkNoUnset.checked) code += 'set -u\n';
+            if(chkPipeFail.checked) code += 'set -o pipefail\n';
+            if(chkErrExit.checked || chkNoUnset.checked || chkPipeFail.checked) code += '\n';
+
+            const blocks = canvasArea.querySelectorAll('.canvas-block');
+            blocks.forEach(b => {
+                const type = b.dataset.type;
+                const def = blockDefs[type];
+                
+                // Get data inputs
+                let data = [];
+                for(let i=1; i<=3; i++) {
+                    const inp = b.querySelector(`.data-${i}`);
+                    if(inp) data.push(inp.value);
+                }
+
+                try {
+                    code += def.gen(data) + '\n\n';
+                } catch(e) {
+                    code += `# Error generating block: ${type}\n\n`;
+                }
+            });
+
+            codeOutput.value = code.trim();
+        }
+
+        document.getElementById('btn-copy').addEventListener('click', (e) => {
+            navigator.clipboard.writeText(codeOutput.value);
+            const orig = e.target.textContent;
+            e.target.textContent = 'Copied!';
+            setTimeout(() => e.target.textContent = orig, 1500);
+        });
+
+        // Base 3D View (Flowchart to Code visualization)
+        let scene, camera, renderer;
+        let flowBoxes = [];
+        let codeLines = [];
+        let particles = [];
+        let sysPulse = 0;
+
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, cw / ch, 1, 100);
+            camera.position.set(0, 0, 15);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1.2);
+            light.position.set(5, 10, 10);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x404040, 1.5));
+
+            // Setup Flowchart (Left) and Code lines (Right)
+            const boxGeo = new THREE.BoxGeometry(2, 1, 0.5);
+            const lineGeo = new THREE.BoxGeometry(3, 0.1, 0.1);
+
+            for(let i=0; i<3; i++) {
+                // flow
+                const bMat = new THREE.MeshPhongMaterial({ color: 0x56b6c2 });
+                const box = new THREE.Mesh(boxGeo, bMat);
+                box.position.set(-3, 2 - (i*2), 0);
+                scene.add(box);
+                flowBoxes.push(box);
+
+                // code
+                const lMat = new THREE.MeshBasicMaterial({ color: 0x7ee787 });
+                const line = new THREE.Mesh(lineGeo, lMat);
+                line.position.set(3, 2 - (i*2), 0);
+                scene.add(line);
+                codeLines.push(line);
+            }
+
+            // Connection Lines
+            const connGeo = new THREE.BufferGeometry();
+            const connVertices = new Float32Array(flowBoxes.length * 6);
+            for(let i=0; i<3; i++) {
+                connVertices[i*6] = -2; connVertices[i*6+1] = flowBoxes[i].position.y; connVertices[i*6+2] = 0; // start
+                connVertices[i*6+3] = 1.5; connVertices[i*6+4] = codeLines[i].position.y; connVertices[i*6+5] = 0; // end
+            }
+            connGeo.setAttribute('position', new THREE.BufferAttribute(connVertices, 3));
+            const connMat = new THREE.LineBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3 });
+            const connMesh = new THREE.LineSegments(connGeo, connMat);
+            scene.add(connMesh);
+
+            window.addEventListener('resize', () => {
+                if(!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            animate3D();
+        }
+
+        // Pulse effect when adding blocks
+        function pulse3D() {
+            sysPulse = 1.0;
+        }
+
+        function createDataParticle() {
+            const pGeo = new THREE.SphereGeometry(0.1, 8, 8);
+            const pMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+            const p = new THREE.Mesh(pGeo, pMat);
+            // start at a random left box
+            const idx = Math.floor(Math.random() * 3);
+            p.position.set(-2, flowBoxes[idx].position.y, 0);
+            p.userData = { targetY: codeLines[idx].position.y, progress: 0 };
+            scene.add(p);
+            particles.push(p);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            if(sysPulse > 0) {
+                flowBoxes.forEach(b => {
+                    b.scale.set(1 + sysPulse*0.2, 1 + sysPulse*0.2, 1 + sysPulse*0.2);
+                    b.material.emissive.setHex(0x224455).multiplyScalar(sysPulse);
+                });
+                if(Math.random() < 0.3) createDataParticle();
+                sysPulse -= 0.05;
+            } else {
+                flowBoxes.forEach(b => {
+                    b.scale.set(1, 1, 1);
+                    b.material.emissive.setHex(0x000000);
+                });
+            }
+
+            // Move particles Left -> Right
+            for(let i=particles.length-1; i>=0; i--) {
+                const p = particles[i];
+                p.userData.progress += 0.05;
+                
+                // Interpolate X from -2 to +1.5
+                p.position.x = -2 + (3.5 * p.userData.progress);
+                
+                if(p.userData.progress >= 1) {
+                    scene.remove(p);
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Gentle orbit
+            scene.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+            scene.rotation.x = Math.sin(Date.now() * 0.0005) * 0.05;
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            generateCode(); // Initial empty script logic
+        });
+
+    </script>
+</body>
+</html>

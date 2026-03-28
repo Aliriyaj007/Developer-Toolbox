@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 76 - Lighthouse CI Config Builder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .form-input,
+        .form-select {
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            border-color: var(--primary-color);
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider-group input[type=range] {
+            flex: 1;
+            accent-color: var(--primary-color);
+        }
+
+        .slider-val {
+            font-family: var(--font-mono);
+            color: var(--primary-color);
+            font-weight: bold;
+            width: 40px;
+            text-align: right;
+        }
+
+        .rule-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+
+        h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-main);
+            border-bottom: 1px solid #333;
+            padding-bottom: 0.2rem;
+        }
+
+        .result-panel {
+            background: rgba(86, 182, 194, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .code-area {
+            flex: 1;
+            background: #000;
+            color: #7ee787;
+            border: 1px solid #333;
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            resize: none;
+            outline: none;
+            white-space: pre;
+            min-height: 250px;
+        }
+
+        .btn-copy {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-copy:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        /* 3D Canvas wrapper */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1300px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>76. Lighthouse CI Config Builder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Left: Builder -->
+                    <div class="controls-panel">
+                        <h3 style="margin:0; color:var(--primary-color);">Configuration Details</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Target URLs (comma separated)</label>
+                            <input type="text" id="inp-urls" class="form-input" value="http://localhost:3000/">
+                        </div>
+
+                        <div style="display:flex; gap:1rem;">
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Static Build Directory</label>
+                                <input type="text" id="inp-dir" class="form-input" value="./build">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Runs per URL</label>
+                                <input type="number" id="inp-runs" class="form-input" value="3" min="1" max="10">
+                            </div>
+                        </div>
+
+                        <div class="rule-grid">
+                            <div style="grid-column: 1 / -1;">
+                                <h4>Category Score Thresholds</h4>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Performance</label>
+                                <div class="slider-group">
+                                    <input type="range" class="inp-slider" data-target="val-perf" id="sl-perf" min="0"
+                                        max="1" step="0.05" value="0.9">
+                                    <span class="slider-val" id="val-perf">0.9</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Accessibility</label>
+                                <div class="slider-group">
+                                    <input type="range" class="inp-slider" data-target="val-a11y" id="sl-a11y" min="0"
+                                        max="1" step="0.05" value="0.95">
+                                    <span class="slider-val" id="val-a11y">0.95</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Best Practices</label>
+                                <div class="slider-group">
+                                    <input type="range" class="inp-slider" data-target="val-bp" id="sl-bp" min="0"
+                                        max="1" step="0.05" value="0.9">
+                                    <span class="slider-val" id="val-bp">0.9</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">SEO</label>
+                                <div class="slider-group">
+                                    <input type="range" class="inp-slider" data-target="val-seo" id="sl-seo" min="0"
+                                        max="1" step="0.05" value="1.0">
+                                    <span class="slider-val" id="val-seo">1.0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group"
+                            style="flex-direction: row; align-items:center; gap:0.5rem; margin-top:0.5rem;">
+                            <input type="checkbox" id="inp-upload" checked style="accent-color:var(--primary-color);">
+                            <label class="form-label" style="margin:0;">Upload to temporary public storage (for sharing
+                                reports)</label>
+                        </div>
+                    </div>
+
+                    <!-- Right: Output -->
+                    <div class="result-panel">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                            <h3 style="margin:0; color:var(--text-main);">lighthouserc.json</h3>
+                            <button id="btn-copy" class="btn-copy" style="width:120px; padding:0.5rem;">Copy
+                                JSON</button>
+                        </div>
+
+                        <textarea class="code-area" id="out-json" readonly></textarea>
+
+                        <!-- 3D Visualization -->
+                        <div class="graph-container" id="graph-container">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const inpUrls = document.getElementById('inp-urls');
+        const inpDir = document.getElementById('inp-dir');
+        const inpRuns = document.getElementById('inp-runs');
+        const inpUpload = document.getElementById('inp-upload');
+        const outJson = document.getElementById('out-json');
+
+        const sliders = document.querySelectorAll('.inp-slider');
+
+        sliders.forEach(s => {
+            s.addEventListener('input', (e) => {
+                document.getElementById(e.target.dataset.target).textContent = parseFloat(e.target.value).toFixed(2);
+                generateConfig();
+                triggerBeamIntensity();
+            });
+        });
+
+        [inpUrls, inpDir, inpRuns, inpUpload].forEach(el => el.addEventListener('change', () => {
+            generateConfig();
+            triggerBeamIntensity();
+        }));
+        [inpUrls, inpDir].forEach(el => el.addEventListener('input', generateConfig));
+
+        function generateConfig() {
+            const urls = inpUrls.value.split(',').map(u => u.trim()).filter(Boolean);
+            const perf = parseFloat(document.getElementById('sl-perf').value);
+            const a11y = parseFloat(document.getElementById('sl-a11y').value);
+            const bp = parseFloat(document.getElementById('sl-bp').value);
+            const seo = parseFloat(document.getElementById('sl-seo').value);
+
+            const config = {
+                ci: {
+                    collect: {
+                        numberOfRuns: parseInt(inpRuns.value) || 1
+                    },
+                    assert: {
+                        assertions: {
+                            "categories:performance": ["error", { minScore: perf }],
+                            "categories:accessibility": ["error", { minScore: a11y }],
+                            "categories:best-practices": ["error", { minScore: bp }],
+                            "categories:seo": ["error", { minScore: seo }]
+                        }
+                    },
+                    upload: {
+                        target: inpUpload.checked ? "temporary-public-storage" : "filesystem"
+                    }
+                }
+            };
+
+            if (inpDir.value.trim()) {
+                config.ci.collect.staticDistDir = inpDir.value.trim();
+            } else if (urls.length > 0) {
+                config.ci.collect.url = urls;
+            }
+
+            outJson.value = JSON.stringify(config, null, 2);
+        }
+
+        document.getElementById('btn-copy').addEventListener('click', (e) => {
+            navigator.clipboard.writeText(outJson.value);
+            const orig = e.target.textContent;
+            e.target.textContent = "Copied!";
+            setTimeout(() => e.target.textContent = orig, 1000);
+        });
+
+        // 3D Visualization (Lighthouse)
+        let scene, camera, renderer;
+        let lighthouseGrp, beamGrp;
+        let intensityTarget = 1.0;
+        let currentIntensity = 1.0;
+
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, cw / ch, 1, 100);
+            camera.position.set(0, 5, 20);
+            camera.lookAt(0, 3, 0);
+
+            // Dark ocean background
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.FogExp2(0x050510, 0.03);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            const dLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dLight.position.set(5, 5, 5);
+            scene.add(dLight);
+            scene.add(new THREE.AmbientLight(0x111122));
+
+            // Ocean Plane
+            const oceanGeo = new THREE.PlaneGeometry(100, 100);
+            const oceanMat = new THREE.MeshPhongMaterial({ color: 0x051a30, shininess: 100, specular: 0x56b6c2 });
+            const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+            ocean.rotation.x = -Math.PI / 2;
+            ocean.position.y = -2;
+            scene.add(ocean);
+
+            lighthouseGrp = new THREE.Group();
+            scene.add(lighthouseGrp);
+
+            // Base Island
+            const island = new THREE.Mesh(
+                new THREE.CylinderGeometry(4, 5, 1, 16),
+                new THREE.MeshPhongMaterial({ color: 0x222222 })
+            );
+            island.position.y = -1.5;
+            lighthouseGrp.add(island);
+
+            // Tower
+            const tower = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.5, 2.5, 8, 16),
+                new THREE.MeshPhongMaterial({ color: 0xffffff })
+            );
+            tower.position.y = 3;
+            lighthouseGrp.add(tower);
+
+            // Red Stripe (Simple texture via additional geometry for pure THREE.js without assets)
+            const stripe = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.9, 2.1, 1.5, 16),
+                new THREE.MeshBasicMaterial({ color: 0xff3333 })
+            );
+            stripe.position.y = 3;
+            lighthouseGrp.add(stripe);
+
+            // Glass/Lamp Room
+            const lampRoom = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.4, 1.4, 1.5, 16),
+                new THREE.MeshPhongMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 })
+            );
+            lampRoom.position.y = 7.75;
+            lighthouseGrp.add(lampRoom);
+
+            // Roof
+            const roof = new THREE.Mesh(
+                new THREE.ConeGeometry(1.8, 1.5, 16),
+                new THREE.MeshPhongMaterial({ color: 0x333333 })
+            );
+            roof.position.y = 9.25;
+            lighthouseGrp.add(roof);
+
+            // Light core
+            const bulb = new THREE.Mesh(
+                new THREE.SphereGeometry(0.5, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            bulb.position.y = 7.75;
+            lighthouseGrp.add(bulb);
+
+            const pLight = new THREE.PointLight(0xffffff, 2, 50);
+            pLight.position.y = 7.75;
+            lighthouseGrp.add(pLight);
+
+            // Beam (Volumetric fake)
+            beamGrp = new THREE.Group();
+            beamGrp.position.y = 7.75;
+            lighthouseGrp.add(beamGrp);
+
+            const beamGeo = new THREE.CylinderGeometry(0.5, 8, 30, 32, 1, true);
+            beamGeo.rotateZ(Math.PI / 2);
+            beamGeo.translate(15, 0, 0); // shift pivot
+            const beamMat = new THREE.MeshBasicMaterial({
+                color: 0x56b6c2,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.BackSide,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            // Two opposite beams
+            const beam1 = new THREE.Mesh(beamGeo, beamMat);
+            beamGrp.add(beam1);
+
+            const beam2 = new THREE.Mesh(beamGeo, beamMat);
+            beam2.rotation.y = Math.PI;
+            beamGrp.add(beam2);
+
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            animate3D();
+        }
+
+        function triggerBeamIntensity() {
+            // Average the sliders to dictate beam color intensity
+            const perf = parseFloat(document.getElementById('sl-perf').value);
+            const a11y = parseFloat(document.getElementById('sl-a11y').value);
+            const bp = parseFloat(document.getElementById('sl-bp').value);
+            const seo = parseFloat(document.getElementById('sl-seo').value);
+
+            intensityTarget = (perf + a11y + bp + seo) / 4; // 0 to 1
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Spin beams
+            if (beamGrp) {
+                beamGrp.rotation.y -= 0.02;
+
+                // Lerp intensity
+                currentIntensity += (intensityTarget - currentIntensity) * 0.05;
+
+                // Update beam color based on average score (High = Green/Cyan, Low = Red/Orange)
+                const hue = 0.5 * currentIntensity; // 0.0 (red) to 0.5 (cyan) roughly
+                const color = new THREE.Color().setHSL(hue, 1.0, 0.5);
+
+                beamGrp.children.forEach(b => {
+                    b.material.color = color;
+                    b.material.opacity = 0.05 + (currentIntensity * 0.15); // brighter if higher score
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            generateConfig();
+            triggerBeamIntensity();
+        });
+
+    </script>
+</body>
+
+</html>

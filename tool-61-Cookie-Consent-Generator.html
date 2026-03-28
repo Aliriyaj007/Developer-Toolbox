@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 61 - Cookie Consent Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"],
+        input[type="color"],
+        select {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+        }
+
+        .color-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .color-group input[type="color"] {
+            width: 50px;
+            padding: 0.2rem;
+            height: 38px;
+        }
+
+        /* Live Preview Area */
+        .preview-area {
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-bg-text {
+            color: var(--text-secondary);
+            opacity: 0.3;
+            font-size: 2rem;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* Mock Banner element */
+        #mock-banner {
+            position: absolute;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            gap: 1rem;
+            z-index: 10;
+        }
+
+        .mock-btn {
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Code Block */
+        .code-block-wrapper {
+            position: relative;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .code-block {
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #7ee787;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        /* Checkbox styling */
+        .radio-options label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-right: 1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>61. Cookie Consent Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Configurator -->
+                    <div class="controls-panel" id="controls">
+                        <div class="control-group">
+                            <label>Position</label>
+                            <select id="cfg-pos">
+                                <option value="bottom">Bottom Full Width</option>
+                                <option value="bottom-left">Bottom Left Floating</option>
+                                <option value="bottom-right">Bottom Right Floating</option>
+                                <option value="top">Top Full Width</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Text Content</label>
+                            <input type="text" id="cfg-text"
+                                value="We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.">
+                        </div>
+
+                        <div class="control-group">
+                            <label>Buttons Layout</label>
+                            <select id="cfg-btns">
+                                <option value="accept-only">Accept Only</option>
+                                <option value="accept-reject" selected>Accept / Reject</option>
+                                <option value="accept-settings">Accept / Settings</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Colors</label>
+                            <div class="color-group" style="margin-bottom:0.5rem;">
+                                <input type="color" id="cfg-bg" value="#222233">
+                                <input type="text" id="cfg-bg-txt" value="#222233" style="width:100px;">
+                                <span>Background</span>
+                            </div>
+                            <div class="color-group" style="margin-bottom:0.5rem;">
+                                <input type="color" id="cfg-text-color" value="#ffffff">
+                                <input type="text" id="cfg-text-color-txt" value="#ffffff" style="width:100px;">
+                                <span>Text</span>
+                            </div>
+                            <div class="color-group">
+                                <input type="color" id="cfg-btn-bg" value="#56b6c2">
+                                <input type="text" id="cfg-btn-bg-txt" value="#56b6c2" style="width:100px;">
+                                <span>Button</span>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Border Radius</label>
+                            <input type="text" id="cfg-radius" value="8px" placeholder="e.g. 8px, 0px, 20px">
+                        </div>
+
+                        <div class="control-group radio-options" style="margin-top:1.5rem;">
+                            <label><input type="checkbox" id="cfg-shadow" checked> Add Shadow</label>
+                            <label><input type="checkbox" id="cfg-darkmode" checked> Respect OS Dark Mode</label>
+                        </div>
+                    </div>
+
+                    <!-- Output Details -->
+                    <div>
+                        <div class="preview-area" id="preview-area">
+                            <div class="preview-bg-text">Your Website</div>
+
+                            <!-- Live Mock Banner -->
+                            <div id="mock-banner">
+                                <div id="mock-text"
+                                    style="flex:1; align-self:center; font-size:0.9rem; line-height:1.4;"></div>
+                                <div id="mock-buttons" style="display:flex; gap:0.5rem; align-items:center;"></div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top:0;">Generated Integration Code</h3>
+                        <p style="font-size:0.85rem; color:var(--text-secondary);">
+                            Copy this vanilla JS code and place it before the closing <code>&lt;/body&gt;</code> tag. It
+                            has zero external dependencies and handles hiding itself when accepted.
+                        </p>
+
+                        <div class="code-block-wrapper">
+                            <button class="btn btn-sm btn-primary copy-btn" id="btn-copy">Copy Code</button>
+                            <div class="code-block" id="code-output"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const cfgPos = document.getElementById('cfg-pos');
+        const cfgText = document.getElementById('cfg-text');
+        const cfgBtns = document.getElementById('cfg-btns');
+        const cfgBg = document.getElementById('cfg-bg');
+        const cfgBgTxt = document.getElementById('cfg-bg-txt');
+        const cfgTextColor = document.getElementById('cfg-text-color');
+        const cfgTextColorTxt = document.getElementById('cfg-text-color-txt');
+        const cfgBtnBg = document.getElementById('cfg-btn-bg');
+        const cfgBtnBgTxt = document.getElementById('cfg-btn-bg-txt');
+        const cfgRadius = document.getElementById('cfg-radius');
+        const cfgShadow = document.getElementById('cfg-shadow');
+        const cfgDarkmode = document.getElementById('cfg-darkmode');
+
+        const mockBanner = document.getElementById('mock-banner');
+        const mockText = document.getElementById('mock-text');
+        const mockButtons = document.getElementById('mock-buttons');
+        const codeOutput = document.getElementById('code-output');
+
+        // Sync color pickers with text inputs
+        const syncColor = (colorEl, textEl) => {
+            colorEl.addEventListener('input', () => { textEl.value = colorEl.value; updatePreview(); });
+            textEl.addEventListener('input', () => { colorEl.value = textEl.value; updatePreview(); });
+        };
+        syncColor(cfgBg, cfgBgTxt);
+        syncColor(cfgTextColor, cfgTextColorTxt);
+        syncColor(cfgBtnBg, cfgBtnBgTxt);
+
+        // Bind all inputs to update
+        document.querySelectorAll('#controls input, #controls select').forEach(el => {
+            el.addEventListener('input', updatePreview);
+            el.addEventListener('change', updatePreview);
+        });
+
+        function updatePreview() {
+            const pos = cfgPos.value;
+            const text = cfgText.value;
+            const btns = cfgBtns.value;
+            const bg = cfgBg.value;
+            const textCol = cfgTextColor.value;
+            const btnBg = cfgBtnBg.value;
+            const radius = cfgRadius.value || '0px';
+            const shadow = cfgShadow.checked;
+
+            // Update Mock visual
+            mockText.textContent = text;
+            mockBanner.style.backgroundColor = bg;
+            mockBanner.style.color = textCol;
+            mockBanner.style.borderRadius = pos.includes('full') ? '0' : radius;
+            mockBanner.style.boxShadow = shadow ? '0 4px 20px rgba(0,0,0,0.5)' : 'none';
+
+            // Positioning mapping for preview container
+            mockBanner.style.width = '';
+            mockBanner.style.left = '';
+            mockBanner.style.right = '';
+            mockBanner.style.bottom = '';
+            mockBanner.style.top = '';
+            mockBanner.style.margin = '0';
+            mockBanner.style.flexDirection = 'row';
+
+            if (pos === 'bottom') {
+                mockBanner.style.width = '100%';
+                mockBanner.style.bottom = '0';
+                mockBanner.style.left = '0';
+                mockBanner.style.padding = '1rem 2rem';
+            } else if (pos === 'top') {
+                mockBanner.style.width = '100%';
+                mockBanner.style.top = '0';
+                mockBanner.style.left = '0';
+                mockBanner.style.padding = '1rem 2rem';
+            } else if (pos === 'bottom-left') {
+                mockBanner.style.width = '300px';
+                mockBanner.style.bottom = '1rem';
+                mockBanner.style.left = '1rem';
+                mockBanner.style.padding = '1rem';
+                mockBanner.style.flexDirection = 'column';
+            } else if (pos === 'bottom-right') {
+                mockBanner.style.width = '300px';
+                mockBanner.style.bottom = '1rem';
+                mockBanner.style.right = '1rem';
+                mockBanner.style.padding = '1rem';
+                mockBanner.style.flexDirection = 'column';
+            }
+
+            // Buttons
+            mockButtons.innerHTML = '';
+            const btnReject = `<button class="mock-btn" style="background:transparent; color:${textCol}; border:1px solid ${textCol};">Decline</button>`;
+            const btnSettings = `<button class="mock-btn" style="background:transparent; color:${textCol}; text-decoration:underline;">Settings</button>`;
+            const btnAccept = `<button class="mock-btn" style="background:${btnBg}; color:#fff;">Accept All</button>`;
+
+            if (btns === 'accept-only') mockButtons.innerHTML = btnAccept;
+            else if (btns === 'accept-reject') mockButtons.innerHTML = btnReject + btnAccept;
+            else if (btns === 'accept-settings') mockButtons.innerHTML = btnSettings + btnAccept;
+
+            // Generate Code
+            generateCode();
+
+            // Trigger 3D cookie bounce
+            if (window.bounceCookie) window.bounceCookie();
+        }
+
+        function generateCode() {
+            const pos = cfgPos.value;
+            const dark = cfgDarkmode.checked;
+
+            let posCss = '';
+            if (pos === 'bottom') posCss = `bottom:0; left:0; width:100%; border-radius:0;`;
+            if (pos === 'top') posCss = `top:0; left:0; width:100%; border-radius:0;`;
+            if (pos === 'bottom-left') posCss = `bottom:20px; left:20px; max-width:400px; flex-direction:column; border-radius:${cfgRadius.value};`;
+            if (pos === 'bottom-right') posCss = `bottom:20px; right:20px; max-width:400px; flex-direction:column; border-radius:${cfgRadius.value};`;
+
+            const btnHTML = cfgBtns.value === 'accept-only' ?
+                `<button id="cc-accept" class="cc-btn cc-btn-primary">Accept All</button>` :
+                cfgBtns.value === 'accept-reject' ?
+                    `<button id="cc-reject" class="cc-btn cc-btn-secondary">Decline</button><button id="cc-accept" class="cc-btn cc-btn-primary">Accept All</button>` :
+                    `<button id="cc-settings" class="cc-btn cc-btn-link">Settings</button><button id="cc-accept" class="cc-btn cc-btn-primary">Accept All</button>`;
+
+            const rawJs = `
+<!-- Cookie Consent Script -->
+<script>
+(function() {
+    if(localStorage.getItem('cookieConsent')) return;
+    
+    // Inject Styles
+    var style = document.createElement('style');
+    style.innerHTML = \`
+        #cc-banner {
+            position: fixed; z-index: 99999;
+            display: flex; gap: 1rem; align-items: center; justify-content: space-between;
+            padding: 1.5rem; font-family: sans-serif; box-sizing: border-box;
+            background: ${cfgBg.value}; color: ${cfgTextColor.value};
+            \${${cfgShadow.checked} ? 'box-shadow: 0 4px 20px rgba(0,0,0,0.15);' : ''}
+            transition: transform 0.3s ease;
+            ${posCss}
+        }
+        #cc-text { flex: 1; font-size: 14px; line-height: 1.5; margin: 0; }
+        .cc-btns { display: flex; gap: 10px; align-items: center; }
+        .cc-btn { border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
+        .cc-btn:hover { opacity: 0.8; }
+        .cc-btn-primary { background: ${cfgBtnBg.value}; color: #fff; }
+        .cc-btn-secondary { background: transparent; color: ${cfgTextColor.value}; border: 1px solid ${cfgTextColor.value}; }
+        .cc-btn-link { background: transparent; color: ${cfgTextColor.value}; text-decoration: underline; padding: 10px 0; }
+        
+        ${dark ? `
+        @media (prefers-color-scheme: dark) {
+            #cc-banner { background: #1a1a1a; color: #f0f0f0; border: 1px solid #333; }
+            .cc-btn-primary { filter: brightness(0.9); }
+            .cc-btn-secondary { color: #aaa; border-color: #555; }
+            .cc-btn-link { color: #aaa; }
+        }` : ''}
+    \`;
+    document.head.appendChild(style);
+
+    // Inject DOM
+    var banner = document.createElement('div');
+    banner.id = 'cc-banner';
+    banner.innerHTML = \`
+        <div id="cc-text">${cfgText.value}</div>
+        <div class="cc-btns">${btnHTML}</div>
+    \`;
+    document.body.appendChild(banner);
+
+    // Bind Events
+    var accept = document.getElementById('cc-accept');
+    var reject = document.getElementById('cc-reject');
+    var closeBanner = function() {
+        banner.style.transform = '${pos === 'top' ? 'translateY(-100%)' : 'translateY(150%)'}';
+        setTimeout(function() { banner.remove(); }, 300);
+    };
+
+    if(accept) accept.onclick = function() { localStorage.setItem('cookieConsent', 'accepted'); closeBanner(); };
+    if(reject) reject.onclick = function() { localStorage.setItem('cookieConsent', 'rejected'); closeBanner(); };
+})();
+<\/script>
+            `.trim();
+
+            codeOutput.textContent = rawJs;
+        }
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            navigator.clipboard.writeText(codeOutput.textContent);
+            window.showToast("Code Copied!");
+        });
+
+        // Init
+        updatePreview();
+
+
+        // 3D Visualization: A cookie with a form UI floating above
+        let scene, camera, renderer, group;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffdfaa, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            group = new THREE.Group();
+            scene.add(group);
+
+            // Shift right
+            scene.position.x = 2;
+            scene.position.y = 1;
+
+            // 1. A giant 3D Cookie
+            const cookieGeo = new THREE.CylinderGeometry(2, 2, 0.4, 32);
+            // rotate to face front-ish
+            cookieGeo.rotateX(Math.PI / 2);
+            const cookieMat = new THREE.MeshPhongMaterial({ color: 0xd2a679, roughness: 1 });
+            const cookie = new THREE.Mesh(cookieGeo, cookieMat);
+            group.add(cookie);
+
+            // Chocolate chips!
+            const chipGeo = new THREE.SphereGeometry(0.2, 8, 8);
+            chipGeo.scale(1, 1, 0.5); // flatten chip
+            const chipMat = new THREE.MeshPhongMaterial({ color: 0x4a2e15 });
+
+            for (let i = 0; i < 15; i++) {
+                const chip = new THREE.Mesh(chipGeo, chipMat);
+                // random pos on face
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * 1.6;
+                chip.position.set(Math.cos(angle) * r, Math.sin(angle) * r, 0.15);
+
+                chip.rotation.z = Math.random() * Math.PI;
+                chip.rotation.x = (Math.random() - 0.5) * 0.2;
+                cookie.add(chip); // child of cookie
+            }
+
+            // 2. A floating consent UI representation
+            const uiGeo = new THREE.BoxGeometry(3, 1.2, 0.1);
+            const uiMat = new THREE.MeshPhongMaterial({ color: 0x223344, transparent: true, opacity: 0.9 });
+            const uiPanel = new THREE.Mesh(uiGeo, uiMat);
+            uiPanel.position.set(1.5, -1.5, 1);
+            group.add(uiPanel);
+
+            // UI Button rep
+            const btnGeo = new THREE.BoxGeometry(0.8, 0.4, 0.12);
+            const btnMat = new THREE.MeshBasicMaterial({ color: 0x56b6c2 });
+            const uiBtn = new THREE.Mesh(btnGeo, btnMat);
+            uiBtn.position.set(0.8, 0, 0);
+            uiPanel.add(uiBtn); // child of UI panel
+
+            // Text line reps
+            const lineGeo = new THREE.BoxGeometry(1.5, 0.1, 0.11);
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+            const uiLine1 = new THREE.Mesh(lineGeo, lineMat);
+            uiLine1.position.set(-0.5, 0.2, 0);
+            uiPanel.add(uiLine1);
+
+            const lineGeo2 = new THREE.BoxGeometry(1.0, 0.1, 0.11);
+            const uiLine2 = new THREE.Mesh(lineGeo2, lineMat);
+            uiLine2.position.set(-0.75, -0.2, 0);
+            uiPanel.add(uiLine2);
+
+            group.userData = { targetY: 0, bounceVel: 0 };
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.bounceCookie = () => {
+            if (group) {
+                group.userData.bounceVel = 0.3; // spring up
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (group) {
+                // idle float
+                const idley = Math.sin(Date.now() * 0.002) * 0.2;
+
+                // apply bounce physics
+                group.position.y += group.userData.bounceVel;
+                group.userData.bounceVel -= 0.02; // gravity
+
+                // floor constraint for bounce
+                if (group.position.y < idley) {
+                    group.position.y = idley;
+                    group.userData.bounceVel = Math.abs(group.userData.bounceVel) * 0.5 - 0.05;
+                    if (group.userData.bounceVel < 0) group.userData.bounceVel = 0;
+                }
+
+                // spinning
+                group.rotation.y = Math.sin(Date.now() * 0.0005) * 0.4;
+                group.rotation.x = Math.sin(Date.now() * 0.0007) * 0.2 - 0.2; // tilt back a bit
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 55 - Image Palette Extractor - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 400px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(86, 182, 194, 0.05);
+        }
+
+        .upload-area img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 1;
+            background: #000;
+        }
+
+        .upload-placeholder {
+            position: relative;
+            z-index: 2;
+            color: var(--text-secondary);
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .upload-area img+.upload-placeholder {
+            display: none;
+            /* Hide when image is present */
+        }
+
+        .palette-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            justify-content: space-between;
+        }
+
+        .palette-controls select {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Palette Grid */
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .color-swatch {
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .color-swatch:hover {
+            transform: translateY(-2px);
+        }
+
+        .color-fill {
+            height: 50px;
+            width: 100%;
+        }
+
+        .color-hex {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            padding: 0.3rem;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        /* Analysis Sections */
+        .analysis-section {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .analysis-section h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .harmony-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .harmony-col {
+            flex: 1;
+        }
+
+        .harmony-swatch {
+            height: 40px;
+            border-radius: 4px;
+            margin-bottom: 0.2rem;
+        }
+
+        .harmony-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>55. Image Palette Extractor</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Controls / Image -->
+                    <div class="controls-panel">
+                        <input type="file" id="file-input" accept="image/*" style="display:none;">
+                        <div class="upload-area" id="drop-zone">
+                            <span class="upload-placeholder">📁 Click or Drag Image Here<br><small
+                                    style="font-weight:normal;opacity:0.7;">JPEG, PNG, WebP</small></span>
+                            <img id="preview-img" style="display:none;" crossorigin="anonymous">
+                        </div>
+
+                        <div class="palette-controls">
+                            <label style="color:var(--text-secondary); font-weight:bold;">Color Count:</label>
+                            <select id="color-count">
+                                <option value="5">5 Colors</option>
+                                <option value="8" selected>8 Colors</option>
+                                <option value="12">12 Colors</option>
+                                <option value="16">16 Colors</option>
+                            </select>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                            Click any extracted color to copy its HEX code. The dominant color is used to generate
+                            harmony suggestions.
+                        </p>
+                    </div>
+
+                    <!-- Output Data -->
+                    <div>
+                        <h2 style="margin-top:0;">Extracted Palette</h2>
+                        <div class="palette-grid" id="palette-grid">
+                            <!-- Injected -->
+                        </div>
+
+                        <div id="analysis-container" style="display:none;">
+                            <h2 style="margin-top:2rem;">Dominant Color Relationships</h2>
+
+                            <div class="analysis-section">
+                                <h3>Complementary</h3>
+                                <div class="harmony-row" id="harm-comp"></div>
+                                <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">High contrast,
+                                    vibrant look.</p>
+                            </div>
+
+                            <div class="analysis-section">
+                                <h3>Analogous</h3>
+                                <div class="harmony-row" id="harm-analogous"></div>
+                                <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">Colors adjacent on
+                                    the wheel. Harmonious and pleasing.</p>
+                            </div>
+
+                            <div class="analysis-section">
+                                <h3>Triadic</h3>
+                                <div class="harmony-row" id="harm-triadic"></div>
+                                <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">Evenly spaced on
+                                    color wheel. Balanced but colorful.</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewImg = document.getElementById('preview-img');
+        const countSelect = document.getElementById('color-count');
+        const paletteGrid = document.getElementById('palette-grid');
+        const analysisContainer = document.getElementById('analysis-container');
+
+        const colorThief = new ColorThief();
+
+        // rgb to hex
+        function rgbToHex(r, g, b) {
+            return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+        }
+
+        // rgb to hsl
+        function rgbToHsl(r, g, b) {
+            r /= 255, g /= 255, b /= 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max == min) {
+                h = s = 0; // achromatic
+            } else {
+                let d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return [h, s, l];
+        }
+
+        // hsl to rgb
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            if (s == 0) {
+                r = g = b = l; // achromatic
+            } else {
+                let hue2rgb = function hue2rgb(p, q, t) {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                }
+                let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                let p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        // --- File Handling ---
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        countSelect.addEventListener('change', () => {
+            if (previewImg.src && previewImg.style.display !== 'none') {
+                processImage();
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) return alert('Please upload an image file.');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+                // Wait for image to load to process
+                previewImg.onload = processImage;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Init with a placeholder colored image if no upload
+        const initCanvas = document.createElement('canvas');
+        initCanvas.width = 100; initCanvas.height = 100;
+        const ctx = initCanvas.getContext('2d');
+        const grd = ctx.createLinearGradient(0, 0, 100, 100);
+        grd.addColorStop(0, "#4facfe"); grd.addColorStop(1, "#00f2fe");
+        ctx.fillStyle = grd; ctx.fillRect(0, 0, 100, 100);
+        previewImg.src = initCanvas.toDataURL();
+        previewImg.style.display = 'block';
+        previewImg.onload = processImage;
+
+
+        // --- Processing ---
+        function processImage() {
+            try {
+                const colorCount = parseInt(countSelect.value);
+                // getPalette returns arrays of [r,g,b]
+                const palette = colorThief.getPalette(previewImg, colorCount);
+                if (!palette) return;
+
+                renderPaletteGrid(palette);
+
+                // Dominant is usually [0] or you can use getColor
+                const dominant = colorThief.getColor(previewImg);
+                renderAnalysis(dominant);
+
+                // Update 3D
+                if (window.update3DWheel) {
+                    window.update3DWheel(palette, dominant);
+                }
+            } catch (err) {
+                console.error("ColorThief Error:", err);
+            }
+        }
+
+        function createSwatch(rgbArray) {
+            const hex = rgbToHex(rgbArray[0], rgbArray[1], rgbArray[2]);
+            return `
+                <div class="color-swatch" onclick="navigator.clipboard.writeText('${hex}'); window.showToast('Copied ${hex}');">
+                    <div class="color-fill" style="background: rgb(${rgbArray.join(',')})"></div>
+                    <div class="color-hex">${hex}</div>
+                </div>
+            `;
+        }
+
+        function renderPaletteGrid(palette) {
+            paletteGrid.innerHTML = palette.map(createSwatch).join('');
+        }
+
+        function buildHarmonyItem(rgb, label) {
+            const hex = rgbToHex(...rgb);
+            return `
+                <div class="harmony-col" onclick="navigator.clipboard.writeText('${hex}')" style="cursor:pointer">
+                    <div class="harmony-swatch" style="background: rgb(${rgb.join(',')})"></div>
+                    <div class="harmony-label">${label}<br><b>${hex}</b></div>
+                </div>
+            `;
+        }
+
+        function renderAnalysis(dominantRGB) {
+            analysisContainer.style.display = 'block';
+
+            const [h, s, l] = rgbToHsl(...dominantRGB);
+
+            // Complementary (180deg)
+            const compH = (h + 0.5) % 1.0;
+            const compRGB = hslToRgb(compH, s, l);
+            document.getElementById('harm-comp').innerHTML =
+                buildHarmonyItem(dominantRGB, 'Base') +
+                buildHarmonyItem(compRGB, 'Complement');
+
+            // Analogous (+/- 30deg)
+            const a1H = (h + (30 / 360)) % 1.0;
+            const a2H = (h - (30 / 360) + 1.0) % 1.0;
+            document.getElementById('harm-analogous').innerHTML =
+                buildHarmonyItem(hslToRgb(a2H, s, l), '-30°') +
+                buildHarmonyItem(dominantRGB, 'Base') +
+                buildHarmonyItem(hslToRgb(a1H, s, l), '+30°');
+
+            // Triadic (+/- 120deg)
+            const t1H = (h + (120 / 360)) % 1.0;
+            const t2H = (h - (120 / 360) + 1.0) % 1.0;
+            document.getElementById('harm-triadic').innerHTML =
+                buildHarmonyItem(hslToRgb(t2H, s, l), '-120°') +
+                buildHarmonyItem(dominantRGB, 'Base') +
+                buildHarmonyItem(hslToRgb(t1H, s, l), '+120°');
+        }
+
+
+        // 3D Visualization: A rotating 3D Color Wheel
+        let scene, camera, renderer, wheelGroup;
+        let wedges = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 4, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight.position.set(2, 5, 5);
+            scene.add(dirLight);
+
+            wheelGroup = new THREE.Group();
+            scene.add(wheelGroup);
+
+            // Shift right to balance UI layout
+            scene.position.x = 2;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DWheel = (palette, dominant) => {
+            if (!wheelGroup) return;
+
+            // Clear old
+            wedges.forEach(w => wheelGroup.remove(w));
+            wedges = [];
+
+            const total = palette.length;
+            const radius = 3;
+            const height = 1;
+
+            // Create a cylinder wedge for each color
+            for (let i = 0; i < total; i++) {
+                // To make a wedge, we use CylinderGeometry with theta parameters
+                const thetaStart = (i / total) * Math.PI * 2;
+                const thetaLength = (1 / total) * Math.PI * 2;
+
+                const geo = new THREE.CylinderGeometry(radius, radius, height, 16, 1, false, thetaStart, thetaLength);
+
+                const hexColor = parseInt(rgbToHex(...palette[i]).replace('#', ''), 16);
+                const mat = new THREE.MeshPhongMaterial({
+                    color: hexColor,
+                    shininess: 90
+                });
+
+                const mesh = new THREE.Mesh(geo, mat);
+
+                // Push out slightly to make gaps
+                const angle = thetaStart + (thetaLength / 2);
+                const popDist = 0.2;
+                mesh.position.x = Math.sin(angle) * popDist;
+                mesh.position.z = Math.cos(angle) * popDist;
+
+                // Animate drop in
+                mesh.position.y = 5;
+                mesh.userData = { targetY: 0 };
+
+                wheelGroup.add(mesh);
+                wedges.push(mesh);
+            }
+
+            // Tilt wheel
+            wheelGroup.rotation.x = Math.PI / 4; // 45 degrees
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (wheelGroup) {
+                // slow spin
+                wheelGroup.rotation.y -= 0.005;
+
+                // drop in animation
+                wedges.forEach((w, idx) => {
+                    // stagger fall
+                    const delay = idx * 0.5;
+                    // simplistic staggered fall
+                    w.position.y += (w.userData.targetY - w.position.y) * 0.1;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+
+</html>

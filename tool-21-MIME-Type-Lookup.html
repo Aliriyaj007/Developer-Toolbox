@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 21 - MIME Type Lookup - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .mime-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        @media (min-width: 900px) {
+            .mime-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            color: var(--text-secondary);
+        }
+
+        .input-group input {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-main);
+            color: var(--text-primary);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+        }
+
+        .result-box {
+            padding: 1.5rem;
+            background: rgba(var(--primary-color-rgb), 0.1);
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--radius-md);
+            text-align: center;
+            font-size: 1.5rem;
+            font-family: var(--font-mono);
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
+            margin-bottom: 1rem;
+        }
+
+        .common-types-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .common-type-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .common-type-item:last-child {
+            border-bottom: none;
+        }
+
+        .common-type-item:hover {
+            background: rgba(var(--primary-color-rgb), 0.05);
+        }
+
+        .badge-ext {
+            background: var(--primary-color);
+            color: #fff;
+            padding: 0.2rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .badge-mime {
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>21. MIME Type Lookup</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mime-grid">
+                <div class="glass-panel">
+                    <h3>Lookup</h3>
+                    <div class="input-group mt-4">
+                        <label for="ext-input">File Extension to MIME Type (.html, js, mp4)</label>
+                        <input type="text" id="ext-input" placeholder="e.g. .html or json">
+                    </div>
+                    <div id="ext-result" class="result-box text-secondary">Awaiting input...</div>
+                    <button class="btn btn-primary" id="copy-ext-result" style="width: 100%; margin-bottom: 2rem;">Copy MIME Type</button>
+
+                    <hr class="mb-4" style="border-color: var(--border-color);">
+
+                    <div class="input-group">
+                        <label for="mime-input">MIME Type to Extension (Reverse Lookup)</label>
+                        <input type="text" id="mime-input" placeholder="e.g. text/html or application/json">
+                    </div>
+                    <div id="mime-result" class="result-box text-secondary">Awaiting input...</div>
+                    <button class="btn btn-primary" id="copy-mime-result" style="width: 100%;">Copy Extension(s)</button>
+                </div>
+
+                <div class="glass-panel">
+                    <h3>Common MIME Types</h3>
+                    <p class="text-secondary mb-4">Click any item to populate the lookup fields.</p>
+                    <div class="common-types-container" id="common-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Database
+        const mimeDb = {
+            ".aac": "audio/aac",
+            ".abw": "application/x-abiword",
+            ".arc": "application/x-freearc",
+            ".avi": "video/x-msvideo",
+            ".azw": "application/vnd.amazon.ebook",
+            ".bin": "application/octet-stream",
+            ".bmp": "image/bmp",
+            ".bz": "application/x-bzip",
+            ".bz2": "application/x-bzip2",
+            ".csh": "application/x-csh",
+            ".css": "text/css",
+            ".csv": "text/csv",
+            ".doc": "application/msword",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".eot": "application/vnd.ms-fontobject",
+            ".epub": "application/epub+zip",
+            ".gz": "application/gzip",
+            ".gif": "image/gif",
+            ".htm": "text/html",
+            ".html": "text/html",
+            ".ico": "image/vnd.microsoft.icon",
+            ".ics": "text/calendar",
+            ".jar": "application/java-archive",
+            ".jpeg": "image/jpeg",
+            ".jpg": "image/jpeg",
+            ".js": "text/javascript",
+            ".json": "application/json",
+            ".jsonld": "application/ld+json",
+            ".mid": "audio/midi",
+            ".midi": "audio/midi",
+            ".mjs": "text/javascript",
+            ".mp3": "audio/mpeg",
+            ".mp4": "video/mp4",
+            ".mpeg": "video/mpeg",
+            ".mpkg": "application/vnd.apple.installer+xml",
+            ".odp": "application/vnd.oasis.opendocument.presentation",
+            ".ods": "application/vnd.oasis.opendocument.spreadsheet",
+            ".odt": "application/vnd.oasis.opendocument.text",
+            ".oga": "audio/ogg",
+            ".ogv": "video/ogg",
+            ".ogx": "application/ogg",
+            ".opus": "audio/opus",
+            ".otf": "font/otf",
+            ".png": "image/png",
+            ".pdf": "application/pdf",
+            ".php": "application/x-httpd-php",
+            ".ppt": "application/vnd.ms-powerpoint",
+            ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ".rar": "application/vnd.rar",
+            ".rtf": "application/rtf",
+            ".sh": "application/x-sh",
+            ".svg": "image/svg+xml",
+            ".tar": "application/x-tar",
+            ".tif": "image/tiff",
+            ".tiff": "image/tiff",
+            ".ts": "video/mp2t",
+            ".ttf": "font/ttf",
+            ".txt": "text/plain",
+            ".vsd": "application/vnd.visio",
+            ".wav": "audio/wav",
+            ".weba": "audio/webm",
+            ".webm": "video/webm",
+            ".webp": "image/webp",
+            ".woff": "font/woff",
+            ".woff2": "font/woff2",
+            ".xhtml": "application/xhtml+xml",
+            ".xls": "application/vnd.ms-excel",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xml": "application/xml",
+            ".xul": "application/vnd.mozilla.xul+xml",
+            ".zip": "application/zip",
+            ".3gp": "video/3gpp",
+            ".3g2": "video/3gpp2",
+            ".7z": "application/x-7z-compressed"
+        };
+
+        const topCommon = [
+            ".html", ".css", ".js", ".json", ".png", ".jpg", ".svg", ".pdf", ".zip", ".mp4", ".csv", ".txt"
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const extInput = document.getElementById('ext-input');
+            const mimeInput = document.getElementById('mime-input');
+            const extResult = document.getElementById('ext-result');
+            const mimeResult = document.getElementById('mime-result');
+            const copyExtBtn = document.getElementById('copy-ext-result');
+            const copyMimeBtn = document.getElementById('copy-mime-result');
+            const commonList = document.getElementById('common-list');
+
+            // Populate common list
+            topCommon.forEach(ext => {
+                const mime = mimeDb[ext];
+                const div = document.createElement('div');
+                div.className = 'common-type-item';
+                div.innerHTML = `
+                    <span class="badge-ext">${ext}</span>
+                    <span class="badge-mime">${mime}</span>
+                `;
+                div.addEventListener('click', () => {
+                    extInput.value = ext.replace('.', '');
+                    handleExtInput();
+                    if(window.triggerAnim) window.triggerAnim();
+                });
+                commonList.appendChild(div);
+            });
+
+            const handleExtInput = () => {
+                let val = extInput.value.trim().toLowerCase();
+                if (!val) {
+                    extResult.textContent = "Awaiting input...";
+                    extResult.style.color = "var(--text-secondary)";
+                    return;
+                }
+                if (!val.startsWith('.')) val = '.' + val;
+
+                const found = mimeDb[val];
+                if (found) {
+                    extResult.textContent = found;
+                    extResult.style.color = "var(--text-primary)";
+                    if(window.openDrawer) window.openDrawer(val);
+                } else {
+                    extResult.textContent = "Unknown Type";
+                    extResult.style.color = "#ff5252";
+                }
+            };
+
+            const handleMimeInput = () => {
+                const val = mimeInput.value.trim().toLowerCase();
+                if (!val) {
+                    mimeResult.textContent = "Awaiting input...";
+                    mimeResult.style.color = "var(--text-secondary)";
+                    return;
+                }
+
+                // Find all matching extensions
+                const matches = Object.keys(mimeDb).filter(k => mimeDb[k] === val);
+                if (matches.length > 0) {
+                    mimeResult.textContent = matches.join(', ');
+                    mimeResult.style.color = "var(--text-primary)";
+                    if(window.openDrawer) window.openDrawer(matches[0]);
+                } else {
+                    mimeResult.textContent = "No extension found";
+                    mimeResult.style.color = "#ff5252";
+                }
+            };
+
+            extInput.addEventListener('input', handleExtInput);
+            mimeInput.addEventListener('input', handleMimeInput);
+
+            copyExtBtn.addEventListener('click', () => {
+                if(extResult.textContent && extResult.textContent !== "Awaiting input..." && extResult.textContent !== "Unknown Type") {
+                    navigator.clipboard.writeText(extResult.textContent);
+                    const orig = copyExtBtn.textContent;
+                    copyExtBtn.textContent = "Copied!";
+                    setTimeout(() => copyExtBtn.textContent = orig, 1500);
+                }
+            });
+
+            copyMimeBtn.addEventListener('click', () => {
+                if(mimeResult.textContent && mimeResult.textContent !== "Awaiting input..." && mimeResult.textContent !== "No extension found") {
+                    navigator.clipboard.writeText(mimeResult.textContent);
+                    const orig = copyMimeBtn.textContent;
+                    copyMimeBtn.textContent = "Copied!";
+                    setTimeout(() => copyMimeBtn.textContent = orig, 1500);
+                }
+            });
+        });
+    </script>
+    <script>
+        // Three.js 3D Visualization - Filing Cabinet
+        let scene, camera, renderer, cabinet, drawers = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(5, 5, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            cabinet = new THREE.Group();
+
+            // Cabinet Shell (Hollow box look)
+            const shellMat = new THREE.MeshPhongMaterial({ color: 0x3d3d3d, shininess: 10 });
+            
+            // Left/Right/Top/Bottom/Back panels
+            createPanel(cabinet, 4.2, 8.2, 0.2, shellMat, 0, 0, -2.1); // Back
+            createPanel(cabinet, 4.2, 0.2, 4.2, shellMat, 0, 4.0, 0); // Top
+            createPanel(cabinet, 4.2, 0.2, 4.2, shellMat, 0, -4.0, 0); // Bottom
+            createPanel(cabinet, 0.2, 8.2, 4.2, shellMat, -2.0, 0, 0); // Left
+            createPanel(cabinet, 0.2, 8.2, 4.2, shellMat, 2.0, 0, 0); // Right
+
+            // Create 5 Drawers
+            for(let i=0; i<5; i++) {
+                const drawerGroup = new THREE.Group();
+                drawerGroup.position.y = 3 - (i * 1.5);
+                
+                // Drawer face
+                const faceGeo = new THREE.BoxGeometry(3.8, 1.3, 0.2);
+                const faceMat = new THREE.MeshPhongMaterial({ color: 0x5a5a5a, shininess: 50 });
+                const face = new THREE.Mesh(faceGeo, faceMat);
+                face.position.z = 1.9;
+
+                // Drawer handle
+                const handleGeo = new THREE.BoxGeometry(1.5, 0.15, 0.2);
+                const handleMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 100 });
+                const handle = new THREE.Mesh(handleGeo, handleMat);
+                handle.position.z = 2.05;
+                handle.position.y = 0.2;
+
+                // Label holder
+                const labelGeo = new THREE.BoxGeometry(1, 0.3, 0.05);
+                const labelMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
+                const label = new THREE.Mesh(labelGeo, labelMat);
+                label.position.z = 2.025;
+                label.position.y = -0.2;
+
+                drawerGroup.add(face);
+                drawerGroup.add(handle);
+                drawerGroup.add(label);
+
+                // initial Z pos
+                drawerGroup.userData = { targetZ: 0, currentZ: 0 };
+                drawers.push(drawerGroup);
+                cabinet.add(drawerGroup);
+            }
+
+            cabinet.position.x = 4;
+            cabinet.position.y = 0;
+            cabinet.rotation.y = -0.5;
+            cabinet.rotation.x = 0.1;
+            scene.add(cabinet);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function createPanel(parent, w, h, d, mat, x, y, z) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            parent.add(mesh);
+        }
+
+        window.openDrawer = (triggerStr) => {
+            const dIndex = triggerStr ? triggerStr.length % 5 : Math.floor(Math.random() * 5);
+            drawers.forEach((d, i) => {
+                if(i === dIndex) {
+                    d.userData.targetZ = 2.5; 
+                    setTimeout(() => { d.userData.targetZ = 0; }, 2500); 
+                } else {
+                    d.userData.targetZ = 0;
+                }
+            });
+        };
+
+        window.triggerAnim = () => {
+            window.openDrawer();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            drawers.forEach(d => {
+                const diff = d.userData.targetZ - d.position.z;
+                if(Math.abs(diff) > 0.01) {
+                    d.position.z += diff * 0.1;
+                }
+            });
+
+            if(cabinet) {
+                cabinet.rotation.y = THREE.MathUtils.lerp(cabinet.rotation.y, -0.5 + Math.sin(Date.now() * 0.0005) * 0.05, 0.05);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 41 - HTML Formatter Beautifier - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 450px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            resize: vertical;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--radius-md);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .control-group select, .control-group input[type="number"] {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.4rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>41. HTML Formatter Beautifier</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Indent With:</label>
+                        <select id="indent-char">
+                            <option value="spaces">Spaces</option>
+                            <option value="tabs">Tabs</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Indent Size:</label>
+                        <input type="number" id="indent-size" value="4" min="1" max="8" style="width: 60px;">
+                    </div>
+                    <div class="control-group">
+                        <label>Wrap Line Length:</label>
+                        <input type="number" id="wrap-line" value="0" min="0" style="width: 80px;" title="0 to disable">
+                    </div>
+                    <div class="control-group">
+                        <input type="checkbox" id="sort-attrs" style="accent-color: var(--primary-color);">
+                        <label for="sort-attrs">Sort Attributes</label>
+                    </div>
+                    <div class="control-group">
+                        <input type="checkbox" id="unformatted" style="accent-color: var(--primary-color);">
+                        <label for="unformatted">Preserve Inline tags</label>
+                    </div>
+                </div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Minified/Messy HTML (Input)</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        <textarea id="input-area" placeholder="Paste your HTML here..."></textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Formatted HTML (Output)</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm" id="minify-btn">Minify Instead</button>
+                                <button class="btn btn-sm btn-primary" id="copy-btn">Copy Output</button>
+                            </div>
+                        </div>
+                        <textarea id="output-area" readonly placeholder="Result will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="toast" class="toast">Copied to clipboard!</div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const inputArea = document.getElementById('input-area');
+        const outputArea = document.getElementById('output-area');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const minifyBtn = document.getElementById('minify-btn');
+        const toast = document.getElementById('toast');
+
+        // Settings
+        const indentCharSelect = document.getElementById('indent-char');
+        const indentSizeInput = document.getElementById('indent-size');
+        const wrapLineInput = document.getElementById('wrap-line');
+        const sortAttrsToggle = document.getElementById('sort-attrs');
+        const unformattedToggle = document.getElementById('unformatted');
+
+        const formatHTML = () => {
+            const val = inputArea.value;
+            if(!val) {
+                outputArea.value = '';
+                if(window.trigger3DFormat) window.trigger3DFormat(false);
+                return;
+            }
+
+            const indent_char = indentCharSelect.value === 'spaces' ? ' ' : '\t';
+            const indent_size = parseInt(indentSizeInput.value) || 4;
+            const wrap_line_length = parseInt(wrapLineInput.value) || 0;
+            const sort_attrs = sortAttrsToggle.checked;
+            const preserve_inline = unformattedToggle.checked;
+
+            const options = {
+                indent_size: indentCharSelect.value === 'tabs' ? 1 : indent_size,
+                indent_char: indent_char,
+                wrap_line_length: wrap_line_length,
+                preserve_newlines: true,
+                max_preserve_newlines: 2,
+                end_with_newline: true,
+                unformatted: preserve_inline ? ['a', 'span', 'img', 'code', 'pre', 'sub', 'sup', 'em', 'strong', 'b', 'i', 'u', 'strike', 'big', 'small', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'] : [],
+            };
+
+            // Basic attribute sorting using regex on tags before beautifying
+            let source = val;
+            if(sort_attrs) {
+                // A very simplistic attribute sorter for demonstration. 
+                // In production, DOM traversing is better, but DOMParser strips/alters bad HTML.
+                source = source.replace(/<([a-zA-Z0-9\-]+)([^>]+)>/g, (match, tag, attrs) => {
+                    // Quick parse of attributes
+                    const attrRegex = /([a-zA-Z0-9\-\_:]+)(?:=(?:"[^"]*"|'[^']*'|[^>\s]+))?/g;
+                    let m;
+                    const attrList = [];
+                    while ((m = attrRegex.exec(attrs)) !== null) {
+                        attrList.push(m[0]);
+                    }
+                    if(attrList.length <= 1) return match; // nothing to sort
+                    
+                    attrList.sort((a,b) => {
+                        const keyA = a.split('=')[0].toLowerCase();
+                        const keyB = b.split('=')[0].toLowerCase();
+                        return keyA.localeCompare(keyB);
+                    });
+                    
+                    return `<${tag} ${attrList.join(' ')}>`;
+                });
+            }
+
+            try {
+                const beautified = html_beautify(source, options);
+                outputArea.value = beautified;
+                if(window.trigger3DFormat) window.trigger3DFormat(true, false);
+            } catch(e) {
+                outputArea.value = "Error parsing HTML.";
+            }
+        };
+
+        const minifyHTML = () => {
+            const val = inputArea.value;
+            if(!val) return;
+            
+            // Simple minify: remove html comments, remove whitespace between tags
+            let minified = val.replace(/<!--[\s\S]*?-->/g, ''); // Comments
+            minified = minified.replace(/>\s+</g, '><'); // Whitespace between tags
+            minified = minified.replace(/\n\s*/g, ''); // Newlines
+            
+            outputArea.value = minified;
+            if(window.trigger3DFormat) window.trigger3DFormat(true, true);
+        };
+
+        inputArea.addEventListener('input', () => {
+            // Debounce format
+            clearTimeout(window.formatTimeout);
+            window.formatTimeout = setTimeout(formatHTML, 500);
+        });
+
+        // Settings change listeners
+        [indentCharSelect, indentSizeInput, wrapLineInput, sortAttrsToggle, unformattedToggle].forEach(el => {
+            el.addEventListener('change', formatHTML);
+            el.addEventListener('input', formatHTML);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            inputArea.value = '';
+            outputArea.value = '';
+            if(window.trigger3DFormat) window.trigger3DFormat(false);
+        });
+
+        minifyBtn.addEventListener('click', minifyHTML);
+
+        copyBtn.addEventListener('click', () => {
+            if(!outputArea.value) return;
+            navigator.clipboard.writeText(outputArea.value);
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        });
+
+
+        // 3D Visualization: A tangled web straightening into neat lines
+        let scene, camera, renderer, linesGroup, points = [];
+        let isFormatting = false;
+        let isMinifying = false;
+        let animationProgress = 0;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            linesGroup = new THREE.Group();
+            scene.add(linesGroup);
+
+            // Generate initial tangled lines
+            const numLines = 15;
+            for(let i=0; i<numLines; i++) {
+                const linePoints = [];
+                // Each line has a few points
+                for(let p=0; p<5; p++) {
+                    linePoints.push({
+                        cx: (Math.random() - 0.5) * 8, // Current generic tangle
+                        cy: (Math.random() - 0.5) * 8,
+                        cz: (Math.random() - 0.5) * 4,
+                        tx: (Math.random() - 0.5) * 8, // Target tangled
+                        ty: (Math.random() - 0.5) * 8,
+                        tz: (Math.random() - 0.5) * 4,
+                        fx: -3 + (p * 1.5), // Target Formatted (horizontal straight lines)
+                        fy: 3 - (i * 0.4),
+                        fz: 0,
+                        mx: (Math.random() - 0.5) * 0.5, // Target Minified (compressed cluster)
+                        my: (Math.random() - 0.5) * 0.5,
+                        mz: (Math.random() - 0.5) * 0.5
+                    });
+                }
+                
+                // Create Line
+                const material = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.6 });
+                const geometry = new THREE.BufferGeometry();
+                const line = new THREE.Line(geometry, material);
+                
+                points.push(linePoints);
+                linesGroup.add(line);
+            }
+
+            linesGroup.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.trigger3DFormat = (active, minify = false) => {
+            if(!linesGroup) return;
+            isFormatting = active;
+            isMinifying = minify;
+            animationProgress = 0;
+
+            if(!active) {
+                // Return to pure random tangle targets
+                points.forEach(line => {
+                    line.forEach(pt => {
+                        pt.tx = (Math.random() - 0.5) * 8;
+                        pt.ty = (Math.random() - 0.5) * 8;
+                        pt.tz = (Math.random() - 0.5) * 4;
+                    });
+                });
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(linesGroup) {
+                linesGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
+                linesGroup.rotation.x = Math.sin(Date.now() * 0.0003) * 0.1;
+
+                // Ease animation progress
+                if(isFormatting) {
+                    animationProgress += (1 - animationProgress) * 0.05;
+                } else {
+                    animationProgress += (0 - animationProgress) * 0.05;
+                }
+
+                points.forEach((linePts, lineIndex) => {
+                    const positions = new Float32Array(linePts.length * 3);
+                    
+                    linePts.forEach((pt, ptIndex) => {
+                        // Base target (tangled)
+                        let targetX = pt.tx;
+                        let targetY = pt.ty;
+                        let targetZ = pt.tz;
+
+                        if(isFormatting) {
+                            if(isMinifying) {
+                                // interpolate to minified cluster based on progress
+                                targetX = pt.tx + (pt.mx - pt.tx) * animationProgress;
+                                targetY = pt.ty + (pt.my - pt.ty) * animationProgress;
+                                targetZ = pt.tz + (pt.mz - pt.tz) * animationProgress;
+                            } else {
+                                // interpolate to formatted neat lines based on progress
+                                targetX = pt.tx + (pt.fx - pt.tx) * animationProgress;
+                                targetY = pt.ty + (pt.fy - pt.ty) * animationProgress;
+                                targetZ = pt.tz + (pt.fz - pt.tz) * animationProgress;
+                            }
+                        }
+
+                        // Ease current to target
+                        pt.cx += (targetX - pt.cx) * 0.05;
+                        pt.cy += (targetY - pt.cy) * 0.05;
+                        pt.cz += (targetZ - pt.cz) * 0.05;
+
+                        // Slight idle wiggle
+                        if(!isFormatting) {
+                            pt.cx += (Math.random() - 0.5) * 0.02;
+                            pt.cy += (Math.random() - 0.5) * 0.02;
+                        }
+
+                        positions[ptIndex * 3] = pt.cx;
+                        positions[ptIndex * 3 + 1] = pt.cy;
+                        positions[ptIndex * 3 + 2] = pt.cz;
+                    });
+                    
+                    const lineMesh = linesGroup.children[lineIndex];
+                    lineMesh.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    lineMesh.geometry.attributes.position.needsUpdate = true;
+                    
+                    if(isFormatting && !isMinifying) {
+                        lineMesh.material.color.setHex(0x00ffcc);
+                    } else if (isFormatting && isMinifying) {
+                        lineMesh.material.color.setHex(0xffaa00);
+                    } else {
+                        lineMesh.material.color.setHex(0x555555);
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

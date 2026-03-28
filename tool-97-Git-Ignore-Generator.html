@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 97 - Git Ignore Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        
+        .panel {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .search-input {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: #fff;
+            width: 100%;
+            outline: none;
+            margin-bottom: 1rem;
+        }
+        .search-input:focus { border-color: #56b6c2; }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .tag-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .tag-btn:hover { background: rgba(255,255,255,0.1); color:#fff; }
+        .tag-btn.active {
+            background: rgba(86, 182, 194, 0.2);
+            border-color: #56b6c2;
+            color: #56b6c2;
+        }
+
+        .selected-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .selected-tag {
+            background: #56b6c2;
+            color: #000;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .selected-tag span {
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 0.5;
+            padding-bottom: 2px;
+        }
+        .selected-tag span:hover { color: #fff; }
+
+        .code-output {
+            flex: 1;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.5;
+            color: #e6e6e6;
+            white-space: pre;
+            overflow: auto;
+            min-height: 300px;
+            position: relative;
+        }
+
+        .btn-copy {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid #444;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn-copy:hover { background: rgba(255,255,255,0.2); }
+
+        /* 3D Canvas wrapper */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>97. Git Ignore Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="split-view">
+                
+                <!-- Input Panel -->
+                <div class="panel">
+                    <h3>Technologies</h3>
+                    
+                    <input type="text" id="search-input" class="search-input" placeholder="Search Node, Python, MacOS..." autocomplete="off">
+
+                    <p style="font-size:0.8rem; color:#aaa; margin-top:-0.5rem; margin-bottom:0.5rem;">Select tools, languages, and OS to generated a combined ignore file.</p>
+                    
+                    <div class="tag-list" id="tag-list">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="panel">
+                    
+                    <h3>Generated .gitignore</h3>
+                    
+                    <div class="selected-tags" id="selected-tags-container">
+                        <!-- Selected tags appear here -->
+                    </div>
+
+                    <div class="code-output">
+                        <button class="btn-copy" id="btn-copy">Copy to Clipboard</button>
+                        <div id="out-code" style="min-height:200px; color:#aaa;">Select a technology to start generating...</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        // Predefined templates for common tech
+        const TEMPLATES = {
+            'Node': `### Node ###
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Directory for instrumented libs
+lib-cov
+
+# Coverage directory
+coverage
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# Bower dependency directory
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript v1 declaration files
+typings/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+.env*.local
+
+# parcel-bundler cache (V1, V2)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/`,
+            
+            'Python': `### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/`,
+
+            'macOS': `### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \\r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk`,
+
+            'Windows': `### Windows ###
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk`,
+
+            'React': `### React ###
+.next/
+out/
+build/
+dist/
+node_modules/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*`,
+
+            'VSCode': `### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/`,
+
+            'IntelliJ': `### IntelliJ IDEA ###
+.idea/
+*.iml
+*.iws
+
+# User-specific stuff
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/runConfigurations.xml
+
+# CMake
+cmake-build-*/
+
+# Mongo Explorer plugin
+.idea/mongoSettings.xml
+
+# Crashlytics plugin (for Android Studio and IntelliJ)
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties`,
+
+            'Java': `### Java ###
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs
+hs_err_pid*`,
+
+            'C++': `### C++ ###
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app`,
+            
+            'Go': `### Go ###
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with \`go test -c\`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/`
+        };
+
+        const tagList = document.getElementById('tag-list');
+        const searchInput = document.getElementById('search-input');
+        const selectedContainer = document.getElementById('selected-tags-container');
+        const outCode = document.getElementById('out-code');
+        const btnCopy = document.getElementById('btn-copy');
+
+        let selectedTechs = new Set();
+        const availableTechs = Object.keys(TEMPLATES).sort();
+
+        function renderTags(filterStr = '') {
+            tagList.innerHTML = '';
+            
+            const lowerFilter = filterStr.toLowerCase();
+
+            availableTechs.forEach(tech => {
+                if (filterStr && !tech.toLowerCase().includes(lowerFilter)) return;
+
+                const btn = document.createElement('button');
+                btn.className = `tag-btn ${selectedTechs.has(tech) ? 'active' : ''}`;
+                btn.textContent = tech;
+                btn.onclick = () => toggleTech(tech);
+                tagList.appendChild(btn);
+            });
+        }
+
+        function toggleTech(tech) {
+            if (selectedTechs.has(tech)) {
+                selectedTechs.delete(tech);
+            } else {
+                selectedTechs.add(tech);
+            }
+            
+            searchInput.value = ''; // clear search on click
+            renderTags();
+            updateOutput();
+            // Trigger 3D shield action
+            triggerShieldAction();
+        }
+
+        function removeTech(tech) {
+            selectedTechs.delete(tech);
+            renderTags(searchInput.value);
+            updateOutput();
+        }
+
+        function updateOutput() {
+            // Update selected tags UI
+            selectedContainer.innerHTML = '';
+            
+            if (selectedTechs.size === 0) {
+                selectedContainer.style.display = 'none';
+                outCode.innerHTML = '<span style="color:#aaa;">Select a technology to start generating...</span>';
+                return;
+            }
+
+            selectedContainer.style.display = 'flex';
+            
+            let combinedCode = '';
+
+            selectedTechs.forEach(tech => {
+                // UI Chip
+                const chip = document.createElement('div');
+                chip.className = 'selected-tag';
+                chip.innerHTML = `${tech} <span title="Remove">&times;</span>`;
+                chip.querySelector('span').onclick = () => removeTech(tech);
+                selectedContainer.appendChild(chip);
+
+                // Code append
+                combinedCode += TEMPLATES[tech] + '\n\n';
+            });
+
+            // Basic highlighting for .gitignore (comments #)
+            let highlighted = combinedCode.replace(/(#.*)/g, '<span style="color:#647d8c">$1</span>');
+            outCode.innerHTML = highlighted.trim();
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            renderTags(e.target.value);
+        });
+
+        btnCopy.addEventListener('click', () => {
+            if (selectedTechs.size === 0) return;
+            const textToCopy = outCode.innerText; // get un-highlighted text
+            navigator.clipboard.writeText(textToCopy);
+            btnCopy.textContent = 'Copied!';
+            setTimeout(() => { btnCopy.textContent = 'Copy to Clipboard'; }, 2000);
+        });
+
+        // Initialize UI
+        renderTags();
+
+
+        // 3D Scene setup: "A shield blocking specific files from flying towards an origin"
+        let scene, camera, renderer, shieldGrp, centerOrb;
+        let incomingFiles = [];
+        
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.z = 30;
+            camera.position.y = 10;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            // Center Project
+            centerOrb = new THREE.Mesh(
+                new THREE.SphereGeometry(2, 32, 32),
+                new THREE.MeshPhongMaterial({ color: 0x56b6c2, emissive: 0x002233 })
+            );
+            scene.add(centerOrb);
+
+            // Shield Group (surrounds the orb)
+            shieldGrp = new THREE.Group();
+            scene.add(shieldGrp);
+
+            const shieldGeo = new THREE.SphereGeometry(4, 32, 32, 0, Math.PI, 0, Math.PI);
+            const shieldMat = new THREE.MeshPhongMaterial({ 
+                color: 0x7ee787, 
+                transparent: true, 
+                opacity: 0.2, 
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+            shieldMesh.rotation.x = Math.PI / 2; // point shield forwards initially
+            shieldGrp.add(shieldMesh);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate3D();
+        }
+
+        // When user adds a tech, spawn a bunch of "files" that fly towards the center and hit the shield
+        function triggerShieldAction() {
+            // Flash shield
+            shieldGrp.children[0].material.opacity = 0.6;
+            setTimeout(() => {
+                shieldGrp.children[0].material.opacity = 0.2;
+            }, 300);
+
+            // Spawn 5 objects from random directions attacking the shield
+            for(let i=0; i<5; i++) {
+                const isBadFile = true; // They are all blocked
+                const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.8, 0.8, 0.8),
+                    new THREE.MeshPhongMaterial({ color: 0xff5555 })
+                );
+                
+                // Random spawn angle on a circle (x, z)
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 25;
+                mesh.position.x = Math.cos(angle) * distance;
+                mesh.position.z = Math.sin(angle) * distance;
+                mesh.position.y = (Math.random() - 0.5) * 10;
+
+                mesh.userData = {
+                    angle: angle,
+                    speed: 0.5 + Math.random() * 0.2,
+                    state: 'incoming'
+                };
+
+                scene.add(mesh);
+                incomingFiles.push(mesh);
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Rotate shield slowly
+            shieldGrp.rotation.y += 0.01;
+            shieldGrp.rotation.z = Math.sin(Date.now()*0.001) * 0.1;
+
+            // Orb pulse
+            centerOrb.scale.setScalar(1 + Math.sin(Date.now()*0.003) * 0.05);
+
+            // Animate incoming files
+            for(let i=incomingFiles.length-1; i>=0; i--) {
+                const f = incomingFiles[i];
+
+                if (f.userData.state === 'incoming') {
+                    // Move towards 0,0,0
+                    f.position.lerp(new THREE.Vector3(0,0,0), 0.02 * f.userData.speed);
+                    f.rotation.x += 0.1;
+                    f.rotation.y += 0.1;
+
+                    // Hit shield (distance approx 4.5)
+                    if (f.position.length() < 4.5) {
+                        f.userData.state = 'bouncing';
+                        
+                        // Impact effect on shield
+                        shieldGrp.rotation.y += 0.1; // jolt
+                    }
+                } else if (f.userData.state === 'bouncing') {
+                    // Bounce away and down
+                    const away = new THREE.Vector3().copy(f.position).normalize();
+                    f.position.addScaledVector(away, 0.5);
+                    f.position.y -= 0.5; // fall due to gravity
+                    f.rotation.x += 0.2;
+
+                    if (f.position.y < -20) {
+                        scene.remove(f);
+                        incomingFiles.splice(i, 1);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+        });
+    </script>
+</body>
+</html>
+

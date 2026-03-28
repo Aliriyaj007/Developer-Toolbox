@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 25 - CSS Gradient Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .gradient-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 2rem; }
+        @media (min-width: 900px) { .gradient-grid { grid-template-columns: 1fr 1fr; } }
+        
+        .preview-box {
+            width: 100%;
+            height: 250px;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-color);
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: background 0.3s ease;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .input-group label { font-weight: bold; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
+        
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            background: none;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid var(--border-color); border-radius: var(--radius-sm); }
+        
+        input[type="text"], input[type="number"] {
+            font-family: var(--font-mono); font-size: 1.1rem; padding: 0.5rem; 
+            border: 1px solid var(--border-color); border-radius: var(--radius-sm); 
+            background: var(--bg-main); color: var(--text-primary); flex: 1;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .code-output {
+            padding: 1rem;
+            background: rgba(var(--primary-color-rgb), 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            word-break: break-all;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>25. CSS Gradient Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="gradient-grid">
+                <div class="glass-panel">
+                    <h3>Controls</h3>
+                    
+                    <div class="input-group mt-4">
+                        <label for="angle-slider">Angle (<span id="angle-value">90</span>deg)</label>
+                        <input type="range" id="angle-slider" min="0" max="360" value="90">
+                    </div>
+
+                    <h4>Color Stops</h4>
+                    
+                    <div class="color-row">
+                        <input type="color" id="color-1" value="#ff00cc">
+                        <input type="text" id="hex-1" value="#ff00cc">
+                        <input type="number" id="pos-1" min="0" max="100" value="0" style="max-width: 80px;">
+                        <span>%</span>
+                    </div>
+
+                    <div class="color-row">
+                        <input type="color" id="color-2" value="#333399">
+                        <input type="text" id="hex-2" value="#333399">
+                        <input type="number" id="pos-2" min="0" max="100" value="100" style="max-width: 80px;">
+                        <span>%</span>
+                    </div>
+
+                    <button class="btn btn-primary" id="randomize-btn" style="width: 100%; margin-top: 1rem;">🎲 Randomize</button>
+                </div>
+
+                <div class="glass-panel">
+                    <h3>Preview</h3>
+                    <div class="preview-box mt-4" id="gradient-preview"></div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>CSS Code</h3>
+                        <button class="btn" id="copy-btn">Copy CSS</button>
+                    </div>
+                    <div class="code-output" id="css-output">
+                        background: linear-gradient(90deg, #ff00cc 0%, #333399 100%);
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const angleSlider = document.getElementById('angle-slider');
+            const angleVal = document.getElementById('angle-value');
+            
+            const color1 = document.getElementById('color-1');
+            const hex1 = document.getElementById('hex-1');
+            const pos1 = document.getElementById('pos-1');
+            
+            const color2 = document.getElementById('color-2');
+            const hex2 = document.getElementById('hex-2');
+            const pos2 = document.getElementById('pos-2');
+
+            const preview = document.getElementById('gradient-preview');
+            const cssOut = document.getElementById('css-output');
+            const copyBtn = document.getElementById('copy-btn');
+            const randBtn = document.getElementById('randomize-btn');
+
+            const updateGradient = () => {
+                const angle = angleSlider.value;
+                angleVal.textContent = angle;
+                
+                // sync hex and color picker
+                hex1.value = color1.value;
+                hex2.value = color2.value;
+
+                const cssStr = `linear-gradient(${angle}deg, ${color1.value} ${pos1.value}%, ${color2.value} ${pos2.value}%)`;
+                
+                preview.style.background = cssStr;
+                cssOut.textContent = `background: ${cssStr};`;
+
+                if(window.updateConeColor) {
+                    window.updateConeColor(color1.value, color2.value);
+                }
+            };
+
+            // Sync from text back to color picker
+            const updateFromHex = (hexEl, colorEl) => {
+                if(/^#[0-9A-F]{6}$/i.test(hexEl.value)) {
+                    colorEl.value = hexEl.value;
+                    updateGradient();
+                }
+            };
+
+            hex1.addEventListener('input', () => updateFromHex(hex1, color1));
+            hex2.addEventListener('input', () => updateFromHex(hex2, color2));
+
+            const inputs = [angleSlider, color1, color2, pos1, pos2];
+            inputs.forEach(el => el.addEventListener('input', updateGradient));
+
+            randBtn.addEventListener('click', () => {
+                const rColor = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+                color1.value = rColor();
+                color2.value = rColor();
+                angleSlider.value = Math.floor(Math.random() * 360);
+                updateGradient();
+            });
+
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(cssOut.textContent);
+                const og = copyBtn.textContent;
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => copyBtn.textContent = og, 1500);
+            });
+
+            // Initial render
+            updateGradient();
+        });
+
+        // Three.js 3D Visualization - Color Cone Extrusion
+        let scene, camera, renderer, cone;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(-6, 4, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            // Create Cone Geometry
+            const geo = new THREE.ConeGeometry(2.5, 5, 32, 1, false);
+            const count = geo.attributes.position.count;
+            const colors = new Float32Array(count * 3);
+            
+            // Initial rainbow gradient coloring
+            const colorObj = new THREE.Color();
+            for (let i = 0; i < count; i++) {
+                const x = geo.attributes.position.getX(i);
+                const z = geo.attributes.position.getZ(i);
+                const y = geo.attributes.position.getY(i);
+                
+                const angle = Math.atan2(x, z);
+                const hue = (angle / (Math.PI * 2)) + 0.5;
+                
+                // Tip is white
+                if(y > 2.4) {
+                    colorObj.setHSL(0, 0, 1);
+                } else {
+                    colorObj.setHSL(hue, 1, 0.5);
+                }
+                
+                colors[i * 3] = colorObj.r;
+                colors[i * 3 + 1] = colorObj.g;
+                colors[i * 3 + 2] = colorObj.b;
+            }
+            
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const mat = new THREE.MeshPhongMaterial({ 
+                vertexColors: true, 
+                shininess: 60,
+                side: THREE.DoubleSide
+            });
+            
+            cone = new THREE.Mesh(geo, mat);
+            cone.position.set(3, 0, 0);
+            cone.rotation.x = 0.2;
+            scene.add(cone);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.updateConeColor = (col1, col2) => {
+            if(!cone) return;
+            const geo = cone.geometry;
+            const colors = geo.attributes.color.array;
+            const count = geo.attributes.position.count;
+            
+            const c1 = new THREE.Color(col1);
+            const c2 = new THREE.Color(col2);
+            
+            for (let i = 0; i < count; i++) {
+                const y = geo.attributes.position.getY(i);
+                // y goes from -2.5 to 2.5
+                const t = (y + 2.5) / 5.0; // 0 to 1
+                
+                const r = THREE.MathUtils.lerp(c1.r, c2.r, t);
+                const g = THREE.MathUtils.lerp(c1.g, c2.g, t);
+                const b = THREE.MathUtils.lerp(c1.b, c2.b, t);
+                
+                colors[i * 3] = r;
+                colors[i * 3 + 1] = g;
+                colors[i * 3 + 2] = b;
+            }
+            geo.attributes.color.needsUpdate = true;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(cone) {
+                cone.rotation.y += 0.01;
+                // Subtle floating
+                cone.position.y = Math.sin(Date.now() * 0.002) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

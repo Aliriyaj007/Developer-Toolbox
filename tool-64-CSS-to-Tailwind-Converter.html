@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 64 - CSS to Tailwind Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .editor-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+        }
+
+        .editor-header {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .code-area {
+            flex: 1;
+            background: transparent;
+            color: #7ee787;
+            border: none;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            resize: none;
+            outline: none;
+        }
+
+        #tailwind-out {
+            color: #56b6c2;
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+
+        .btn-run {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 1rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+        }
+
+        .btn-run:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(86, 182, 194, 0.3);
+        }
+
+        .token {
+            padding: 0.2rem 0.4rem;
+            background: rgba(86, 182, 194, 0.2);
+            border-radius: 4px;
+            margin: 0.2rem;
+            display: inline-block;
+            cursor: help;
+            border: 1px solid var(--primary-color);
+        }
+
+        .token:hover {
+            background: rgba(86, 182, 194, 0.4);
+        }
+
+        /* Mapping Table */
+        .mapping-box {
+            margin-top: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 0.8rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        td.confidence-high {
+            color: #2ea043;
+            font-weight: bold;
+        }
+
+        td.confidence-med {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .tooltip-data {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: block;
+            margin-top: 0.2rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>64. CSS to Tailwind Converter</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Input -->
+                    <div style="display:flex; flex-direction:column;">
+                        <div class="editor-box">
+                            <div class="editor-header">
+                                <span style="color:#ff7b72">Raw Input CSS</span>
+                                <button class="btn btn-sm"
+                                    onclick="document.getElementById('css-in').value=''">Clear</button>
+                            </div>
+                            <textarea id="css-in" class="code-area" spellcheck="false"
+                                placeholder="Paste your CSS here...">
+.my-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-top: 16px;
+  color: #333333;
+  width: 100%;
+  max-width: 400px;
+}
+                            </textarea>
+                        </div>
+                        <button class="btn-run" id="btn-convert">✨ Convert to Tailwind CLASSES</button>
+                    </div>
+
+                    <!-- Output -->
+                    <div class="editor-box">
+                        <div class="editor-header">
+                            <span style="color:#56b6c2">Tailwind Equivalent</span>
+                            <button class="btn btn-sm btn-primary" id="btn-copy">Copy All</button>
+                        </div>
+                        <div id="tailwind-out" class="code-area">
+                            <div style="color:var(--text-secondary); font-style:italic;">Results will appear here...
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="mapping-box">
+                    <h3 style="margin-top:0;">Conversion Details & Confidence</h3>
+                    <div style="overflow-x:auto;">
+                        <table id="mapping-table">
+                            <thead>
+                                <tr>
+                                    <th>Original CSS Property</th>
+                                    <th>Generated Tailwind Class</th>
+                                    <th>Confidence Matrix</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mapping-body">
+                                <tr>
+                                    <td colspan="3" style="text-align:center; color:var(--text-secondary);">Run
+                                        conversion to see detailed mapping.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const cssIn = document.getElementById('css-in');
+        const tailwindOut = document.getElementById('tailwind-out');
+        const mappingBody = document.getElementById('mapping-body');
+        const btnConvert = document.getElementById('btn-convert');
+        const btnCopy = document.getElementById('btn-copy');
+
+        // Simple Tailwind Mapper Dictionary
+        // Supports basic mapping for sizing (assuming 1rem = 16px -> 4 units in TW)
+        const TAILWIND_MAP = {
+            'display: flex': { tw: 'flex', conf: 'High' },
+            'display: block': { tw: 'block', conf: 'High' },
+            'display: inline-block': { tw: 'inline-block', conf: 'High' },
+            'display: grid': { tw: 'grid', conf: 'High' },
+            'display: none': { tw: 'hidden', conf: 'High' },
+            'flex-direction: column': { tw: 'flex-col', conf: 'High' },
+            'flex-direction: row': { tw: 'flex-row', conf: 'High' },
+            'align-items: center': { tw: 'items-center', conf: 'High' },
+            'align-items: flex-start': { tw: 'items-start', conf: 'High' },
+            'justify-content: center': { tw: 'justify-center', conf: 'High' },
+            'justify-content: space-between': { tw: 'justify-between', conf: 'High' },
+            'width: 100%': { tw: 'w-full', conf: 'High' },
+            'height: 100%': { tw: 'h-full', conf: 'High' },
+            'width: 100vw': { tw: 'w-screen', conf: 'High' },
+            'height: 100vh': { tw: 'h-screen', conf: 'High' },
+            'position: absolute': { tw: 'absolute', conf: 'High' },
+            'position: relative': { tw: 'relative', conf: 'High' },
+            'position: fixed': { tw: 'fixed', conf: 'High' },
+            'text-align: center': { tw: 'text-center', conf: 'High' },
+            'font-weight: bold': { tw: 'font-bold', conf: 'High' },
+            'border-radius: 8px': { tw: 'rounded-lg', conf: 'High' },
+            'border-radius: 4px': { tw: 'rounded', conf: 'High' },
+            'border-radius: 9999px': { tw: 'rounded-full', conf: 'High' },
+            'border-radius: 50%': { tw: 'rounded-full', conf: 'Med' }
+        };
+
+        // Size helper (px to Tailwind padding/margin spacing)
+        function pxToTwSpace(pxStr) {
+            const px = parseInt(pxStr);
+            if (isNaN(px)) return null;
+            // standard tailwind scales: 4px = 1, 8px = 2, 16px = 4, 24px = 6
+            const ratio = px / 4;
+            if (Number.isInteger(ratio)) return ratio;
+            return `[${pxStr}]`; // arbitrary value
+        }
+
+        function parseCSS(cssText) {
+            // Strip comments
+            let cleanCss = cssText.replace(/\/\*[\s\S]*?\*\//g, '');
+            // Simple split by semicolons and newlines inside blocks
+            // Note: This is a hacky client-side parser, doesn't handle nested media queries perfectly in this simple version
+
+            const results = [];
+
+            // Extract text between {}
+            const rulesMatch = cleanCss.match(/\{([\s\S]*?)\}/g);
+            if (!rulesMatch) return results;
+
+            // Just process everything as one big bucket for simplicities sake of demonstration
+            let allProps = [];
+            rulesMatch.forEach(block => {
+                const props = block.replace(/[{}]/g, '').split(';').map(s => s.trim()).filter(s => s.length > 0);
+                allProps = allProps.concat(props);
+            });
+
+            allProps.forEach(propString => {
+                const [keyRaw, valRaw] = propString.split(':');
+                if (!keyRaw || !valRaw) return;
+                const key = keyRaw.trim();
+                const val = valRaw.trim();
+                const fullStr = `${key}: ${val}`;
+
+                // Search Map
+                if (TAILWIND_MAP[fullStr]) {
+                    results.push({ css: fullStr, tw: TAILWIND_MAP[fullStr].tw, conf: TAILWIND_MAP[fullStr].conf });
+                    return;
+                }
+
+                // Dynamic parsers
+                if (key.startsWith('padding') || key.startsWith('margin')) {
+                    const prefix = key[0]; // 'p' or 'm'
+                    const dir = key.includes('-top') ? 't' : key.includes('-bottom') ? 'b' : key.includes('-left') ? 'l' : key.includes('-right') ? 'r' : '';
+
+                    const space = pxToTwSpace(val);
+                    if (space !== null) {
+                        results.push({ css: fullStr, tw: `${prefix}${dir}-${space}`, conf: space.toString().includes('[') ? 'Med' : 'High' });
+                        return;
+                    }
+                }
+
+                if (key === 'color' || key === 'background-color' || key === 'border-color') {
+                    const prefix = key === 'color' ? 'text' : key === 'background-color' ? 'bg' : 'border';
+                    // Arbitrary color value `bg-[#fff]`
+                    results.push({ css: fullStr, tw: `${prefix}-[${val.replace(/ /g, '')}]`, conf: 'High' });
+                    return;
+                }
+
+                if (key === 'width' || key === 'height' || key.startsWith('max-width') || key.startsWith('min-height')) {
+                    let pre = key === 'width' ? 'w' : key === 'height' ? 'h' : key === 'max-width' ? 'max-w' : 'min-h';
+                    results.push({ css: fullStr, tw: `${pre}-[${val}]`, conf: 'Med' });
+                    return;
+                }
+
+                if (key === 'box-shadow') {
+                    results.push({ css: fullStr, tw: `shadow-[${val.replace(/ /g, '_')}]`, conf: 'Med' });
+                    return;
+                }
+
+                // Fallback unmapped
+                results.push({ css: fullStr, tw: `/* unmapped: ${key} */`, conf: 'Low' });
+            });
+
+            return results;
+        }
+
+        btnConvert.addEventListener('click', () => {
+            const css = cssIn.value;
+            const parsed = parseCSS(css);
+
+            tailwindOut.innerHTML = '';
+            mappingBody.innerHTML = '';
+
+            if (parsed.length === 0) {
+                tailwindOut.innerHTML = '<span style="color:#ff5555">No valid CSS properties found inside { ... } blocks.</span>';
+                return;
+            }
+
+            let classString = '';
+
+            parsed.forEach(item => {
+                if (!item.tw.startsWith('/*')) {
+                    // Create token pill
+                    const span = document.createElement('span');
+                    span.className = 'token';
+                    span.title = `Mapped from: ${item.css}`;
+                    span.textContent = item.tw;
+                    tailwindOut.appendChild(span);
+                    classString += item.tw + ' ';
+                } else {
+                    const span = document.createElement('span');
+                    span.style.color = '#ff5555';
+                    span.style.display = 'block';
+                    span.style.marginTop = '0.5rem';
+                    span.textContent = item.tw;
+                    tailwindOut.appendChild(span);
+                }
+
+                // Table row
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-family:var(--font-mono); color:#ff7b72;">${item.css}</td>
+                    <td style="font-family:var(--font-mono); color:#7ee787;">${item.tw}</td>
+                    <td class="confidence-${item.conf.toLowerCase()}">${item.conf} <span class="tooltip-data">${item.conf === 'High' ? 'Standard mapping' : item.conf === 'Med' ? 'Arbitrary JIT value used' : 'No mapping found'}</span></td>
+                `;
+                mappingBody.appendChild(tr);
+            });
+
+            // Trigger 3D Bridge connection
+            if (window.connectBridge) window.connectBridge();
+
+            // Store pure string for copy
+            tailwindOut.dataset.clipboard = classString.trim();
+        });
+
+        btnCopy.addEventListener('click', () => {
+            if (tailwindOut.dataset.clipboard) {
+                navigator.clipboard.writeText(tailwindOut.dataset.clipboard);
+                window.showToast("Tailwind Classes Copied!");
+            }
+        });
+
+
+        // 3D Visualization: A bridge connecting two islands (CSS island to Tailwind Island)
+        let scene, camera, renderer, worldGroup;
+        let bridgeSegments = [];
+        let isConnected = false;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 5, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(2, 10, 5);
+            scene.add(dirLight);
+
+            worldGroup = new THREE.Group();
+            scene.add(worldGroup);
+
+            // Shift up and right to balance layout
+            scene.position.x = 2;
+            scene.position.y = 1;
+
+            buildIslands();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function buildIslands() {
+            // CSS Island (Left) - Redish
+            const islandGeo = new THREE.CylinderGeometry(2, 2.5, 1, 16);
+            const cylMatL = new THREE.MeshPhongMaterial({ color: 0xff7b72 });
+            const cssIsland = new THREE.Mesh(islandGeo, cylMatL);
+            cssIsland.position.set(-4, -1, 0);
+            worldGroup.add(cssIsland);
+
+            // Tailwind Island (Right) - Cyan
+            const cylMatR = new THREE.MeshPhongMaterial({ color: 0x56b6c2 });
+            const twIsland = new THREE.Mesh(islandGeo, cylMatR);
+            twIsland.position.set(4, -1, 0);
+            worldGroup.add(twIsland);
+
+            // Unconnected Bridge planks
+            const plankGeo = new THREE.BoxGeometry(0.8, 0.2, 1.5);
+            const plankMat = new THREE.MeshLambertMaterial({ color: 0x886644 });
+
+            for (let i = 0; i < 6; i++) {
+                const plank = new THREE.Mesh(plankGeo, plankMat);
+                // Start resting on left island
+                plank.position.set(-4, -0.2, 0);
+
+                // Rotated randomly as debris
+                plank.rotation.y = Math.random() * Math.PI;
+
+                // Store target position for the bridge configuration
+                // Bridge length is ~8 units (-3 to +3 gap)
+                // 6 planks spread evenly
+                const tX = -2.5 + i * 1.0;
+                plank.userData = { tX: tX, tY: -0.4, tZ: 0, rx: 0, ry: 0, rz: 0 };
+
+                worldGroup.add(plank);
+                bridgeSegments.push(plank);
+            }
+        }
+
+        window.connectBridge = () => {
+            if (!bridgeSegments.length || isConnected) return; // run once visually
+            isConnected = true;
+
+            bridgeSegments.forEach((p, idx) => {
+                // Staggered animation 
+                setTimeout(() => {
+                    p.userData.animating = true;
+                }, idx * 100);
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (worldGroup) {
+                // slow float 
+                worldGroup.position.y = Math.sin(Date.now() * 0.001) * 0.3 + 1;
+                worldGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
+
+                // Animate bridge connecting
+                bridgeSegments.forEach(p => {
+                    if (p.userData.animating) {
+                        p.position.x += (p.userData.tX - p.position.x) * 0.1;
+                        p.position.y += (p.userData.tY - p.position.y) * 0.1;
+                        p.position.z += (p.userData.tZ - p.position.z) * 0.1;
+
+                        p.rotation.x += (p.userData.rx - p.rotation.x) * 0.1;
+                        p.rotation.y += (p.userData.ry - p.rotation.y) * 0.1;
+                        p.rotation.z += (p.userData.rz - p.rotation.z) * 0.1;
+
+                        // Add glow if close to target
+                        if (Math.abs(p.position.x - p.userData.tX) < 0.1) {
+                            p.material.emissive = new THREE.Color(0x56b6c2);
+                            p.material.emissiveIntensity = 0.5;
+                        }
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+
+</html>

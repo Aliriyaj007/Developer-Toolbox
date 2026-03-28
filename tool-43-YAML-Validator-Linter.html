@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 43 - YAML Validator Linter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 450px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            resize: vertical;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+
+        .status-bar {
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-valid {
+            background: rgba(46, 160, 67, 0.1);
+            color: #7ee787;
+            border: 1px solid #2ea043;
+        }
+
+        .status-invalid {
+            background: rgba(255, 85, 85, 0.1);
+            color: #ff5555;
+            border: 1px solid #ff5555;
+        }
+
+        .status-icon {
+            font-size: 1.5rem;
+        }
+
+        .error-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .error-item {
+            background: rgba(255, 85, 85, 0.05);
+            border-left: 3px solid #ff5555;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        }
+
+        .error-line {
+            font-family: var(--font-mono);
+            color: #ffaa00;
+            margin-bottom: 0.3rem;
+        }
+
+        .preview-pane {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            height: 450px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+
+        .token-key { color: #e5c07b; }
+        .token-string { color: #98c379; }
+        .token-number { color: #d19a66; }
+        .token-boolean { color: #c678dd; }
+        .token-null { color: #56b6c2; }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>43. YAML Validator Linter</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div id="status-bar" class="status-bar status-valid" style="display: none;">
+                    <div class="status-icon" id="status-icon">✅</div>
+                    <div id="status-text">Valid YAML</div>
+                </div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">YAML Input</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        <textarea id="yaml-input" placeholder="# Paste your YAML here
+name: Developer Toolbox
+version: 1.0
+features:
+  - Validation
+  - Formatting"></textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Validation & Preview</label>
+                        </div>
+                        <div id="error-container" style="display: none;">
+                            <ul class="error-list" id="error-list"></ul>
+                        </div>
+                        <div id="preview-container" class="preview-pane"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const yamlInput = document.getElementById('yaml-input');
+        const clearBtn = document.getElementById('clear-btn');
+        const statusBar = document.getElementById('status-bar');
+        const statusIcon = document.getElementById('status-icon');
+        const statusText = document.getElementById('status-text');
+        const errorContainer = document.getElementById('error-container');
+        const errorList = document.getElementById('error-list');
+        const previewContainer = document.getElementById('preview-container');
+
+        // Simple JSON syntax highlighter
+        const syntaxHighlight = (json) => {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'token-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'token-key';
+                    } else {
+                        cls = 'token-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'token-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'token-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        };
+
+        const validateYAML = () => {
+            const val = yamlInput.value.trim();
+            statusBar.style.display = 'flex';
+
+            if(!val) {
+                statusBar.style.display = 'none';
+                errorContainer.style.display = 'none';
+                previewContainer.style.display = 'block';
+                previewContainer.innerHTML = '';
+                if(window.update3DStack) window.update3DStack(0, false, 0);
+                return;
+            }
+
+            try {
+                // Parse it (can contain multiple documents, but loadAll is safer)
+                const docs = jsyaml.loadAll(val);
+                
+                // If it passes
+                statusBar.className = 'status-bar status-valid';
+                statusIcon.textContent = '✅';
+                statusText.textContent = docs.length > 1 ? `Valid YAML (${docs.length} documents)` : 'Valid YAML';
+                
+                errorContainer.style.display = 'none';
+                previewContainer.style.display = 'block';
+                
+                // Show parsed JSON preview
+                previewContainer.innerHTML = `<span style="color: var(--text-secondary); display:block; margin-bottom: 0.5rem;"># Parsed JSON Representation</span>` + syntaxHighlight(docs.length === 1 ? docs[0] : docs);
+
+                // Update 3D Visuals
+                const lines = val.split('\n').length;
+                if(window.update3DStack) window.update3DStack(lines, true, 0);
+
+            } catch (e) {
+                // Formatting the error
+                statusBar.className = 'status-bar status-invalid';
+                statusIcon.textContent = '❌';
+                statusText.textContent = 'Invalid YAML Syntax';
+                
+                errorContainer.style.display = 'block';
+                previewContainer.style.display = 'none';
+                
+                errorList.innerHTML = '';
+                
+                const li = document.createElement('li');
+                li.className = 'error-item';
+                
+                let lineNum = 0;
+                
+                if (e.mark) {
+                    lineNum = e.mark.line + 1;
+                    const colNum = e.mark.column + 1;
+                    li.innerHTML = `
+                        <div class="error-line">Line ${lineNum}, Column ${colNum}</div>
+                        <div>${e.reason || e.message}</div>
+                        <div style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 0.5rem; margin-top: 0.5rem; border-radius: 4px;">${e.mark.snippet}</div>
+                    `;
+                } else {
+                    li.innerHTML = `<div>${e.message}</div>`;
+                }
+                
+                errorList.appendChild(li);
+
+                const lines = val.split('\n').length;
+                if(window.update3DStack) window.update3DStack(lines, false, lineNum);
+            }
+        };
+
+        yamlInput.addEventListener('input', () => {
+            clearTimeout(window.valTimeout);
+            window.valTimeout = setTimeout(validateYAML, 500);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            yamlInput.value = '';
+            validateYAML();
+        });
+
+        // 3D Visualization: A stack of cards where misaligned ones glow red
+        let scene, camera, renderer, cardsGroup;
+        let cards = [];
+        let numCardsTarget = 0;
+        let isValidState = true;
+        let errorLineGlobal = 0;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 3, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            cardsGroup = new THREE.Group();
+            scene.add(cardsGroup);
+
+            cardsGroup.position.set(3, -2, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.update3DStack = (lines, isValid, errorLine) => {
+            if(!cardsGroup) return;
+            
+            // Map lines to max 15 cards
+            numCardsTarget = Math.min(Math.max(lines, 0), 15);
+            isValidState = isValid;
+            
+            // Map error line to card index roughly
+            if(!isValid && lines > 0) {
+                errorLineGlobal = Math.floor((errorLine / lines) * numCardsTarget);
+                // Ensure it's in bounds
+                if(errorLineGlobal >= numCardsTarget) errorLineGlobal = numCardsTarget - 1;
+                if(errorLineGlobal < 0) errorLineGlobal = 0;
+            } else {
+                errorLineGlobal = -1;
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(cardsGroup) {
+                cardsGroup.rotation.y += 0.005;
+
+                // Adjust number of cards smoothly
+                if(cards.length < numCardsTarget) {
+                    // Add card
+                    const geo = new THREE.BoxGeometry(3, 0.1, 2);
+                    const mat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    
+                    const idx = cards.length;
+                    mesh.position.y = idx * 0.3; // Stack height
+                    // Initial random rotation / position
+                    mesh.rotation.x = Math.random() * 0.2 - 0.1;
+                    mesh.rotation.z = Math.random() * 0.2 - 0.1;
+                    mesh.position.x = Math.random() * 0.5 - 0.25;
+                    mesh.position.z = Math.random() * 0.5 - 0.25;
+
+                    cardsGroup.add(mesh);
+                    cards.push({ mesh, targetY: idx * 0.3 });
+                } else if (cards.length > numCardsTarget) {
+                    // Remove card
+                    const c = cards.pop();
+                    cardsGroup.remove(c.mesh);
+                }
+
+                // Update cards state
+                cards.forEach((c, i) => {
+                    const isErrorCard = (!isValidState && i === errorLineGlobal);
+                    
+                    // Colour
+                    if(isErrorCard) {
+                        c.mesh.material.color.lerp(new THREE.Color(0xff4444), 0.1);
+                        c.mesh.material.emissive.lerp(new THREE.Color(0xaa0000), 0.1);
+                    } else if (isValidState) {
+                        c.mesh.material.color.lerp(new THREE.Color(0x44ff44), 0.05); // Valid green tint
+                        c.mesh.material.emissive.lerp(new THREE.Color(0x002200), 0.05);
+                    } else {
+                        // In error state, other valid cards return to white/dim
+                        c.mesh.material.color.lerp(new THREE.Color(0xdddddd), 0.1);
+                        c.mesh.material.emissive.lerp(new THREE.Color(0x000000), 0.1);
+                    }
+
+                    // Position / Alignment
+                    if(isValidState) {
+                        // Align perfectly
+                        c.mesh.position.x += (0 - c.mesh.position.x) * 0.1;
+                        c.mesh.position.z += (0 - c.mesh.position.z) * 0.1;
+                        c.mesh.rotation.y += (0 - c.mesh.rotation.y) * 0.1;
+                        c.mesh.rotation.x += (0 - c.mesh.rotation.x) * 0.1;
+                        c.mesh.rotation.z += (0 - c.mesh.rotation.z) * 0.1;
+                    } else {
+                        // Error card misaligns
+                        if(isErrorCard) {
+                            c.mesh.position.x += (1.5 - c.mesh.position.x) * 0.1; // slide out
+                            c.mesh.rotation.z += (0.2 - c.mesh.rotation.z) * 0.1;
+                            // Jitter
+                            c.mesh.position.x += (Math.random() - 0.5) * 0.1;
+                        }
+                    }
+
+                    // Float slightly
+                    c.targetY = i * 0.3;
+                    c.mesh.position.y += (c.targetY - c.mesh.position.y) * 0.1 + Math.sin(Date.now() * 0.002 + i) * 0.005;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            validateYAML(); // run default
+        });
+    </script>
+</body>
+</html>

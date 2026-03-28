@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 47 - Git Command Visualizer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+            height: 600px;
+        }
+
+        @media (max-width: 900px) {
+            .split-view { grid-template-columns: 1fr; height: auto; }
+        }
+
+        .control-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .visualization-panel {
+            position: relative;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .input-group { margin-bottom: 0.5rem; }
+        .input-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Command buttons grid */
+        .cmd-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .cmd-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .cmd-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .log-panel {
+            flex: 1;
+            background: #0a0e17;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            overflow-y: auto;
+            color: #7ee787;
+        }
+
+        .log-entry { margin-bottom: 0.3rem; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.3rem; }
+        .log-error { color: #ff5555; }
+        .log-prefix { color: #56b6c2; }
+
+        .sys-state {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .state-badge {
+            background: rgba(86, 182, 194, 0.2);
+            color: #56b6c2;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            border: 1px solid rgba(86, 182, 194, 0.4);
+        }
+
+        .head-badge {
+            background: rgba(255, 170, 0, 0.2);
+            color: #ffaa00;
+            border-color: rgba(255, 170, 0, 0.4);
+        }
+
+    </style>
+</head>
+<body class="theme-dark">
+    <!-- Turn off fixed background canvas, we use local canvas for this tool -->
+    <!-- <div class="tool-canvas-container" id="global-bg"></div> -->
+    
+    <main class="main-content" style="position: relative; z-index: 10;">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>47. Git Command Visualizer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 1rem;">
+                <div class="split-view">
+                    
+                    <div class="control-panel">
+                        <div>
+                            <div class="sys-state" id="state-badges">
+                                <div class="state-badge head-badge">HEAD -> main</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="color:var(--text-secondary); font-weight: bold; display: block; margin-bottom: 0.5rem;">Basic Commands</label>
+                            <div class="cmd-grid">
+                                <button class="cmd-btn" id="btn-commit">git commit</button>
+                                <button class="cmd-btn" id="btn-reset">Reset Graph</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="color:var(--text-secondary); font-weight: bold; display: block; margin-bottom: 0.5rem;">Branching</label>
+                            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="text" id="branch-name" placeholder="branch-name" value="feature" style="margin: 0;">
+                                <button class="cmd-btn" id="btn-branch">git branch</button>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select id="branch-select" style="margin: 0;"></select>
+                                <button class="cmd-btn" id="btn-checkout">git checkout</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="color:var(--text-secondary); font-weight: bold; display: block; margin-bottom: 0.5rem;">Merging</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select id="merge-select" style="margin: 0;"></select>
+                                <button class="cmd-btn" id="btn-merge">git merge</button>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; flex: 1; min-height: 150px;">
+                            <label style="color:var(--text-secondary); font-weight: bold; display: block; margin-bottom: 0.5rem;">Terminal Log</label>
+                            <div class="log-panel" id="terminal-log">
+                                <div class="log-entry"><span class="log-prefix">$</span> Initialized empty Git repository</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="visualization-panel" id="vis-container">
+                        <!-- Three.js Canvas attaches here -->
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <!-- Include TextGeometry / FontLoader -->
+    <script src="https://unpkg.com/three@0.134.0/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/geometries/TextGeometry.js"></script>
+    <script>
+        // -- Git State Logic --
+        let commits = [];
+        let branches = { 'main': null };
+        let head = 'main'; // points to a branch name
+        let commitIdCounter = 1;
+
+        const branchSelect = document.getElementById('branch-select');
+        const mergeSelect = document.getElementById('merge-select');
+        const branchNameInput = document.getElementById('branch-name');
+        const terminalLog = document.getElementById('terminal-log');
+        const stateBadges = document.getElementById('state-badges');
+
+        function logCmd(cmd, output, isError = false) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            if(cmd) {
+                entry.innerHTML = `<span class="log-prefix">$</span> ${cmd}<br><span class="${isError ? 'log-error' : ''}">${output}</span>`;
+            } else {
+                entry.innerHTML = `<span class="${isError ? 'log-error' : ''}">${output}</span>`;
+            }
+            terminalLog.appendChild(entry);
+            terminalLog.scrollTop = terminalLog.scrollHeight;
+        }
+
+        function generateHash() {
+            return Math.random().toString(16).substring(2, 6);
+        }
+
+        function getHeadCommitId() {
+            return branches[head];
+        }
+
+        function createCommit(parents = []) {
+            const hash = generateHash();
+            const commit = {
+                id: hash,
+                parents: parents,
+                // Tree visual positioning handles calculated later
+            };
+            commits.push(commit);
+            branches[head] = hash; // advance current branch
+            return hash;
+        }
+
+        function initGit() {
+            commits = [];
+            branches = { 'main': null };
+            head = 'main';
+            terminalLog.innerHTML = '<div class="log-entry"><span class="log-prefix">$</span> git init</div>';
+            
+            // First commit automatically
+            const cId = createCommit([]);
+            logCmd(null, `[main (root-commit) ${cId}] Initial commit`);
+            
+            updateUI();
+            update3DGraph();
+        }
+
+        function doCommit() {
+            const currentHeadId = getHeadCommitId();
+            const parents = currentHeadId ? [currentHeadId] : [];
+            const hash = createCommit(parents);
+            logCmd('git commit', `[${head} ${hash}] Added new changes`);
+            updateUI();
+            update3DGraph();
+        }
+
+        function doBranch() {
+            const newName = branchNameInput.value.trim();
+            if(!newName) return logCmd('git branch', 'error: branch name required', true);
+            if(branches[newName] !== undefined) return logCmd(`git branch ${newName}`, `fatal: A branch named '${newName}' already exists.`, true);
+            
+            // Branch points to current HEAD commit
+            branches[newName] = getHeadCommitId();
+            logCmd(`git branch ${newName}`, `Created branch '${newName}'`);
+            updateUI();
+            update3DGraph(); // Update labels
+        }
+
+        function doCheckout(targetBranch) {
+            if(!branches[targetBranch]) return logCmd(`git checkout ${targetBranch}`, `error: pathspec '${targetBranch}' did not match any file(s) known to git`, true);
+            head = targetBranch;
+            logCmd(`git checkout ${targetBranch}`, `Switched to branch '${targetBranch}'`);
+            updateUI();
+            update3DGraph(); // Update HEAD label
+        }
+
+        function doMerge(targetBranch) {
+            const currentHeadId = getHeadCommitId();
+            const mergeId = branches[targetBranch];
+            
+            if(!mergeId) return logCmd(`git merge ${targetBranch}`, `merge: ${targetBranch} - not something we can merge`, true);
+            if(head === targetBranch) return logCmd(`git merge ${targetBranch}`, `Already up to date.`, true);
+            
+            // Fast-forward check (simplified)
+            // Just create a merge commit for visualization sake
+            const parents = [currentHeadId, mergeId];
+            const hash = createCommit(parents);
+            
+            logCmd(`git merge ${targetBranch}`, `Merge made by the 'recursive' strategy. \n[${head} ${hash}] Merge branch '${targetBranch}'`);
+            updateUI();
+            update3DGraph();
+        }
+
+        function updateUI() {
+            // Update Selects
+            branchSelect.innerHTML = '';
+            mergeSelect.innerHTML = '';
+            Object.keys(branches).forEach(b => {
+                branchSelect.innerHTML += `<option value="${b}">${b}</option>`;
+                if(b !== head) mergeSelect.innerHTML += `<option value="${b}">${b}</option>`;
+            });
+
+            // Update Badges
+            stateBadges.innerHTML = `<div class="state-badge head-badge">HEAD -> ${head}</div>`;
+            Object.keys(branches).forEach(b => {
+                if(b !== head) stateBadges.innerHTML += `<div class="state-badge">${b}</div>`;
+            });
+        }
+
+        // Attach buttons
+        document.getElementById('btn-commit').addEventListener('click', doCommit);
+        document.getElementById('btn-branch').addEventListener('click', doBranch);
+        document.getElementById('btn-reset').addEventListener('click', initGit);
+        document.getElementById('btn-checkout').addEventListener('click', () => {
+            const b = branchSelect.value;
+            if(b) doCheckout(b);
+        });
+        document.getElementById('btn-merge').addEventListener('click', () => {
+            const b = mergeSelect.value;
+            if(b) doMerge(b);
+        });
+
+
+        // -- Three.js DAG Visualization --
+        const visContainer = document.getElementById('vis-container');
+        let scene, camera, renderer, graphGroup, labelsGroup;
+        let nodeMeshes = {}; // id -> mesh
+        let edgeLines = [];
+        let fontLoader, loadedFont;
+
+        function init3D() {
+            const width = visContainer.clientWidth;
+            const height = visContainer.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+            camera.position.set(0, 0, 18);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(width, height);
+            visContainer.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            graphGroup = new THREE.Group();
+            scene.add(graphGroup);
+            
+            labelsGroup = new THREE.Group();
+            scene.add(labelsGroup);
+
+            // Load Font
+            fontLoader = new THREE.FontLoader();
+            fontLoader.load('https://unpkg.com/three@0.134.0/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+                loadedFont = font;
+                initGit(); // only init after font is ready to render labels
+            });
+
+            window.addEventListener('resize', () => {
+                if(!visContainer) return;
+                const newWidth = visContainer.clientWidth;
+                const newHeight = visContainer.clientHeight;
+                camera.aspect = newWidth / newHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(newWidth, newHeight);
+            });
+
+            // Allow dragging (pan) - simple implementation
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            visContainer.addEventListener('mousedown', (e) => { isDragging = true; });
+            visContainer.addEventListener('mouseup', () => { isDragging = false; });
+            visContainer.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaMove = {
+                        x: e.offsetX - previousMousePosition.x,
+                        y: e.offsetY - previousMousePosition.y
+                    };
+                    graphGroup.position.x += deltaMove.x * 0.02;
+                    graphGroup.position.y -= deltaMove.y * 0.02;
+                    labelsGroup.position.copy(graphGroup.position);
+                }
+                previousMousePosition = { x: e.offsetX, y: e.offsetY };
+            });
+
+            // Zoom
+            visContainer.addEventListener('wheel', (e) => {
+                camera.position.z += e.deltaY * 0.01;
+                camera.position.z = Math.max(5, Math.min(camera.position.z, 30));
+            });
+
+            animate();
+        }
+
+        // Layout algorithm variables
+        let nodeSpacingX = 3;
+        let nodeSpacingY = 2;
+
+        function calcLayout() {
+            // Very simplified layered layout
+            let levels = {}; // depth -> [nodes]
+            let depths = {}; // id -> depth
+            let usedBranches = {}; // track branch offsets
+            let branchOffsetAlloc = 0;
+
+            commits.forEach(c => {
+                let d = 0;
+                let bOffset = 0;
+                
+                if (c.parents.length === 0) {
+                    d = 0;
+                    bOffset = 0;
+                } else {
+                    const pId = c.parents[0];
+                    d = (depths[pId] || 0) + 1;
+                    
+                    // Branch tracking for Y offset
+                    // If multiple children from one parent, allocate new Y track
+                    if(usedBranches[pId]) {
+                        branchOffsetAlloc++;
+                        bOffset = branchOffsetAlloc;
+                    } else {
+                        // Inherit track
+                        const pY = Object.values(levels).flat().find(n => n.id === pId)?.bOffset || 0;
+                        bOffset = pY;
+                        usedBranches[pId] = true;
+                    }
+
+                    // Merges
+                    if(c.parents.length > 1) {
+                        d = Math.max((depths[c.parents[0]] || 0), (depths[c.parents[1]] || 0)) + 1;
+                    }
+                }
+                
+                depths[c.id] = d;
+                if(!levels[d]) levels[d] = [];
+                levels[d].push({ id: c.id, bOffset: bOffset });
+                
+                c.logicX = d * nodeSpacingX;
+                c.logicY = -bOffset * nodeSpacingY; // Branches go down
+            });
+
+            // Center group logic
+            const maxDepth = Object.keys(levels).length;
+            const targetFocusX = -(maxDepth * nodeSpacingX)/2;
+            graphGroup.position.x += (targetFocusX - graphGroup.position.x) * 0.1;
+            labelsGroup.position.x = graphGroup.position.x;
+        }
+
+        function createTextLabel(text, colorHex, isHead=false) {
+            if(!loadedFont) return new THREE.Group();
+            const textGeo = new THREE.TextGeometry(text, {
+                font: loadedFont, size: 0.4, height: 0.05
+            });
+            textGeo.computeBoundingBox();
+            const w = textGeo.boundingBox.max.x - textGeo.boundingBox.min.x;
+            
+            const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+            const mesh = new THREE.Mesh(textGeo, mat);
+            // Center
+            mesh.position.x = -w/2;
+            
+            const bgGeo = new THREE.PlaneGeometry(w + 0.4, 0.8);
+            const bgMat = new THREE.MeshBasicMaterial({ color: isHead? 0xffaa00 : 0x223344, transparent: true, opacity: 0.6});
+            const bgMesh = new THREE.Mesh(bgGeo, bgMat);
+            bgMesh.position.z = -0.1;
+            bgMesh.position.x = 0;
+            bgMesh.position.y = 0.2;
+
+            const group = new THREE.Group();
+            group.add(mesh);
+            group.add(bgMesh);
+            return group;
+        }
+
+        function update3DGraph() {
+            if(!scene) return;
+            calcLayout();
+
+            // Clear old edges
+            edgeLines.forEach(l => graphGroup.remove(l));
+            edgeLines = [];
+            
+            // Clear old labels
+            while(labelsGroup.children.length > 0){ 
+                labelsGroup.remove(labelsGroup.children[0]); 
+            }
+
+            // Sync Nodes
+            const currentIds = commits.map(c => c.id);
+            
+            // Remove deleted (if any, though we only add in Git usually, unless reset)
+            Object.keys(nodeMeshes).forEach(id => {
+                if(!currentIds.includes(id)) {
+                    graphGroup.remove(nodeMeshes[id]);
+                    delete nodeMeshes[id];
+                }
+            });
+
+            // Add/Update Nodes
+            commits.forEach(c => {
+                if(!nodeMeshes[c.id]) {
+                    // Create Node
+                    const geo = new THREE.SphereGeometry(0.6, 32, 32);
+                    const mat = new THREE.MeshPhongMaterial({ color: 0x56b6c2, shininess: 80 });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.set(c.logicX, c.logicY, 0); // initial exact
+                    graphGroup.add(mesh);
+                    nodeMeshes[c.id] = mesh;
+                }
+                
+                // Store targets for animation
+                nodeMeshes[c.id].userData.targetX = c.logicX;
+                nodeMeshes[c.id].userData.targetY = c.logicY;
+
+                // Hash Label
+                const hLbl = createTextLabel(c.id, 0xffffff);
+                hLbl.position.set(c.logicX, c.logicY - 1, 0);
+                labelsGroup.add(hLbl);
+            });
+
+            // Draw Edges (immediately drawn to target positions for simplicity, 
+            // but can be animated in `animate` if we update geometry dynamically)
+            commits.forEach(c => {
+                c.parents.forEach(pId => {
+                    const pNode = commits.find(n => n.id === pId);
+                    if(pNode) {
+                        const mat = new THREE.LineBasicMaterial({ color: 0x556677, linewidth: 2 });
+                        const pts = [];
+                        pts.push(new THREE.Vector3(c.logicX, c.logicY, 0));
+                        // add curved path logic if needed, simplify with straight line for now
+                        pts.push(new THREE.Vector3(pNode.logicX, pNode.logicY, 0));
+                        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                        const line = new THREE.Line(geo, mat);
+                        graphGroup.add(line);
+                        edgeLines.push(line);
+                    }
+                });
+            });
+
+            // Draw Branch Pointers
+            Object.keys(branches).forEach((bName, idx) => {
+                const cId = branches[bName];
+                const cNode = commits.find(n => n.id === cId);
+                if(cNode) {
+                    const isHead = (head === bName);
+                    const bLbl = createTextLabel(bName + (isHead? ' (HEAD)' : ''), isHead ? 0xffffff : 0x7ee787, isHead);
+                    // Stack labels above node if multiple branches on same commit
+                    // naive stacking
+                    bLbl.position.set(cNode.logicX, cNode.logicY + 1.2 + (idx*0.9), 0);
+                    labelsGroup.add(bLbl);
+                    
+                    // highlight commit if HEAD
+                    if(isHead) {
+                        nodeMeshes[cId].material.color.setHex(0xffaa00);
+                        nodeMeshes[cId].scale.set(1.3, 1.3, 1.3);
+                    } else if(nodeMeshes[cId].material.color.getHex() !== 0xffaa00) {
+                        // Reset if no longer head
+                        nodeMeshes[cId].material.color.setHex(0x56b6c2);
+                        nodeMeshes[cId].scale.set(1,1,1);
+                    }
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(scene) {
+                // Smooth node positioning
+                Object.keys(nodeMeshes).forEach(id => {
+                    const m = nodeMeshes[id];
+                    if(m.userData.targetX !== undefined) {
+                        m.position.x += (m.userData.targetX - m.position.x) * 0.1;
+                        m.position.y += (m.userData.targetY - m.position.y) * 0.1;
+                    }
+                });
+                
+                // Labels & edges assume instant placement for now, 
+                // but a more complex renderer would update vertex buffers here.
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

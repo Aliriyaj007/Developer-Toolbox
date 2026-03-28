@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 38 - Base64 Image Encoder - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .upload-zone {
+            width: 100%;
+            height: 250px;
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(var(--primary-color-rgb), 0.05);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone:hover {
+            background: rgba(var(--primary-color-rgb), 0.1);
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .preview-container {
+            width: 100%;
+            max-height: 200px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1rem;
+            border-radius: var(--radius-sm);
+            background: rgba(0,0,0,0.5);
+            padding: 0.5rem;
+        }
+
+        .preview-container img {
+            max-width: 100%;
+            max-height: 180px;
+            object-fit: contain;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 220px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            resize: vertical;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .stats-panel {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-label { color: var(--text-secondary); }
+        .stats-value { font-weight: bold; font-family: var(--font-mono); }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .error-message {
+            color: #ff5555;
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>38. Base64 Image Encoder</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Image Input</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        
+                        <div class="upload-zone" id="upload-zone">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">🖼️</div>
+                            <h3>Drag & Drop Image</h3>
+                            <p style="color: var(--text-secondary); margin-top: 0.5rem;">or click to browse (PNG, JPG, SVG, GIF)</p>
+                            <input type="file" id="file-input" accept="image/*">
+                        </div>
+                        <div id="error-msg" class="error-message"></div>
+
+                        <div class="preview-container" id="preview-container">
+                            <img id="image-preview" src="" alt="Preview">
+                        </div>
+
+                        <div class="stats-panel" id="stats-panel" style="display: none;">
+                            <div class="stats-row">
+                                <span class="stats-label">Original Size:</span>
+                                <span class="stats-value" id="orig-size">0 KB</span>
+                            </div>
+                            <div class="stats-row">
+                                <span class="stats-label">Base64 Size (approx):</span>
+                                <span class="stats-value" id="b64-size">0 KB</span>
+                            </div>
+                            <div class="stats-row">
+                                <span class="stats-label">MIME Type:</span>
+                                <span class="stats-value" id="mime-type">unknown</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Data URL (HTML/CSS Ready)</label>
+                            <button class="btn btn-sm btn-primary" id="copy-data-url-btn">Copy Data URL</button>
+                        </div>
+                        <textarea id="data-url-output" readonly placeholder="data:image/png;base64,.... will appear here"></textarea>
+
+                        <div class="toolbar" style="margin-top: 1rem;">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Raw Base64 String</label>
+                            <button class="btn btn-sm btn-primary" id="copy-raw-btn">Copy Raw</button>
+                        </div>
+                        <textarea id="raw-output" readonly placeholder="Raw Base64 string..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="toast" class="toast">Copied to clipboard!</div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const uploadZone = document.getElementById('upload-zone');
+        const previewContainer = document.getElementById('preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const dataUrlOutput = document.getElementById('data-url-output');
+        const rawOutput = document.getElementById('raw-output');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyDataUrlBtn = document.getElementById('copy-data-url-btn');
+        const copyRawBtn = document.getElementById('copy-raw-btn');
+        const statsPanel = document.getElementById('stats-panel');
+        const origSize = document.getElementById('orig-size');
+        const b64Size = document.getElementById('b64-size');
+        const mimeType = document.getElementById('mime-type');
+        const errorMsg = document.getElementById('error-msg');
+        const toast = document.getElementById('toast');
+
+        const formatBytes = (bytes) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        const processFile = (file) => {
+            errorMsg.style.display = 'none';
+
+            if (!file.type.startsWith('image/')) {
+                errorMsg.textContent = "Please upload a valid image file.";
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            // Check size (warn if > 5MB, though we can process it, it might hang briefly)
+            if (file.size > 5 * 1024 * 1024) {
+                errorMsg.textContent = "Warning: Large file (>5MB). Conversion might take a moment.";
+                errorMsg.style.display = 'block';
+                errorMsg.style.color = '#ffaa00'; // warning color
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const dataUrl = e.target.result;
+                
+                // Show preview
+                imagePreview.src = dataUrl;
+                previewContainer.style.display = 'flex';
+                uploadZone.style.display = 'none';
+
+                // Set Outputs
+                dataUrlOutput.value = dataUrl;
+                
+                const raw = dataUrl.split(',')[1];
+                rawOutput.value = raw;
+
+                // Set Stats
+                statsPanel.style.display = 'block';
+                origSize.textContent = formatBytes(file.size);
+                
+                // Base64 is roughly 33% larger than binary
+                const approxB64 = Math.ceil(file.size * 1.33);
+                b64Size.textContent = formatBytes(approxB64);
+                
+                mimeType.textContent = file.type;
+
+                if(window.trigger3DEncode) window.trigger3DEncode(dataUrl);
+            };
+
+            reader.onerror = () => {
+                errorMsg.textContent = "Error reading file.";
+                errorMsg.style.display = 'block';
+            };
+
+            reader.readAsDataURL(file);
+        };
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(file) processFile(file);
+        });
+
+        // Drag and drop handlers
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.style.borderColor = '#ffffff';
+            uploadZone.style.background = 'rgba(255,255,255,0.1)';
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.style.borderColor = 'var(--primary-color)';
+            uploadZone.style.background = 'rgba(var(--primary-color-rgb), 0.05)';
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.style.borderColor = 'var(--primary-color)';
+            uploadZone.style.background = 'rgba(var(--primary-color-rgb), 0.05)';
+            
+            if(e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            dataUrlOutput.value = '';
+            rawOutput.value = '';
+            imagePreview.src = '';
+            previewContainer.style.display = 'none';
+            uploadZone.style.display = 'flex';
+            statsPanel.style.display = 'none';
+            errorMsg.style.display = 'none';
+            if(window.reset3D) window.reset3D();
+        });
+
+        const copyText = (element) => {
+            if(!element.value) return;
+            navigator.clipboard.writeText(element.value);
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        };
+
+        copyDataUrlBtn.addEventListener('click', () => copyText(dataUrlOutput));
+        copyRawBtn.addEventListener('click', () => copyText(rawOutput));
+
+        // 3D Visualization: A picture frame that encodes itself into a string
+        let scene, camera, renderer, frameGroup, imgMesh, linesGroup;
+        let isEncoding = false;
+        let encodeProgress = 0;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            frameGroup = new THREE.Group();
+            scene.add(frameGroup);
+
+            // Picture Frame
+            const frameGeo = new THREE.BoxGeometry(4, 3, 0.2);
+            const frameMat = new THREE.MeshPhongMaterial({ color: 0x8B4513, shininess: 50 }); // Brown saddle color
+            const frame = new THREE.Mesh(frameGeo, frameMat);
+            frameGroup.add(frame);
+            
+            // Canvas/Image Area inside frame
+            const imgGeo = new THREE.PlaneGeometry(3.6, 2.6);
+            const imgMat = new THREE.MeshBasicMaterial({ color: 0xeeeeee, side: THREE.DoubleSide });
+            imgMesh = new THREE.Mesh(imgGeo, imgMat);
+            imgMesh.position.z = 0.11; // Slightly in front of frame
+            frameGroup.add(imgMesh);
+
+            // Lines for base64 string effect
+            linesGroup = new THREE.Group();
+            scene.add(linesGroup);
+
+            frameGroup.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.trigger3DEncode = (imageSrc) => {
+            if(!imgMesh) return;
+            
+            // Load user image onto 3D plane
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(imageSrc, (tex) => {
+                imgMesh.material.map = tex;
+                imgMesh.material.color.setHex(0xffffff);
+                imgMesh.material.needsUpdate = true;
+                
+                // Trigger encode animation
+                isEncoding = true;
+                encodeProgress = 0;
+                
+                // Clear old lines
+                while(linesGroup.children.length > 0) {
+                    linesGroup.remove(linesGroup.children[0]);
+                }
+            });
+        };
+
+        window.reset3D = () => {
+            if(imgMesh) {
+                imgMesh.material.map = null;
+                imgMesh.material.color.setHex(0xeeeeee);
+                imgMesh.material.needsUpdate = true;
+            }
+            while(linesGroup.children.length > 0) {
+                linesGroup.remove(linesGroup.children[0]);
+            }
+            isEncoding = false;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(frameGroup) {
+                // Bobbing & Rotating
+                frameGroup.position.y = Math.sin(Date.now() * 0.002) * 0.2;
+                frameGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.3;
+
+                // Encoding effect: create falling green strings
+                if(isEncoding && encodeProgress < 100) {
+                    encodeProgress += 0.5;
+                    
+                    if(Math.random() > 0.3) {
+                        const geo = new THREE.BoxGeometry(0.05, Math.random() * 0.5 + 0.1, 0.05);
+                        const mat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                        const strMesh = new THREE.Mesh(geo, mat);
+                        
+                        // Spawn from frame position
+                        const p = new THREE.Vector3();
+                        imgMesh.getWorldPosition(p);
+                        
+                        strMesh.position.set(
+                            p.x + (Math.random() - 0.5) * 3,
+                            p.y - 1.5, // Bottom of frame
+                            p.z + (Math.random() - 0.5) * 0.5
+                        );
+                        
+                        linesGroup.add(strMesh);
+                    }
+                }
+
+                // Animate falling lines
+                for(let i = linesGroup.children.length - 1; i >= 0; i--) {
+                    const line = linesGroup.children[i];
+                    line.position.y -= 0.1;
+                    if(line.position.y < -5) {
+                        linesGroup.remove(line);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

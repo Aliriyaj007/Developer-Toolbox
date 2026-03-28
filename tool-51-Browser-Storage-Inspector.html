@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 51 - Browser Storage Inspector - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+            gap: 0.5rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            font-family: var(--font-main);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .storage-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--bg-main);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        .cell-key { font-weight: bold; color: #56b6c2; width: 30%; word-break: break-all; }
+        .cell-value { color: #7ee787; width: 50%; word-break: break-all; }
+        .cell-size { color: var(--text-secondary); width: 10%; text-align: right; }
+        .cell-actions { width: 10%; text-align: right; }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+        .action-btn:hover { color: #ff5555; background: rgba(255,85,85,0.1); }
+        .action-btn.edit-btn:hover { color: var(--primary-color); background: rgba(86,182,194,0.1); }
+
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* Modal for Add/Edit */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+
+        .modal-box {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            width: 90%;
+            max-width: 500px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: translateY(20px);
+            transition: transform 0.2s;
+        }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+
+        .modal-box h3 { margin-top: 0; margin-bottom: 1.5rem; }
+        .modal-box input, .modal-box textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+            font-family: var(--font-mono);
+        }
+        .modal-box textarea { height: 100px; resize: vertical; }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container" style="max-width: 1000px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>51. Browser Storage Inspector</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="local">LocalStorage</button>
+                    <button class="tab-btn" data-tab="session">SessionStorage</button>
+                    <button class="tab-btn" data-tab="cookie">Cookies</button>
+                </div>
+
+                <div class="toolbar">
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <button class="btn btn-sm btn-primary" id="btn-add">➕ Add New Item</button>
+                        <button class="btn btn-sm" id="btn-refresh">🔄 Refresh</button>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <span style="color:var(--text-secondary); font-size: 0.9rem;" id="size-indicator">Total Size: 0 KB</span>
+                        <button class="btn btn-sm" id="btn-clear-all" style="border-color:#ff5555; color:#ff5555;">🗑️ Clear All</button>
+                        <button class="btn btn-sm" id="btn-export">📥 Export JSON</button>
+                    </div>
+                </div>
+
+                <div class="storage-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Value</th>
+                                <th style="text-align: right;">Size</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="storage-tbody">
+                            <!-- Items injected here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem;">
+                    <strong>Note:</strong> This tool only accesses storage for the current domain (<span id="domain-name"></span>). HttpOnly cookies cannot be read via JavaScript.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-box">
+            <h3 id="modal-title">Add Item</h3>
+            <input type="text" id="modal-key" placeholder="Enter Key...">
+            <textarea id="modal-value" placeholder="Enter Value..."></textarea>
+            
+            <div id="cookie-options" style="display:none; flex-direction:column; gap:0.5rem; margin-bottom:1rem; padding-top:1rem; border-top:1px dashed var(--border-color);">
+                <label style="font-size:0.8rem; color:var(--text-secondary);">Cookie Expiry (Days, optional)</label>
+                <input type="number" id="modal-cookie-exp" placeholder="e.g. 7 (Leave empty for session cookie)">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn" id="modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="modal-save">Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.getElementById('domain-name').textContent = window.location.hostname || 'localhost';
+
+        const tbody = document.getElementById('storage-tbody');
+        const tabs = document.querySelectorAll('.tab-btn');
+        const sizeIndicator = document.getElementById('size-indicator');
+        
+        // Modal
+        const modal = document.getElementById('edit-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalKey = document.getElementById('modal-key');
+        const modalValue = document.getElementById('modal-value');
+        const modalCookieExp = document.getElementById('modal-cookie-exp');
+        const cookieOptions = document.getElementById('cookie-options');
+        const btnCancel = document.getElementById('modal-cancel');
+        const btnSave = document.getElementById('modal-save');
+
+        let currentTab = 'local'; // local, session, cookie
+        let currentEditingKey = null;
+
+        // --- Core Logic ---
+
+        function getCookie(name) {
+            const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+            return v ? v[2] : null;
+        }
+
+        function setCookie(name, value, days) {
+            let d = new Date;
+            d.setTime(d.getTime() + 24*60*60*1000*days);
+            document.cookie = name + "=" + value + (days ? ";path=/;expires=" + d.toGMTString() : ";path=/");
+        }
+
+        function deleteCookie(name) {
+            setCookie(name, '', -1);
+        }
+
+        function getAllCookies() {
+            if(!document.cookie) return {};
+            return document.cookie.split(';').reduce((res, c) => {
+                const [key, val] = c.trim().split('=').map(decodeURIComponent);
+                try {
+                    return Object.assign(res, { [key]: JSON.parse(val) });
+                } catch (e) {
+                    return Object.assign(res, { [key]: val });
+                }
+            }, {});
+        }
+
+        function getStorageData() {
+            let data = {};
+            if(currentTab === 'local') {
+                for(let i=0; i<localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    data[key] = localStorage.getItem(key);
+                }
+            } else if(currentTab === 'session') {
+                for(let i=0; i<sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    data[key] = sessionStorage.getItem(key);
+                }
+            } else if(currentTab === 'cookie') {
+                const cookies = getAllCookies();
+                // Ensure strings for UI
+                Object.keys(cookies).forEach(k => {
+                    data[k] = typeof cookies[k] === 'object' ? JSON.stringify(cookies[k]) : String(cookies[k]);
+                });
+            }
+            return data;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function calculateStringSize(str) {
+            return new Blob([str]).size; // UTF-8 bytes
+        }
+
+        function renderTable() {
+            const data = getStorageData();
+            tbody.innerHTML = '';
+            
+            const keys = Object.keys(data);
+            let totalBytes = 0;
+
+            if(keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">No items found in ${currentTab} storage.</div></td></tr>`;
+                sizeIndicator.textContent = 'Total Size: 0 Bytes';
+                update3DDrawer(currentTab, 0);
+                return;
+            }
+
+            keys.sort().forEach(key => {
+                const val = data[key] || '';
+                // Approximate size in JS (UTF-16 is 2 bytes per char, but Blob gets UTF-8 bytes)
+                const size = calculateStringSize(key) + calculateStringSize(val);
+                totalBytes += size;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="cell-key">${isHTMLSafe(key) ? key : '[Binary/Invalid]'}</td>
+                    <td class="cell-value">${trimValue(val)}</td>
+                    <td class="cell-size">${formatBytes(size)}</td>
+                    <td class="cell-actions">
+                        <button class="action-btn edit-btn" onclick="openEdit('${escapeQuotes(key)}')">✏️</button>
+                        <button class="action-btn" onclick="deleteItem('${escapeQuotes(key)}')">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            sizeIndicator.textContent = `Total Size: ${formatBytes(totalBytes)}`;
+            update3DDrawer(currentTab, keys.length);
+        }
+
+        function isHTMLSafe(str) { return /^[\x20-\x7E]*$/.test(str); } // very loose check
+        function trimValue(val) {
+            if(val.length > 80) return val.substring(0, 80).replace(/</g, "&lt;") + '...';
+            return val.replace(/</g, "&lt;");
+        }
+        function escapeQuotes(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+        // --- Actions ---
+
+        window.deleteItem = (key) => {
+            if(!confirm(`Delete '${key}'?`)) return;
+            if(currentTab === 'local') localStorage.removeItem(key);
+            else if(currentTab === 'session') sessionStorage.removeItem(key);
+            else if(currentTab === 'cookie') deleteCookie(key);
+            renderTable();
+            animateDocumentRemoval();
+        };
+
+        window.openEdit = (key) => {
+            currentEditingKey = key;
+            modalTitle.textContent = "Edit Item";
+            modalKey.value = key;
+            modalKey.readOnly = true;
+            
+            if(currentTab === 'local') modalValue.value = localStorage.getItem(key) || '';
+            else if(currentTab === 'session') modalValue.value = sessionStorage.getItem(key) || '';
+            else if(currentTab === 'cookie') modalValue.value = getCookie(key) || '';
+
+            cookieOptions.style.display = currentTab === 'cookie' ? 'flex' : 'none';
+            modal.classList.add('active');
+        };
+
+        document.getElementById('btn-add').addEventListener('click', () => {
+            currentEditingKey = null;
+            modalTitle.textContent = "Add New Item";
+            modalKey.value = '';
+            modalKey.readOnly = false;
+            modalValue.value = '';
+            cookieOptions.style.display = currentTab === 'cookie' ? 'flex' : 'none';
+            modal.classList.add('active');
+        });
+
+        btnCancel.addEventListener('click', () => { modal.classList.remove('active'); });
+
+        btnSave.addEventListener('click', () => {
+            const k = modalKey.value.trim();
+            const v = modalValue.value;
+            if(!k) return alert("Key is required");
+
+            if(currentTab === 'local') localStorage.setItem(k, v);
+            else if(currentTab === 'session') sessionStorage.setItem(k, v);
+            else if(currentTab === 'cookie') {
+                const days = modalCookieExp.value ? parseInt(modalCookieExp.value) : 0;
+                setCookie(encodeURIComponent(k), encodeURIComponent(v), days);
+            }
+
+            modal.classList.remove('active');
+            renderTable();
+            if(!currentEditingKey) animateDocumentAddition();
+        });
+
+        document.getElementById('btn-clear-all').addEventListener('click', () => {
+            if(!confirm(`Are you sure you want to clear ALL items in ${currentTab} storage?`)) return;
+            
+            if(currentTab === 'local') localStorage.clear();
+            else if(currentTab === 'session') sessionStorage.clear();
+            else if(currentTab === 'cookie') {
+                const keys = Object.keys(getAllCookies());
+                keys.forEach(k => deleteCookie(k));
+            }
+            renderTable();
+        });
+
+        document.getElementById('btn-refresh').addEventListener('click', renderTable);
+
+        document.getElementById('btn-export').addEventListener('click', () => {
+            const data = getStorageData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${currentTab}_export.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTab = btn.dataset.tab;
+                renderTable();
+            });
+        });
+
+        // 3D Visualization: A filing cabinet with 3 drawers sliding open/closed
+        let scene, camera, renderer, cabinetGroup;
+        let drawers = { local: null, session: null, cookie: null };
+        let activeDrawer = 'local';
+        let documentsGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(4, 5, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            cabinetGroup = new THREE.Group();
+            scene.add(cabinetGroup);
+
+            // Cabinet Body
+            const bodyGeo = new THREE.BoxGeometry(3, 5, 3.5);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0x3a4a5a }); // Metallic grey-blue
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            cabinetGroup.add(body);
+
+            // Drawers
+            const drawerGeo = new THREE.BoxGeometry(2.8, 1.4, 3.4);
+            const drawerMat = new THREE.MeshPhongMaterial({ color: 0x4a5a6a });
+            
+            // Handle
+            const handleGeo = new THREE.BoxGeometry(1, 0.2, 0.2);
+            const handleMat = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+
+            const createDrawer = (yOffset, label) => {
+                const group = new THREE.Group();
+                const d = new THREE.Mesh(drawerGeo, drawerMat);
+                group.add(d);
+
+                const h = new THREE.Mesh(handleGeo, handleMat);
+                h.position.set(0, 0, 1.75); // Front face
+                group.add(h);
+
+                // Setup animation target
+                group.userData = { targetZ: 0 };
+                group.position.y = yOffset;
+                
+                cabinetGroup.add(group);
+                return group;
+            };
+
+            drawers.local = createDrawer(1.6, 'Local');
+            drawers.session = createDrawer(0, 'Session');
+            drawers.cookie = createDrawer(-1.6, 'Cookie');
+
+            // Shift whole scene left
+            scene.position.x = 3;
+            scene.position.y = -1;
+
+            documentsGroup = new THREE.Group();
+            scene.add(documentsGroup);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function update3DDrawer(tab, itemCount) {
+            if(!scene) return;
+            activeDrawer = tab;
+            
+            // Set targets (open selected, close others)
+            drawers.local.userData.targetZ = (tab === 'local') ? 1.5 : 0;
+            drawers.session.userData.targetZ = (tab === 'session') ? 1.5 : 0;
+            drawers.cookie.userData.targetZ = (tab === 'cookie') ? 1.5 : 0;
+        }
+
+        window.animateDocumentAddition = () => {
+            if(!scene) return;
+            // Create a small document plane and fly it into the open drawer
+            const geo = new THREE.PlaneGeometry(0.8, 1);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            const doc = new THREE.Mesh(geo, mat);
+            
+            // Start high up and far front
+            doc.position.set(3, 8, 5);
+            doc.rotation.x = -Math.PI/2; // lay flat initially
+            
+            // Target is the open drawer
+            const tDrawer = drawers[activeDrawer];
+            const targetY = tDrawer.position.y;
+            const targetZ = tDrawer.userData.targetZ; // roughly 1.5 + offset from cabinet
+            
+            doc.userData = { 
+                targetX: 3, 
+                targetY: targetY - 1, 
+                targetZ: targetZ + 1,
+                life: 100 // frames to live
+            };
+            documentsGroup.add(doc);
+        };
+
+        window.animateDocumentRemoval = () => {
+             if(!scene) return;
+            // Fly document OUT of drawer
+            const geo = new THREE.PlaneGeometry(0.8, 1);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xff5555, side: THREE.DoubleSide });
+            const doc = new THREE.Mesh(geo, mat);
+            
+            const tDrawer = drawers[activeDrawer];
+            doc.position.set(3, tDrawer.position.y - 1, tDrawer.userData.targetZ + 1);
+            doc.rotation.x = -Math.PI/2; 
+            
+            doc.userData = { 
+                targetX: 0, 
+                targetY: 8, 
+                targetZ: 5,
+                life: 100
+            };
+            documentsGroup.add(doc);
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(cabinetGroup) {
+                // Cabinet gentle rotation
+                cabinetGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.2 - 0.5;
+
+                // Drawer sliding
+                Object.values(drawers).forEach(d => {
+                    d.position.z += (d.userData.targetZ - d.position.z) * 0.1;
+                });
+
+                // Animate flying documents
+                for(let i=documentsGroup.children.length-1; i>=0; i--) {
+                    const doc = documentsGroup.children[i];
+                    doc.position.x += (doc.userData.targetX - doc.position.x) * 0.1;
+                    doc.position.y += (doc.userData.targetY - doc.position.y) * 0.1;
+                    doc.position.z += (doc.userData.targetZ - doc.position.z) * 0.1;
+                    
+                    doc.rotation.x += 0.05;
+                    doc.rotation.z += 0.02;
+
+                    doc.userData.life--;
+                    if(doc.userData.life <= 0) {
+                        documentsGroup.remove(doc);
+                        doc.geometry.dispose();
+                        doc.material.dispose();
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            renderTable();
+        });
+
+        // Listen for external storage changes across tabs
+        window.addEventListener('storage', () => {
+            if(currentTab !== 'cookie') renderTable();
+        });
+    </script>
+</body>
+</html>

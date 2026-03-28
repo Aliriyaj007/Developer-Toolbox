@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 11 - YAML to JSON Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+
+    <style>
+        .converter-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            min-height: 500px;
+        }
+
+        @media (min-width: 900px) {
+            .converter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 100%;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        textarea {
+            flex: 1;
+            width: 100%;
+            height: 400px;
+            resize: none;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s;
+            line-height: 1.5;
+            white-space: pre;
+            overflow: auto;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.2);
+        }
+
+        .textarea-error {
+            border-color: #ff5252;
+            box-shadow: 0 0 0 2px rgba(255, 82, 82, 0.2);
+        }
+
+        .btn-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .error-message {
+            color: #ff5252;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            min-height: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .options-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            justify-content: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .options-row select {
+            padding: 0.5rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            outline: none;
+            font-family: var(--font-mono);
+        }
+
+        /* 3D background container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>11. YAML to JSON Converter</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Bidirectional converter between YAML
+                        and JSON formats with validation.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="options-row">
+                <span style="color: var(--text-secondary);">JSON Indentation:</span>
+                <select id="indent-select">
+                    <option value="2">2 Spaces</option>
+                    <option value="4" selected>4 Spaces</option>
+                    <option value="tab">Tabs</option>
+                </select>
+            </div>
+
+            <div class="converter-grid">
+                <!-- YAML Panel -->
+                <div class="glass-panel panel-container">
+                    <div class="panel-header">
+                        <h3>YAML</h3>
+                        <div class="btn-controls">
+                            <button id="btn-clear-yaml" class="btn">Clear</button>
+                            <button id="btn-paste-yaml" class="btn">Paste</button>
+                            <button id="btn-copy-yaml" class="btn btn-primary">Copy YAML</button>
+                        </div>
+                    </div>
+                    <textarea id="yaml-input" placeholder="Type or paste YAML here...
+
+# Example YAML
+app:
+  name: Developer Toolbox
+  version: 1.0.0
+  features:
+    - YAML to JSON
+    - JSON to YAML"></textarea>
+                    <div id="yaml-error" class="error-message"></div>
+                </div>
+
+                <!-- JSON Panel -->
+                <div class="glass-panel panel-container">
+                    <div class="panel-header">
+                        <h3>JSON</h3>
+                        <div class="btn-controls">
+                            <button id="btn-clear-json" class="btn">Clear</button>
+                            <button id="btn-paste-json" class="btn">Paste</button>
+                            <button id="btn-copy-json" class="btn btn-primary">Copy JSON</button>
+                        </div>
+                    </div>
+                    <textarea id="json-input" placeholder="Type or paste JSON here...
+
+{
+    &quot;app&quot;: {
+        &quot;name&quot;: &quot;Developer Toolbox&quot;,
+        &quot;version&quot;: &quot;1.0.0&quot;,
+        &quot;features&quot;: [
+            &quot;YAML to JSON&quot;,
+            &quot;JSON to YAML&quot;
+        ]
+    }
+}"></textarea>
+                    <div id="json-error" class="error-message"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- JS-YAML CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Core Converter Logic ---
+        const yamlInput = document.getElementById('yaml-input');
+        const jsonInput = document.getElementById('json-input');
+        const yamlError = document.getElementById('yaml-error');
+        const jsonError = document.getElementById('json-error');
+        const indentSelect = document.getElementById('indent-select');
+
+        let isUpdatingYAML = false;
+        let isUpdatingJSON = false;
+
+        function getIndentCount() {
+            const val = indentSelect.value;
+            if (val === 'tab') return '\t';
+            return parseInt(val, 10);
+        }
+
+        function convertYamlToJson() {
+            if (isUpdatingYAML) return;
+            const yamlStr = yamlInput.value.trim();
+
+            if (!yamlStr) {
+                jsonInput.value = '';
+                yamlInput.classList.remove('textarea-error');
+                yamlError.textContent = '';
+                if (window.triggerAnim) window.triggerAnim('idle');
+                return;
+            }
+
+            try {
+                isUpdatingJSON = true;
+                const obj = jsyaml.load(yamlStr);
+
+                if (typeof obj === 'string') {
+                    throw new Error("Parsed result is just a string, not a valid YAML object/array.");
+                }
+
+                jsonInput.value = JSON.stringify(obj, null, getIndentCount());
+
+                yamlInput.classList.remove('textarea-error');
+                jsonInput.classList.remove('textarea-error');
+                yamlError.textContent = '';
+                jsonError.textContent = '';
+
+                if (window.triggerAnim) window.triggerAnim('toJson');
+            } catch (e) {
+                yamlInput.classList.add('textarea-error');
+                yamlError.textContent = "YAML Error: " + e.message;
+            } finally {
+                isUpdatingJSON = false;
+            }
+        }
+
+        function convertJsonToYaml() {
+            if (isUpdatingJSON) return;
+            const jsonStr = jsonInput.value.trim();
+
+            if (!jsonStr) {
+                yamlInput.value = '';
+                jsonInput.classList.remove('textarea-error');
+                jsonError.textContent = '';
+                if (window.triggerAnim) window.triggerAnim('idle');
+                return;
+            }
+
+            try {
+                isUpdatingYAML = true;
+                const obj = JSON.parse(jsonStr);
+
+                yamlInput.value = jsyaml.dump(obj, {
+                    indent: indentSelect.value === 'tab' ? 2 : parseInt(indentSelect.value, 10),
+                    lineWidth: -1 // don't wrap lines
+                });
+
+                jsonInput.classList.remove('textarea-error');
+                yamlInput.classList.remove('textarea-error');
+                jsonError.textContent = '';
+                yamlError.textContent = '';
+
+                if (window.triggerAnim) window.triggerAnim('toYaml');
+            } catch (e) {
+                jsonInput.classList.add('textarea-error');
+                jsonError.textContent = "JSON Error: " + e.message;
+            } finally {
+                isUpdatingYAML = false;
+            }
+        }
+
+        // Event Listeners
+        yamlInput.addEventListener('input', convertYamlToJson);
+        jsonInput.addEventListener('input', convertJsonToYaml);
+        indentSelect.addEventListener('change', () => {
+            if (yamlInput.value) convertYamlToJson();
+            else if (jsonInput.value) convertJsonToYaml();
+        });
+
+        // Setup Buttons
+        const setupBtn = (id, targetInput, isYaml) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.addEventListener('click', async () => {
+                const originalText = btn.textContent;
+                if (id.includes('clear')) {
+                    targetInput.value = '';
+                    if (isYaml) convertYamlToJson();
+                    else convertJsonToYaml();
+                } else if (id.includes('paste')) {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        targetInput.value = text;
+                        if (isYaml) convertYamlToJson();
+                        else convertJsonToYaml();
+                    } catch (err) {
+                        console.error('Failed to read clipboard', err);
+                    }
+                } else if (id.includes('copy')) {
+                    if (!targetInput.value) return;
+                    navigator.clipboard.writeText(targetInput.value);
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = originalText, 1500);
+                }
+            });
+        };
+
+        setupBtn('btn-clear-yaml', yamlInput, true);
+        setupBtn('btn-paste-yaml', yamlInput, true);
+        setupBtn('btn-copy-yaml', yamlInput, true);
+
+        setupBtn('btn-clear-json', jsonInput, false);
+        setupBtn('btn-paste-json', jsonInput, false);
+        setupBtn('btn-copy-json', jsonInput, false);
+
+        // --- 3D Background Setup (Shape Shifter / Transformer) ---
+        let scene, camera, renderer, shapeGroup;
+        let blocks = [];
+
+        // Colors mapping somewhat to JSON/YAML syntax highlighting
+        const colors = [0xBB86FC, 0x03DAC6, 0xffb142, 0x33d9b2, 0xff5252, 0x34ace0];
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 15;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            const dirLight2 = new THREE.DirectionalLight(0xBB86FC, 0.5);
+            dirLight2.position.set(-5, -5, 5);
+            scene.add(dirLight2);
+
+            shapeGroup = new THREE.Group();
+
+            const numBlocks = 27; // 3x3x3 grid
+            const blockSize = 0.8;
+            const geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+
+            for (let i = 0; i < numBlocks; i++) {
+                const mat = new THREE.MeshStandardMaterial({
+                    color: colors[i % colors.length],
+                    metalness: 0.2,
+                    roughness: 0.1,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                // Add edges for better definition
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.2, transparent: true }));
+                mesh.add(line);
+
+                mesh.userData = { id: i };
+                blocks.push(mesh);
+                shapeGroup.add(mesh);
+            }
+
+            scene.add(shapeGroup);
+
+            // Shape formations
+            const shapes = {
+                yaml: [], // YAML looks like a tree/pyramid
+                json: [], // JSON looks like a structured cube
+                scattered: [] // Random for transition
+            };
+
+            // Calculate JSON shape (3x3x3 cube)
+            let idx = 0;
+            const offset = 1;
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -1; z <= 1; z++) {
+                        if (idx < 27) {
+                            shapes.json.push(new THREE.Vector3(x * offset, y * offset, z * offset));
+                            idx++;
+                        }
+                    }
+                }
+            }
+
+            // Calculate YAML shape (Pyramid/Tree)
+            // Layer 0: 1 block, Layer 1: 4 blocks, Layer 2: 9 blocks, Layer 3: 13 leftover scattered at base
+            idx = 0;
+            // Top
+            shapes.yaml.push(new THREE.Vector3(0, 3, 0)); idx++;
+            // Mid
+            for (let x = -0.5; x <= 0.5; x += 1) {
+                for (let z = -0.5; z <= 0.5; z += 1) {
+                    if (idx < 27) { shapes.yaml.push(new THREE.Vector3(x * 2, 1, z * 2)); idx++; }
+                }
+            }
+            // Base layer
+            for (let x = -1; x <= 1; x += 1) {
+                for (let z = -1; z <= 1; z += 1) {
+                    if (idx < 27) { shapes.yaml.push(new THREE.Vector3(x * 2.5, -1, z * 2.5)); idx++; }
+                }
+            }
+            // Remainder scattered near bottom
+            while (idx < 27) {
+                shapes.yaml.push(new THREE.Vector3((Math.random() - 0.5) * 6, -2, (Math.random() - 0.5) * 6));
+                idx++;
+            }
+
+            // Set Initial positions to JSON
+            blocks.forEach((b, i) => {
+                b.position.copy(shapes.json[i]);
+            });
+
+            // Trigger Animation function
+            window.triggerAnim = (state) => {
+                gsap.killTweensOf(shapeGroup.rotation);
+
+                const targetShape = state === 'toJson' ? shapes.json : (state === 'toYaml' ? shapes.yaml : null);
+
+                if (targetShape) {
+                    // Quick spin
+                    gsap.to(shapeGroup.rotation, {
+                        y: shapeGroup.rotation.y + Math.PI,
+                        duration: 1,
+                        ease: "power2.inOut"
+                    });
+
+                    // Morph blocks
+                    blocks.forEach((b, i) => {
+                        gsap.to(b.position, {
+                            x: targetShape[i].x,
+                            y: targetShape[i].y,
+                            z: targetShape[i].z,
+                            duration: 1,
+                            ease: "back.out(1.2)",
+                            delay: i * 0.01 // slight stagger
+                        });
+
+                        // randomly rotate individual blocks
+                        gsap.to(b.rotation, {
+                            x: Math.PI * (Math.random() > 0.5 ? 1 : 0),
+                            y: Math.PI * (Math.random() > 0.5 ? 1 : 0),
+                            duration: 1,
+                            ease: "power1.inOut"
+                        });
+                    });
+                }
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Constant slow rotation of the whole group
+                shapeGroup.rotation.y += 0.002;
+                shapeGroup.rotation.x = Math.sin(Date.now() * 0.0005) * 0.2;
+
+                // Gentle bobbing
+                shapeGroup.position.y = Math.sin(Date.now() * 0.001) * 0.5;
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                if (window.innerWidth < 900) {
+                    camera.position.z = 20; // pull back on mobile
+                } else {
+                    camera.position.z = 15;
+                }
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 58 - Font Loading Analyzer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Simulation Area */
+        .simulation-container {
+            background: #ffffff; /* White bg to simulate document clearly */
+            color: #333333;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            font-size: 1.2rem;
+            min-height: 250px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .sim-header { margin-top: 0; margin-bottom: 1rem; font-weight: 800; font-size: 2rem; }
+        .sim-p { line-height: 1.6; margin-bottom: 1rem; }
+
+        /* Font Display Strategies Simulation */
+        .doc-auto { font-family: 'Times New Roman', serif; } /* fallback until load */
+        .doc-block { color: transparent; } /* Invisible text for 3s, then font */
+        .doc-swap { font-family: 'Arial', sans-serif; } /* system font immediately */
+        .doc-fallback { color: transparent; } /* Invisible 100ms, then system, then load */
+        .doc-optional { font-family: 'Arial', sans-serif; } /* Like fallback but unloads if too slow */
+
+        /* Webfont applied state */
+        .font-loaded {
+            font-family: 'Pacifico', cursive, sans-serif !important;
+            color: #333 !important; /* Force visible */
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Timeline and Progress */
+        .timeline-box {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            margin-top: 1.5rem;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            margin: 1rem 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .time-markers {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background: #444;
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .status-loading { background: #ffaa00; }
+        .status-blocked { background: #ff5555; }
+        .status-loaded { background: #2ea043; }
+        
+        .opt-tips {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(86, 182, 194, 0.1);
+            border-left: 3px solid var(--primary-color);
+        }
+
+    </style>
+    <!-- Load a distinct font for testing (Pacifico is very recognizable) -->
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" id="google-font-link">
+</head>
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>58. Font Loading Analyzer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <label>font-display Strategy</label>
+                            <select id="sim-strategy">
+                                <option value="swap">swap (Recommended)</option>
+                                <option value="block">block</option>
+                                <option value="fallback">fallback</option>
+                                <option value="optional">optional</option>
+                                <option value="auto">auto</option>
+                            </select>
+                            <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.5rem;" id="strategy-desc">
+                                Instructs the browser to use the fallback font immediately and swap it once the custom font loads.
+                            </p>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Network Speed Simulation</label>
+                            <select id="sim-speed">
+                                <option value="500">Fast (500ms)</option>
+                                <option value="1500" selected>3G (1.5s)</option>
+                                <option value="3500">Slow 3G (3.5s)</option>
+                                <option value="6000">Extremely Slow (6s)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary" id="btn-run" style="padding: 1rem; font-size: 1.1rem;">▶️ Run Simulation</button>
+
+                        <div class="opt-tips" id="opt-tips">
+                            <strong>Optimization Tip:</strong><br>
+                            Using <code>font-display: swap</code> prevents Flash of Invisible Text (FOIT) and ensures users can read your content immediately on slow connections.
+                        </div>
+                    </div>
+
+                    <!-- Visual Grid -->
+                    <div>
+                        <div class="status-badge" id="status-badge">Ready</div>
+                        
+                        <div class="simulation-container" id="sim-doc">
+                            <h2 class="sim-header">The Beauty of Typography</h2>
+                            <p class="sim-p">
+                                This text simulates how a user experiences your web font loading over the network. 
+                                Watch closely to see if there is a 'Flash of Invisible Text' (FOIT) or a 'Flash of Unstyled Text' (FOUT).
+                            </p>
+                            <p class="sim-p" style="font-size:0.9rem; opacity:0.8;">
+                                Notice how the layout might shift when the custom font finally arrives and replaces the fallback font.
+                            </p>
+                        </div>
+
+                        <div class="timeline-box">
+                            <h4 style="margin-top:0; color:var(--text-primary);">Network Timeline</h4>
+                            <div class="progress-bar-container">
+                                <div class="progress-fill" id="progress-bar"></div>
+                                <!-- Block/Swap markers -->
+                                <div id="marker-100ms" style="position:absolute; top:0; bottom:0; width:2px; background:red; left:0%; display:none;"></div>
+                                <div id="marker-3s" style="position:absolute; top:0; bottom:0; width:2px; background:orange; left:0%; display:none;"></div>
+                            </div>
+                            <div class="time-markers">
+                                <span>0s (Request)</span>
+                                <span id="time-end">1.5s (Loaded)</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        const simStrategy = document.getElementById('sim-strategy');
+        const simSpeed = document.getElementById('sim-speed');
+        const btnRun = document.getElementById('btn-run');
+        const simDoc = document.getElementById('sim-doc');
+        const stratDesc = document.getElementById('strategy-desc');
+        const statusBadge = document.getElementById('status-badge');
+        const progressBar = document.getElementById('progress-bar');
+        const timeEnd = document.getElementById('time-end');
+        const optTips = document.getElementById('opt-tips');
+
+        const marker100 = document.getElementById('marker-100ms');
+        const marker3s = document.getElementById('marker-3s');
+
+        let simInterval;
+
+        const STRAT_DATA = {
+            'swap': {
+                desc: 'Instructs the browser to use the fallback font immediately and swap it once the custom font loads. Prevents FOIT.',
+                tip: 'Best for body text. Users can read immediately, though they may see layout shifts (FOUT).'
+            },
+            'block': {
+                desc: 'Hides the text for up to 3 seconds while waiting for the font. If it fails, falls back.',
+                tip: 'Avoid for body text. Causes Flash of Invisible Text (FOIT) which frustrates users on slow connections.'
+            },
+            'fallback': {
+                desc: 'Hides text for ~100ms. If font isn\'t ready, shows fallback. Once loaded, it swaps.',
+                tip: 'A good compromise if the font is important for branding but you don\'t want to block reading too long.'
+            },
+            'optional': {
+                desc: 'Hides text for ~100ms. If font loads fast, great. If not, fallback is used and it NEVER swaps to prevent late shifts.',
+                tip: 'Best for web fonts that are purely decorative. Prevents annoying layout shifts late in the loading process.'
+            },
+            'auto': {
+                desc: 'Browser default behavior (usually acts like block).',
+                tip: 'Not recommended as you leave the user experience up to different browser implementations.'
+            }
+        };
+
+        simStrategy.addEventListener('change', () => {
+            const data = STRAT_DATA[simStrategy.value];
+            stratDesc.textContent = data.desc;
+            optTips.innerHTML = `<strong>Optimization Tip:</strong><br>${data.tip}`;
+            
+            // Re-run instantly to see effect
+            runSimulation();
+        });
+
+        simSpeed.addEventListener('change', runSimulation);
+        btnRun.addEventListener('click', runSimulation);
+
+        function updateStatus(text, type) {
+            statusBadge.textContent = text;
+            statusBadge.className = `status-badge status-${type}`;
+        }
+
+        function runSimulation() {
+            clearInterval(simInterval);
+            const strat = simStrategy.value;
+            const ms = parseInt(simSpeed.value);
+            
+            // Reset Document
+            simDoc.className = `simulation-container doc-${strat}`;
+            progressBar.style.transition = 'none';
+            progressBar.style.width = '0%';
+            timeEnd.textContent = `${ms / 1000}s (Expected Load)`;
+            
+            // Reset markers
+            marker100.style.display = 'none';
+            marker3s.style.display = 'none';
+
+            if(strat === 'block' || strat === 'fallback' || strat === 'optional') {
+                marker100.style.left = `${(100 / ms) * 100}%`;
+                marker100.style.display = 'block';
+            }
+            if(strat === 'block') {
+                marker3s.style.left = `${(3000 / ms) * 100}%`;
+                marker3s.style.display = 'block';
+            }
+
+            // Start State
+            let state = 'start';
+            if(strat === 'block') {
+                updateStatus('Loading Font (FOIT: Text Invisible)', 'blocked');
+            } else if(strat === 'swap' || strat === 'auto') {
+                updateStatus('Loading Font (FOUT: Fallback Visible)', 'loading');
+                // Ensure text is visible for swap
+                if(strat === 'swap') simDoc.style.color = '#333';
+            } else if(strat === 'fallback' || strat === 'optional') {
+                updateStatus('Block Period (~100ms)', 'blocked');
+            }
+
+            // Animate progress
+            setTimeout(() => {
+                progressBar.style.transition = `width ${ms}ms linear`;
+                progressBar.style.width = '100%';
+            }, 50);
+
+            // Simulation Clock (Check every 50ms)
+            let elapsed = 0;
+            simInterval = setInterval(() => {
+                elapsed += 50;
+
+                // 100ms Block Period Check (Fallback/Optional)
+                if(elapsed >= 100 && state === 'start' && (strat === 'fallback' || strat === 'optional')) {
+                    state = 'swap_period';
+                    simDoc.style.color = '#333'; // Make fallback visible
+                    updateStatus('Fallback Font Visible (Waiting for Webfont)', 'loading');
+                }
+
+                // 3s Block Period Check (Block)
+                if(elapsed >= 3000 && state === 'start' && strat === 'block') {
+                    state = 'fallback_forced';
+                    simDoc.style.color = '#333';
+                    updateStatus('Block Timeout Reached. Fallback Visible.', 'loading');
+                }
+
+                // Completion Check
+                if(elapsed >= ms) {
+                    clearInterval(simInterval);
+                    
+                    // Final state application
+                    if(strat === 'optional' && ms > 500) {
+                        // Optional aborts if it takes too long
+                        updateStatus('Aborted Web Font. (Took too long for Optional)', 'blocked');
+                    } else {
+                        simDoc.classList.add('font-loaded');
+                        updateStatus('Web Font Loaded & Applied!', 'loaded');
+                        if(window.trigger3DLettersDrop) window.trigger3DLettersDrop(); // Sync 3D
+                    }
+                }
+
+            }, 50);
+
+            // Initial 3D reset
+            if(window.reset3DLetters) window.reset3DLetters();
+        }
+
+        // Init UI on load
+        const initData = STRAT_DATA['swap'];
+        stratDesc.textContent = initData.desc;
+        optTips.innerHTML = `<strong>Optimization Tip:</strong><br>${initData.tip}`;
+
+
+        // 3D Visualization: 3D letter blocks dropping in to spell FONT
+        let scene, camera, renderer, lettersGroup;
+        let blocks = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x56b6c2, 0.8);
+            dirLight.position.set(2, 5, 5);
+            scene.add(dirLight);
+
+            lettersGroup = new THREE.Group();
+            scene.add(lettersGroup);
+
+            // Shift right to balance UI layout
+            scene.position.x = 2;
+            scene.position.y = 2;
+
+            // Use TextGeometry to create solid blocks spelling "FONT"
+            const loader = new THREE.FontLoader();
+            // Load a basic heavy font
+            loader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', function (font) {
+                
+                const textStr = "FONT";
+                let currentX = -3;
+
+                for(let i=0; i<textStr.length; i++) {
+                    const char = textStr[i];
+                    
+                    // A solid cube backing
+                    const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+                    const boxMat = new THREE.MeshPhongMaterial({ color: 0x334455 });
+                    const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+
+                    // The text
+                    const txtGeo = new THREE.TextGeometry(char, {
+                        font: font, size: 0.8, height: 0.2,
+                        curveSegments: 12, bevelEnabled: false
+                    });
+                    const txtMat = new THREE.MeshPhongMaterial({ color: 0xffaa00 });
+                    const txtMesh = new THREE.Mesh(txtGeo, txtMat);
+                    
+                    // Center text on box
+                    txtGeo.computeBoundingBox();
+                    const tw = txtGeo.boundingBox.max.x - txtGeo.boundingBox.min.x;
+                    const th = txtGeo.boundingBox.max.y - txtGeo.boundingBox.min.y;
+                    txtMesh.position.set(-tw/2, -th/2, 0.75); // Pop out front
+
+                    const group = new THREE.Group();
+                    group.add(boxMesh);
+                    group.add(txtMesh);
+
+                    group.position.set(currentX, 10, 0); // Start way up
+                    
+                    group.userData = {
+                        targetY: 0,
+                        baseX: currentX,
+                        velocity: 0,
+                        isDropping: false
+                    };
+
+                    lettersGroup.add(group);
+                    blocks.push(group);
+
+                    currentX += 2;
+                }
+                
+                // Tilt back slightly
+                lettersGroup.rotation.x = -0.2;
+                lettersGroup.rotation.y = -0.1;
+                
+                runSimulation(); // Trigger initial state after fonts load
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.reset3DLetters = () => {
+            if(!blocks.length) return;
+            blocks.forEach(b => {
+                b.position.y = 10;
+                b.userData.isDropping = false;
+                b.userData.velocity = 0;
+                b.position.z = 0;
+            });
+        };
+
+        window.trigger3DLettersDrop = () => {
+             if(!blocks.length) return;
+             // Drop one by one rapidly
+             blocks.forEach((b, idx) => {
+                setTimeout(() => {
+                    b.userData.isDropping = true;
+                }, idx * 100);
+             });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(lettersGroup && blocks.length) {
+                // gentle overall float
+                lettersGroup.position.y = Math.sin(Date.now() * 0.001) * 0.2;
+
+                // Physics drop
+                blocks.forEach(b => {
+                    if(b.userData.isDropping) {
+                        b.userData.velocity += 0.04; // gravity
+                        b.position.y -= b.userData.velocity;
+
+                        // Floor hit
+                        if(b.position.y < 0) {
+                            b.position.y = 0;
+                            // Bounce dampening
+                            b.userData.velocity = -b.userData.velocity * 0.4;
+                            if(Math.abs(b.userData.velocity) < 0.05) {
+                                b.userData.velocity = 0;
+                                b.userData.isDropping = false;
+                            }
+                        }
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

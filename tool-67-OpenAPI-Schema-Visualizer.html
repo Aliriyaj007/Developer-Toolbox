@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 67 - OpenAPI Schema Visualizer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--radius-md);
+            padding: 2rem 1rem;
+            text-align: center;
+            background: rgba(86,182,194,0.05);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .drop-zone.dragover {
+            background: rgba(86,182,194,0.2);
+            border-color: #7ee787;
+        }
+        .drop-zone i { font-size: 2rem; color: var(--primary-color); margin-bottom: 0.5rem; display: block; }
+        .drop-zone p { margin: 0; color: var(--text-secondary); font-size: 0.9rem; }
+
+        textarea.code-area {
+            width: 100%;
+            height: 150px;
+            background: var(--bg-main);
+            color: #7ee787;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            resize: vertical;
+            outline: none;
+        }
+
+        .btn-run {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 1rem;
+            font-weight: bold;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+        }
+        .btn-run:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        /* Stats Panel */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .stat-val { font-size: 1.5rem; font-weight: bold; color: var(--primary-color); }
+        .stat-lbl { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem; }
+
+        .list-panel {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+        .schema-item {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(86,182,194,0.1);
+            padding: 0.5rem 1ch;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .schema-item:hover { background: rgba(86,182,194,0.3); }
+        .schema-item-name { color: #56b6c2; font-weight: bold; }
+        .schema-item-type { color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.75rem; }
+
+        /* 3D Canvas wrapper */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 600px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+        }
+
+        #graph-overlay {
+            position: absolute;
+            top: 20px; left: 20px;
+            color: rgba(255,255,255,0.5);
+            pointer-events: none;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            max-width: 300px;
+        }
+        
+        #schema-tooltip {
+            position: absolute;
+            background: rgba(10,10,15,0.95);
+            border: 1px solid var(--primary-color);
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            pointer-events: none;
+            display: none;
+            font-size: 0.85rem;
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            min-width: 200px;
+        }
+        .tooltip-title { color: #ffaa00; font-weight: bold; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; }
+        .prop-row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dotted #333; }
+        .prop-name { color: #56b6c2; }
+        .prop-type { color: #7ee787; font-family: var(--font-mono); font-size: 0.75rem; }
+
+    </style>
+</head>
+<body class="theme-dark">
+    
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>67. OpenAPI Schema Visualizer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="drop-zone" id="drop-zone">
+                            <i>📄</i>
+                            <p>Drop <strong>openapi.yaml</strong> or <strong>openapi.json</strong> snippet here</p>
+                        </div>
+
+                        <div>
+                            <label style="color:var(--text-secondary); font-size:0.85rem; font-weight:bold;">Input Content</label>
+                            <textarea id="data-input" class="code-area" spellcheck="false" placeholder='components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        profile:
+          $ref: "#/components/schemas/Profile"
+    Profile:
+      type: object
+      properties:
+        name:
+          type: string'></textarea>
+                        </div>
+
+                        <button class="btn-run" id="btn-analyze">🔍 Visualise Schemas</button>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-val" id="stat-schemas">0</div>
+                                <div class="stat-lbl">Models</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-val" id="stat-refs">0</div>
+                                <div class="stat-lbl">References</div>
+                            </div>
+                        </div>
+
+                        <div class="list-panel" id="schema-list">
+                            <div style="color:var(--text-secondary); font-style:italic; font-size:0.8rem; text-align:center;">No schemas loaded.</div>
+                        </div>
+                    </div>
+
+                    <!-- 3D Graph -->
+                    <div>
+                        <div class="graph-container" id="graph-container">
+                            <div id="graph-overlay">
+                                <strong>API Contract Viewer</strong><br>
+                                Render schemas and their relationships physically.
+                            </div>
+                            <div id="schema-tooltip"></div>
+                            <!-- THREE canvas goes here -->
+                        </div>
+                        <p style="font-size:0.8rem; color:var(--text-secondary); text-align:center; margin-top:0.5rem;">
+                            Hover over a model block to inspect properties. Rotate/Zoom to explore architecture.
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const dataInput = document.getElementById('data-input');
+        const btnAnalyze = document.getElementById('btn-analyze');
+        
+        const statSchemas = document.getElementById('stat-schemas');
+        const statRefs = document.getElementById('stat-refs');
+        const schemaList = document.getElementById('schema-list');
+
+        // Initial default
+        const sampleYaml = `openapi: 3.0.0
+info:
+  title: Sample API
+  version: 1.0.0
+components:
+  schemas:
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+    Product:
+      type: object
+      properties:
+        sku:
+          type: string
+        price:
+          type: number
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string`;
+        
+        if(!dataInput.value) dataInput.value = sampleYaml;
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if(e.dataTransfer.files.length) {
+                const file = e.dataTransfer.files[0];
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    dataInput.value = ev.target.result;
+                    processGraph();
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // 3D Setup
+        let scene, camera, renderer, controls;
+        let graphGroup;
+        let nodesData = [];
+        let linksData = [];
+        let meshes = [];
+        let linesMesh = null;
+        let raycaster, mouse;
+        let tooltip = document.getElementById('schema-tooltip');
+        let hoverMesh = null;
+
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.FogExp2(0x050510, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, cw / ch, 1, 1000);
+            camera.position.set(0, 20, 40);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            if(window.THREE.OrbitControls) {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+            }
+
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            dirLight.position.set(50, 100, 50);
+            scene.add(dirLight);
+
+            const dirLight2 = new THREE.DirectionalLight(0x56b6c2, 0.8);
+            dirLight2.position.set(-50, 0, -50);
+            scene.add(dirLight2);
+
+            graphGroup = new THREE.Group();
+            scene.add(graphGroup);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            container.addEventListener('mousemove', onMouseMove);
+
+            window.addEventListener('resize', () => {
+                if(!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            animate();
+            processGraph();
+        }
+
+        function onMouseMove(event) {
+            const container = document.getElementById('graph-container');
+            const rect = container.getBoundingClientRect();
+            
+            mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(meshes);
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                
+                if(hoverMesh !== object) {
+                    if(hoverMesh) hoverMesh.material.emissive.setHex(0x000000);
+                    
+                    hoverMesh = object;
+                    hoverMesh.material.emissive.setHex(0x334455);
+
+                    // Build Tooltip
+                    const schema = object.userData.schema;
+                    
+                    let propHtml = '';
+                    if(schema.props) {
+                        Object.keys(schema.props).slice(0, 10).forEach(k => {
+                            let typ = schema.props[k];
+                            propHtml += `<div class="prop-row"><span class="prop-name">${k}</span><span class="prop-type">${typ}</span></div>`;
+                        });
+                        if(Object.keys(schema.props).length > 10) propHtml += `<div class="prop-row"><i>...more</i></div>`;
+                    } else {
+                        propHtml = `<div class="prop-row"><i>No properties found</i></div>`;
+                    }
+
+                    tooltip.innerHTML = `
+                        <div class="tooltip-title">${object.userData.id}</div>
+                        ${propHtml}
+                    `;
+                    tooltip.style.display = 'block';
+                }
+                
+                tooltip.style.left = (event.clientX - rect.left + 15) + 'px';
+                tooltip.style.top = (event.clientY - rect.top + 15) + 'px';
+
+            } else {
+                if(hoverMesh) {
+                    hoverMesh.material.emissive.setHex(0x000000);
+                    hoverMesh = null;
+                }
+                tooltip.style.display = 'none';
+            }
+        }
+
+        function clearGraph() {
+            meshes.forEach(m => graphGroup.remove(m));
+            if(linesMesh) graphGroup.remove(linesMesh);
+            meshes = [];
+            nodesData = [];
+            linksData = [];
+        }
+
+        function processGraph() {
+            try {
+                let raw;
+                const txt = dataInput.value;
+                if(txt.trim().startsWith('{')) {
+                    raw = JSON.parse(txt);
+                } else {
+                    raw = jsyaml.load(txt);
+                }
+                clearGraph();
+
+                const schemas = ((raw.components || {}).schemas) || raw.definitions || raw.schemas;
+                if(!schemas) throw new Error("Could not find components.schemas or definitions in input.");
+
+                const nodes = new Map();
+                const links = [];
+
+                Object.keys(schemas).forEach(sName => {
+                    const schema = schemas[sName];
+                    const propsExtracted = {};
+                    
+                    if(schema.properties) {
+                        Object.keys(schema.properties).forEach(pName => {
+                            const p = schema.properties[pName];
+                            
+                            // Check local reference via Ref
+                            let refTarget = p['$ref'];
+                            
+                            // Check array item ref
+                            if(p.type === 'array' && p.items && p.items['$ref']) {
+                                refTarget = p.items['$ref'];
+                            }
+
+                            if(refTarget) {
+                                const targetName = refTarget.split('/').pop();
+                                propsExtracted[pName] = `ref → ${targetName}`;
+                                links.push({ source: sName, target: targetName, label: pName });
+                            } else {
+                                propsExtracted[pName] = p.type || 'any';
+                            }
+                        });
+                    }
+                    
+                    // Simple allOf inheritance check
+                    if(schema.allOf) {
+                        schema.allOf.forEach(item => {
+                            if(item['$ref']) {
+                                const targetName = item['$ref'].split('/').pop();
+                                links.push({ source: sName, target: targetName, label: 'inherits' });
+                            }
+                        });
+                    }
+
+                    nodes.set(sName, { id: sName, props: propsExtracted, type: 'schema' });
+                });
+
+                nodesData = Array.from(nodes.values());
+                linksData = links;
+
+                // UI
+                statSchemas.textContent = nodesData.length;
+                statRefs.textContent = linksData.length;
+                
+                schemaList.innerHTML = '';
+                nodesData.forEach(n => {
+                    const el = document.createElement('div');
+                    el.className = 'schema-item';
+                    el.innerHTML = `<span class="schema-item-name">${n.id}</span>
+                                    <span class="schema-item-type">${Object.keys(n.props).length} props</span>`;
+                    schemaList.appendChild(el);
+                });
+
+                build3DForceGraph();
+
+            } catch(e) {
+                window.showToast("Parse Error: " + e.message);
+                console.error(e);
+            }
+        }
+
+        function build3DForceGraph() {
+            // Assign random coordinates
+            nodesData.forEach((n, i) => {
+                n.x = (Math.random() - 0.5) * 40;
+                n.y = (Math.random() - 0.5) * 40;
+                n.z = (Math.random() - 0.5) * 40;
+                n.vx = 0; n.vy = 0; n.vz = 0;
+            });
+
+            linksData.forEach(l => {
+                l.sourceObj = nodesData.find(n => n.id === l.source);
+                l.targetObj = nodesData.find(n => n.id === l.target);
+            });
+
+            // Clean links that point to missing refs
+            linksData = linksData.filter(l => l.sourceObj && l.targetObj);
+
+            // Block Geometry for Schemas (Databases/Docs shape)
+            const boxGeo = new THREE.BoxGeometry(4, 5, 1);
+            
+            nodesData.forEach((node, i) => {
+                // Color variation
+                const colors = [0x56b6c2, 0xffaa00, 0x7ee787, 0xff5555, 0xbb86fc];
+                const color = colors[i % colors.length];
+
+                const mat = new THREE.MeshPhongMaterial({ color: color, shininess: 80 });
+                const mesh = new THREE.Mesh(boxGeo, mat);
+                
+                // Add tiny ridges to look like a server/doc
+                const ridgeGeo = new THREE.BoxGeometry(4.1, 0.2, 1.1);
+                const rMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+                const r1 = new THREE.Mesh(ridgeGeo, rMat); r1.position.y = 1; mesh.add(r1);
+                const r2 = new THREE.Mesh(ridgeGeo, rMat); r2.position.y = -1; mesh.add(r2);
+
+                mesh.position.set(node.x, node.y, node.z);
+                mesh.userData = { id: node.id, schema: node };
+                
+                graphGroup.add(mesh);
+                meshes.push(mesh);
+                node.mesh = mesh;
+            });
+
+            // Lines
+            if(linksData.length > 0) {
+                const lineMat = new THREE.LineBasicMaterial({ color: 0x88aabb, transparent: true, opacity: 0.6 });
+                const lineGeo = new THREE.BufferGeometry();
+                const positions = new Float32Array(linksData.length * 6);
+                lineGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                linesMesh = new THREE.LineSegments(lineGeo, lineMat);
+                graphGroup.add(linesMesh);
+            }
+
+            runSimulation = true;
+            simTicks = 0;
+        }
+
+        let runSimulation = false;
+        let simTicks = 0;
+        
+        function tickForceLayout() {
+            if(!runSimulation || simTicks > 150) return;
+            simTicks++;
+
+            const attraction = 0.03;
+            const repulsion = 150.0;
+            const damping = 0.85;
+
+            // Repulsion
+            for(let i=0; i<nodesData.length; i++) {
+                for(let j=i+1; j<nodesData.length; j++) {
+                    const n1 = nodesData[i];
+                    const n2 = nodesData[j];
+                    const dx = n1.x - n2.x;
+                    const dy = n1.y - n2.y;
+                    const dz = n1.z - n2.z;
+                    const distSq = dx*dx + dy*dy + dz*dz || 0.1;
+
+                    const force = repulsion / distSq;
+                    const fx = dx * force;
+                    const fy = dy * force;
+                    const fz = dz * force;
+
+                    n1.vx += fx; n1.vy += fy; n1.vz += fz;
+                    n2.vx -= fx; n2.vy -= fy; n2.vz -= fz;
+                }
+            }
+
+            // Attraction
+            linksData.forEach(l => {
+                const dist = 15; // default link len
+                const dx = l.sourceObj.x - l.targetObj.x;
+                const dy = l.sourceObj.y - l.targetObj.y;
+                const dz = l.sourceObj.z - l.targetObj.z;
+                const d = Math.sqrt(dx*dx + dy*dy + dz*dz) || 0.1;
+                
+                const force = (d - dist) * attraction;
+                const fx = dx * force / d;
+                const fy = dy * force / d;
+                const fz = dz * force / d;
+
+                l.targetObj.vx += fx; l.targetObj.vy += fy; l.targetObj.vz += fz;
+                l.sourceObj.vx -= fx; l.sourceObj.vy -= fy; l.sourceObj.vz -= fz;
+            });
+
+            // Gravity to center
+            nodesData.forEach(n => {
+                n.vx -= n.x * 0.005; 
+                n.vy -= n.y * 0.005;
+                n.vz -= n.z * 0.005;
+            });
+
+            // Update
+            nodesData.forEach(n => {
+                n.vx *= damping; n.vy *= damping; n.vz *= damping;
+                n.x += n.vx; n.y += n.vy; n.z += n.vz;
+                if(n.mesh) {
+                    n.mesh.position.set(n.x, n.y, n.z);
+                    // Point toward center slightly
+                    n.mesh.lookAt(0,0,0);
+                }
+            });
+
+            if(linesMesh) {
+                const positions = linesMesh.geometry.attributes.position.array;
+                let i = 0;
+                linksData.forEach(l => {
+                    positions[i++] = l.sourceObj.x;
+                    positions[i++] = l.sourceObj.y;
+                    positions[i++] = l.sourceObj.z;
+                    positions[i++] = l.targetObj.x;
+                    positions[i++] = l.targetObj.y;
+                    positions[i++] = l.targetObj.z;
+                });
+                linesMesh.geometry.attributes.position.needsUpdate = true;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(controls) controls.update();
+            
+            if(graphGroup && !runSimulation) {
+                graphGroup.rotation.y += 0.001;
+            }
+
+            tickForceLayout();
+
+            renderer.render(scene, camera);
+        }
+
+        btnAnalyze.addEventListener('click', processGraph);
+
+        document.addEventListener('DOMContentLoaded', init3D);
+
+    </script>
+</body>
+</html>

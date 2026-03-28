@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 6 - Timestamp Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .converter-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        @media (min-width: 900px) {
+            .converter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            height: 100%;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .input-group label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .input-group .input-with-btn {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        input[type="number"],
+        input[type="datetime-local"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.2);
+        }
+
+        .btn-icon {
+            padding: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-secondary);
+        }
+
+        .results-box {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .result-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .result-value {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            color: var(--accent-primary);
+            word-break: break-all;
+            text-align: right;
+        }
+
+        .result-value.date {
+            color: #33d9b2;
+        }
+
+        /* 3D background container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>6. Timestamp Converter</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Convert Unix timestamps to
+                        human-readable dates and vice versa. Supports seconds & milliseconds.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="converter-grid">
+                <!-- Epoch to Date Panel -->
+                <div class="glass-panel panel-container">
+                    <h3>Timestamp to Date</h3>
+
+                    <div class="input-group">
+                        <label for="epoch-input">Enter Timestamp (Unix Epoch)</label>
+                        <div class="input-with-btn">
+                            <input type="number" id="epoch-input" placeholder="e.g. 1672531200"
+                                title="Supports seconds, ms, and micro/nano seconds">
+                            <button id="btn-now-epoch" class="btn" title="Insert Current Time">Now</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="unit-select">Format Detection</label>
+                        <select id="unit-select">
+                            <option value="auto">Auto-detect (Recommended)</option>
+                            <option value="sec">Seconds (10 digits)</option>
+                            <option value="ms">Milliseconds (13 digits)</option>
+                            <option value="micro">Microseconds (16 digits)</option>
+                            <option value="nano">Nanoseconds (19 digits)</option>
+                        </select>
+                    </div>
+
+                    <div class="results-box">
+                        <div class="result-item">
+                            <div class="result-label">Local Time</div>
+                            <div class="result-value date" id="out-local">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">UTC Time</div>
+                            <div class="result-value date" id="out-utc">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">ISO 8601</div>
+                            <div class="result-value date" id="out-iso" style="font-size: 0.9rem;">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Relative</div>
+                            <div class="result-value" id="out-relative" style="color: var(--text-primary);">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Date to Epoch Panel -->
+                <div class="glass-panel panel-container">
+                    <h3>Date to Timestamp</h3>
+
+                    <div class="input-group">
+                        <label for="date-input">Select Date & Time (Local)</label>
+                        <div class="input-with-btn">
+                            <input type="datetime-local" id="date-input" step="1">
+                            <button id="btn-now-date" class="btn" title="Insert Current Time">Now</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="iso-input">Or enter ISO 8601 / Custom String</label>
+                        <input type="text" id="iso-input" placeholder="e.g. 2023-01-01T00:00:00Z">
+                    </div>
+
+                    <div class="results-box">
+                        <div class="result-item">
+                            <div class="result-label">Seconds (Unix Epoch)</div>
+                            <div class="input-with-btn" style="flex:1; display:flex; justify-content:flex-end;">
+                                <div class="result-value" id="out-sec">-</div>
+                                <button class="btn-icon" data-copy="out-sec" aria-label="Copy">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Milliseconds</div>
+                            <div class="input-with-btn" style="flex:1; display:flex; justify-content:flex-end;">
+                                <div class="result-value" id="out-milli">-</div>
+                                <button class="btn-icon" data-copy="out-milli" aria-label="Copy">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Date Format Utils & Logic ---
+        const epochInput = document.getElementById('epoch-input');
+        const unitSelect = document.getElementById('unit-select');
+        const outLocal = document.getElementById('out-local');
+        const outUtc = document.getElementById('out-utc');
+        const outIso = document.getElementById('out-iso');
+        const outRelative = document.getElementById('out-relative');
+
+        const dateInput = document.getElementById('date-input');
+        const isoInput = document.getElementById('iso-input');
+        const outSec = document.getElementById('out-sec');
+        const outMilli = document.getElementById('out-milli');
+
+        const btnNowEpoch = document.getElementById('btn-now-epoch');
+        const btnNowDate = document.getElementById('btn-now-date');
+
+        let isAnimatingTime = false;
+
+        // Relative time calculation
+        function getRelativeTime(date) {
+            const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+            const daysDifference = Math.round((date - new Date()) / (1000 * 60 * 60 * 24));
+
+            if (Math.abs(daysDifference) > 30) {
+                const months = Math.round(daysDifference / 30);
+                if (Math.abs(months) > 11) {
+                    return rtf.format(Math.round(months / 12), 'year');
+                }
+                return rtf.format(months, 'month');
+            } else if (Math.abs(daysDifference) > 0) {
+                return rtf.format(daysDifference, 'day');
+            }
+
+            const hours = Math.round((date - new Date()) / (1000 * 60 * 60));
+            if (Math.abs(hours) > 0) return rtf.format(hours, 'hour');
+
+            const minutes = Math.round((date - new Date()) / (1000 * 60));
+            if (Math.abs(minutes) > 0) return rtf.format(minutes, 'minute');
+
+            const seconds = Math.round((date - new Date()) / 1000);
+            return rtf.format(seconds, 'second');
+        }
+
+        // Epoch to Date logic
+        function convertEpoch() {
+            let val = epochInput.value.trim();
+            if (!val) {
+                outLocal.textContent = '-';
+                outUtc.textContent = '-';
+                outIso.textContent = '-';
+                outRelative.textContent = '-';
+                if (window.updateClockSpeed) window.updateClockSpeed(0);
+                return;
+            }
+
+            let num = parseInt(val, 10);
+            if (isNaN(num)) return;
+
+            // Auto detect
+            let unit = unitSelect.value;
+            let msValue = num;
+
+            if (unit === 'auto') {
+                if (val.length <= 11) msValue = num * 1000;            // Seconds
+                else if (val.length <= 14) msValue = num;              // Milliseconds
+                else if (val.length <= 17) msValue = Math.floor(num / 1000); // Microseconds
+                else msValue = Math.floor(num / 1000000);              // Nanoseconds
+            } else {
+                if (unit === 'sec') msValue = num * 1000;
+                else if (unit === 'ms') msValue = num;
+                else if (unit === 'micro') msValue = Math.floor(num / 1000);
+                else if (unit === 'nano') msValue = Math.floor(num / 1000000);
+            }
+
+            const date = new Date(msValue);
+
+            if (date.toString() === 'Invalid Date') {
+                outLocal.textContent = 'Invalid Date';
+                outUtc.textContent = '-';
+                outIso.textContent = '-';
+                outRelative.textContent = '-';
+                return;
+            }
+
+            outLocal.textContent = date.toLocaleString();
+            outUtc.textContent = date.toUTCString();
+            outIso.textContent = date.toISOString();
+            outRelative.textContent = getRelativeTime(date);
+
+            // Trigger 3D animation speed
+            if (window.updateClockSpeed) window.updateClockSpeed(Math.abs(msValue - Date.now()));
+        }
+
+        // Date String / Input to Epoch logic
+        function convertDate(source) {
+            let dateStr = '';
+            if (source === 'local') {
+                dateStr = dateInput.value;
+                isoInput.value = ''; // clear the other
+            } else {
+                dateStr = isoInput.value.trim();
+                dateInput.value = '';
+            }
+
+            if (!dateStr) {
+                outSec.textContent = '-';
+                outMilli.textContent = '-';
+                return;
+            }
+
+            const date = new Date(dateStr);
+            if (date.toString() === 'Invalid Date') {
+                outSec.textContent = 'Invalid';
+                outMilli.textContent = 'Invalid';
+                return;
+            }
+
+            outSec.textContent = Math.floor(date.getTime() / 1000);
+            outMilli.textContent = date.getTime();
+
+            // Trigger 3D animation
+            if (window.updateClockSpeed) window.updateClockSpeed(Math.abs(date.getTime() - Date.now()));
+        }
+
+        function setNow() {
+            const now = new Date();
+            epochInput.value = Math.floor(now.getTime() / 1000);
+            epochInput.dispatchEvent(new Event('input'));
+
+            // Set local input too
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(now - offset)).toISOString().slice(0, 19);
+            dateInput.value = localISOTime;
+            convertDate('local');
+        }
+
+        // Event Listeners
+        epochInput.addEventListener('input', convertEpoch);
+        unitSelect.addEventListener('change', convertEpoch);
+
+        dateInput.addEventListener('input', () => convertDate('local'));
+        isoInput.addEventListener('input', () => convertDate('iso'));
+
+        btnNowEpoch.addEventListener('click', setNow);
+        btnNowDate.addEventListener('click', setNow);
+
+        // Copy buttons
+        document.querySelectorAll('[data-copy]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetId = btn.getAttribute('data-copy');
+                const text = document.getElementById(targetId).textContent;
+                if (text && text !== '-' && text !== 'Invalid') {
+                    navigator.clipboard.writeText(text);
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33d9b2" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                    setTimeout(() => btn.innerHTML = originalHTML, 1500);
+                }
+            });
+        });
+
+        // Initialize with now
+        setNow();
+
+        // --- 3D Background Setup (Clock Gears) ---
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 25;
+            camera.position.x = 10; // offset to right
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xBB86FC, 1);
+            dirLight.position.set(10, 10, 10);
+            scene.add(dirLight);
+
+            const dirLight2 = new THREE.DirectionalLight(0x03DAC6, 0.8);
+            dirLight2.position.set(-10, -10, 10);
+            scene.add(dirLight2);
+
+            // Create Gears
+            const gears = [];
+            const gearMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2c2c2c,
+                metalness: 0.8,
+                roughness: 0.2,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            const createGear = (radius, teeth, innerRadius) => {
+                const shape = new THREE.Shape();
+                shape.absarc(0, 0, innerRadius, 0, Math.PI * 2, false);
+
+                const holePath = new THREE.Path();
+                holePath.absarc(0, 0, innerRadius * 0.5, 0, Math.PI * 2, true);
+                shape.holes.push(holePath);
+
+                const extrudeSettings = { depth: 0.5, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.1, bevelThickness: 0.1 };
+
+                // Add teeth around geometry (simplified via torus for wireframe aesthetics)
+                const geometry = new THREE.TorusGeometry(radius, 0.5, 16, teeth);
+
+                const mesh = new THREE.Mesh(geometry, gearMaterial);
+                return mesh;
+            };
+
+            const gear1 = createGear(5, 32, 4);
+            const gear2 = createGear(3, 16, 2);
+            gear2.position.set(7.5, 0, 0); // Interlock
+
+            const gear3 = createGear(8, 64, 7);
+            gear3.position.set(0, 0, -2);
+
+            // Clock Hands
+            const handMat = new THREE.MeshStandardMaterial({ color: 0xBB86FC, metalness: 0.5 });
+            const cylinderGeo = new THREE.CylinderGeometry(0.1, 0.1, 10, 8);
+            cylinderGeo.translate(0, 5, 0); // pivot at bottom
+            const minuteHand = new THREE.Mesh(cylinderGeo, handMat);
+
+            const hourGeo = new THREE.CylinderGeometry(0.15, 0.15, 6, 8);
+            hourGeo.translate(0, 3, 0);
+            const hourHand = new THREE.Mesh(hourGeo, new THREE.MeshStandardMaterial({ color: 0x03DAC6 }));
+
+            const clockGroup = new THREE.Group();
+            clockGroup.add(gear1);
+            clockGroup.add(gear2);
+            clockGroup.add(gear3);
+            clockGroup.add(minuteHand);
+            clockGroup.add(hourHand);
+
+            // Tilt for perspective
+            clockGroup.rotation.x = 0.2;
+            clockGroup.rotation.y = -0.3;
+
+            scene.add(clockGroup);
+
+            let baseSpeed = 0.001;
+            let targetSpeedMultiplier = 1;
+            let currentMultiplier = 1;
+
+            // Global function to update gear speed
+            window.updateClockSpeed = (timeDiffMs) => {
+                // If diff is huge (years), spin fast, if small, spin normal
+                const diffDays = timeDiffMs / (1000 * 60 * 60 * 24);
+                if (diffDays === 0) targetSpeedMultiplier = 1;
+                else if (diffDays < 30) targetSpeedMultiplier = 5;
+                else if (diffDays < 365) targetSpeedMultiplier = 15;
+                else targetSpeedMultiplier = 30;
+
+                // Animate multiplier smoothly
+                gsap.to(clockGroup.rotation, {
+                    z: clockGroup.rotation.z + (Math.PI * 2), // do a full spin
+                    duration: 1,
+                    ease: "power2.out"
+                });
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Idle rotation
+                gear1.rotation.z -= baseSpeed * targetSpeedMultiplier;
+                gear2.rotation.z += baseSpeed * targetSpeedMultiplier * 1.5;
+                gear3.rotation.z -= baseSpeed * targetSpeedMultiplier * 0.5;
+
+                minuteHand.rotation.z -= baseSpeed * targetSpeedMultiplier * 10;
+                hourHand.rotation.z -= baseSpeed * targetSpeedMultiplier;
+
+                clockGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.1 - 0.3;
+                clockGroup.rotation.x = Math.cos(Date.now() * 0.0005) * 0.1 + 0.2;
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                if (window.innerWidth < 900) {
+                    camera.position.x = 0; // Center on mobile
+                    clockGroup.position.y = 5;
+                } else {
+                    camera.position.x = 10;
+                    clockGroup.position.y = 0;
+                }
+            });
+
+            // Trigger initial resize positioning
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

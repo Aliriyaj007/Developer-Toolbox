@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 14 - Hash Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+
+    <style>
+        .hash-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        @media (min-width: 900px) {
+            .hash-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        textarea {
+            flex: 1;
+            width: 100%;
+            height: 150px;
+            resize: vertical;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+            line-height: 1.5;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.2);
+        }
+
+        .btn-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .hash-output-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Colored glow on hover for each algorithm based on 3D cube colors */
+        .hash-md5:hover {
+            box-shadow: 0 0 15px rgba(255, 82, 82, 0.2);
+            border-color: #ff5252;
+        }
+
+        .hash-sha1:hover {
+            box-shadow: 0 0 15px rgba(255, 177, 66, 0.2);
+            border-color: #ffb142;
+        }
+
+        .hash-sha256:hover {
+            box-shadow: 0 0 15px rgba(51, 217, 178, 0.2);
+            border-color: #33d9b2;
+        }
+
+        .hash-sha512:hover {
+            box-shadow: 0 0 15px rgba(187, 134, 252, 0.2);
+            border-color: #BB86FC;
+        }
+
+        .hash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hash-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hash-title-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .hash-value {
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            word-break: break-all;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 40px;
+        }
+
+        /* 3D background container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* behind content */
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content" style="position: relative; z-index: 10;">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>14. Hash Generator</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Generate MD5, SHA-1, SHA-256, and
+                        SHA-512 hashes instantly.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-header" style="margin-bottom: 1rem;">
+                    <h3>Input String</h3>
+                    <div class="btn-controls">
+                        <button id="btn-clear" class="btn">Clear</button>
+                        <button id="btn-paste" class="btn">Paste</button>
+                    </div>
+                </div>
+                <textarea id="string-input" placeholder="Type or paste the text you want to hash here..."></textarea>
+            </div>
+
+            <h3 style="margin-bottom: 1rem;">Generated Hashes</h3>
+
+            <div class="hash-grid">
+                <!-- MD5 -->
+                <div class="hash-output-card hash-md5" data-hash-type="md5">
+                    <div class="hash-header">
+                        <div class="hash-title">
+                            <div class="hash-title-indicator" style="background: #ff5252; box-shadow: 0 0 8px #ff5252;">
+                            </div>
+                            MD5
+                        </div>
+                        <button class="btn btn-sm btn-copy" data-target="out-md5">Copy</button>
+                    </div>
+                    <div class="hash-value" id="out-md5"></div>
+                </div>
+
+                <!-- SHA-1 -->
+                <div class="hash-output-card hash-sha1" data-hash-type="sha1">
+                    <div class="hash-header">
+                        <div class="hash-title">
+                            <div class="hash-title-indicator" style="background: #ffb142; box-shadow: 0 0 8px #ffb142;">
+                            </div>
+                            SHA-1
+                        </div>
+                        <button class="btn btn-sm btn-copy" data-target="out-sha1">Copy</button>
+                    </div>
+                    <div class="hash-value" id="out-sha1"></div>
+                </div>
+
+                <!-- SHA-256 -->
+                <div class="hash-output-card hash-sha256" data-hash-type="sha256">
+                    <div class="hash-header">
+                        <div class="hash-title">
+                            <div class="hash-title-indicator" style="background: #33d9b2; box-shadow: 0 0 8px #33d9b2;">
+                            </div>
+                            SHA-256
+                        </div>
+                        <button class="btn btn-sm btn-copy" data-target="out-sha256">Copy</button>
+                    </div>
+                    <div class="hash-value" id="out-sha256"></div>
+                </div>
+
+                <!-- SHA-512 -->
+                <div class="hash-output-card hash-sha512" data-hash-type="sha512">
+                    <div class="hash-header">
+                        <div class="hash-title">
+                            <div class="hash-title-indicator" style="background: #BB86FC; box-shadow: 0 0 8px #BB86FC;">
+                            </div>
+                            SHA-512
+                        </div>
+                        <button class="btn btn-sm btn-copy" data-target="out-sha512">Copy</button>
+                    </div>
+                    <div class="hash-value" id="out-sha512"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- CryptoJS for MD5 and SHA fallback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Core Hashing Logic ---
+        const strInput = document.getElementById('string-input');
+        const outMD5 = document.getElementById('out-md5');
+        const outSHA1 = document.getElementById('out-sha1');
+        const outSHA256 = document.getElementById('out-sha256');
+        const outSHA512 = document.getElementById('out-sha512');
+
+        // Generate hashes using CryptoJS
+        function generateHashes() {
+            const val = strInput.value;
+            if (!val) {
+                outMD5.textContent = '';
+                outSHA1.textContent = '';
+                outSHA256.textContent = '';
+                outSHA512.textContent = '';
+                if (window.triggerCubeAnim) window.triggerCubeAnim('idle');
+                return;
+            }
+
+            // Calculate computationally
+            const md5 = CryptoJS.MD5(val).toString();
+            const sha1 = CryptoJS.SHA1(val).toString();
+            const sha256 = CryptoJS.SHA256(val).toString();
+            const sha512 = CryptoJS.SHA512(val).toString();
+
+            outMD5.textContent = md5;
+            outSHA1.textContent = sha1;
+            outSHA256.textContent = sha256;
+            outSHA512.textContent = sha512;
+
+            if (window.triggerCubeAnim) window.triggerCubeAnim('spin');
+        }
+
+        strInput.addEventListener('input', generateHashes);
+
+        // Setup Buttons
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            strInput.value = '';
+            generateHashes();
+        });
+
+        document.getElementById('btn-paste').addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                strInput.value = text;
+                generateHashes();
+            } catch (err) {
+                console.error('Failed to read clipboard', err);
+            }
+        });
+
+        // Copy hash buttons
+        document.querySelectorAll('.btn-copy').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetId = e.target.getAttribute('data-target');
+                const text = document.getElementById(targetId).textContent;
+                if (!text) return;
+
+                navigator.clipboard.writeText(text);
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+
+                // Highlight corresponding 3D face
+                const type = e.target.closest('.hash-output-card').getAttribute('data-hash-type');
+                if (window.highlightFace) window.highlightFace(type);
+
+                setTimeout(() => btn.textContent = originalText, 1500);
+            });
+        });
+
+
+        // --- 3D Background Setup (Multi-colored Spinning Cube) ---
+        let scene, camera, renderer, hashCube;
+
+        // Face colors mapping to algorithms
+        const materials = {
+            md5: new THREE.MeshStandardMaterial({ color: 0xff5252, metalness: 0.5, roughness: 0.2 }),
+            sha1: new THREE.MeshStandardMaterial({ color: 0xffb142, metalness: 0.5, roughness: 0.2 }),
+            sha256: new THREE.MeshStandardMaterial({ color: 0x33d9b2, metalness: 0.5, roughness: 0.2 }),
+            sha512: new THREE.MeshStandardMaterial({ color: 0xBB86FC, metalness: 0.5, roughness: 0.2 }),
+            base1: new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 }),
+            base2: new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 })
+        };
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 15;
+            camera.position.x = 0;
+            // Put it lower down so it sits behind the grids nicely
+            camera.position.y = 2;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            // Construct cube that takes array of materials (one per face: right, left, top, bottom, front, back)
+            // right, left, top, bottom, front, back
+            const cubeMaterials = [
+                materials.md5,     // right
+                materials.sha1,    // left
+                materials.sha256,  // top
+                materials.sha512,  // bottom
+                materials.base1,   // front
+                materials.base2    // back
+            ];
+
+            const geometry = new THREE.BoxGeometry(4, 4, 4);
+            hashCube = new THREE.Mesh(geometry, cubeMaterials);
+
+            // Add wireframe outline to make it pop
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+            hashCube.add(line);
+
+            scene.add(hashCube);
+
+            let spinTimeout;
+
+            // Trigger animation when typing
+            window.triggerCubeAnim = (state) => {
+                if (state === 'spin') {
+                    // Fast erratic spin to simulate processing
+                    gsap.to(hashCube.rotation, {
+                        x: hashCube.rotation.x + Math.PI / 2,
+                        y: hashCube.rotation.y + Math.PI,
+                        z: hashCube.rotation.z + Math.PI / 4,
+                        duration: 0.5,
+                        ease: "power1.out"
+                    });
+
+                    clearTimeout(spinTimeout);
+                    spinTimeout = setTimeout(() => {
+                        window.triggerCubeAnim('idle');
+                    }, 500);
+                }
+                else if (state === 'idle') {
+                    // Slow rotation resumes naturally in render loop
+                }
+            };
+
+            // Trigger animation when copying
+            window.highlightFace = (type) => {
+                // Determine which rotation shows the requested face roughly to the camera
+                let targetRot = { x: 0, y: 0, z: 0 };
+
+                // Front is +Z camera
+                if (type === 'md5') { targetRot = { y: Math.PI / 2 }; }       // Right face to front
+                else if (type === 'sha1') { targetRot = { y: -Math.PI / 2 }; }  // Left face to front
+                else if (type === 'sha256') { targetRot = { x: Math.PI / 2 }; } // Top face to front
+                else if (type === 'sha512') { targetRot = { x: -Math.PI / 2 }; }// Bottom face to front
+
+                // Add an extra full spin before stopping on the target
+                gsap.to(hashCube.rotation, {
+                    x: targetRot.x + (Math.PI * 2),
+                    y: targetRot.y + (Math.PI * 2),
+                    z: 0,
+                    duration: 1.5,
+                    ease: "back.out(1.2)"
+                });
+
+                // Pulse emissive of that material
+                const mat = materials[type];
+                if (mat) {
+                    const origEmissive = mat.emissive.getHex();
+                    setTimeout(() => {
+                        mat.emissive.copy(mat.color).multiplyScalar(0.5);
+                        setTimeout(() => mat.emissive.setHex(origEmissive), 500);
+                    }, 1000);
+                }
+            };
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Idle slow spin (only if not being animated actively by gsap, but gsap overwrites it smoothly)
+                if (!gsap.isTweening(hashCube.rotation)) {
+                    hashCube.rotation.x += 0.005;
+                    hashCube.rotation.y += 0.01;
+                }
+
+                // Gentle bobbing
+                hashCube.position.y = Math.sin(Date.now() * 0.001) * 0.5;
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+
+                if (window.innerWidth < 900) {
+                    hashCube.position.y = 2; // move down on mobile so it sits behind text
+                } else {
+                    hashCube.position.y = 0; // closer to center
+                }
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

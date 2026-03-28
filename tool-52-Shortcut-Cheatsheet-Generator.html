@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 52 - Shortcut Cheatsheet Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"],
+        select,
+        input[type="color"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.8rem;
+            font-family: inherit;
+        }
+
+        .shortcut-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .shortcut-item input {
+            margin-bottom: 0;
+            padding: 0.5rem;
+        }
+
+        .btn-remove {
+            background: none;
+            border: none;
+            color: #ff5555;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 0 0.5rem;
+        }
+
+        .btn-remove:hover {
+            background: rgba(255, 85, 85, 0.1);
+            border-radius: 4px;
+        }
+
+        /* Preview Panel */
+        .preview-panel {
+            background: #fff;
+            /* Needs white background to match PDF */
+            color: #333;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 2rem;
+            overflow-y: auto;
+            position: relative;
+            min-height: 600px;
+        }
+
+        .preview-header {
+            text-align: center;
+            border-bottom: 3px solid #333;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .preview-header h2 {
+            margin: 0;
+            font-size: 2rem;
+            color: #111;
+            font-weight: 800;
+        }
+
+        .preview-header p {
+            margin: 0.5rem 0 0 0;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            /* 2 columns for shortcuts */
+            gap: 1.5rem;
+        }
+
+        .preview-shortcut {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 0.5rem;
+        }
+
+        .preview-desc {
+            font-weight: bold;
+            color: #222;
+            font-size: 0.95rem;
+        }
+
+        .preview-keys {
+            display: flex;
+            gap: 0.3rem;
+            align-items: center;
+        }
+
+        .kbd-key {
+            background: #f8f9fa;
+            border: 1px solid #d1d5da;
+            border-radius: 3px;
+            box-shadow: inset 0 -1px 0 #d1d5da;
+            color: #24292e;
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            line-height: 1;
+            padding: 0.3rem 0.5rem;
+            font-weight: bold;
+        }
+
+        .kbd-plus {
+            color: #666;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1300px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>52. Shortcut Cheatsheet Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="input-group">
+                            <label>Application / Tool Name</label>
+                            <input type="text" id="app-name" value="VS Code Core Shortcuts">
+                        </div>
+                        <div class="input-group">
+                            <label>Subtitle / Description</label>
+                            <input type="text" id="app-sub" value="My Personal Essential Keybinds">
+                        </div>
+
+                        <hr style="border-color: rgba(255,255,255,0.1); margin: 0.5rem 0;">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label style="color:var(--text-primary); font-weight: bold; margin:0;">Shortcuts</label>
+                            <button class="btn btn-sm btn-primary" id="btn-add-row">➕ Add</button>
+                        </div>
+
+                        <div id="shortcuts-list" style="display:flex; flex-direction:column; gap:0.5rem;">
+                            <!-- Items injected here -->
+                        </div>
+
+                        <hr style="border-color: rgba(255,255,255,0.1); margin: 0.5rem 0;">
+
+                        <div class="input-group">
+                            <label>Accent Color</label>
+                            <div style="display:flex; gap:0.5rem;">
+                                <input type="color" id="accent-color" value="#0055ff"
+                                    style="padding:0; height:40px; cursor:pointer;">
+                                <select id="columns-count">
+                                    <option value="1">1 Column</option>
+                                    <option value="2" selected>2 Columns</option>
+                                    <option value="3">3 Columns</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" id="btn-export-pdf"
+                            style="margin-top:auto; padding: 1rem; font-size: 1.1rem;">📥 Export as PDF</button>
+
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div>
+                        <div class="preview-panel" id="preview-panel">
+                            <div class="preview-header" id="ph-border">
+                                <h2 id="ph-title">App Name</h2>
+                                <p id="ph-sub">Subtitle</p>
+                            </div>
+                            <div class="preview-grid" id="preview-grid" style="grid-template-columns: repeat(2, 1fr);">
+                                <!-- Preview items injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Use html2canvas for accurate PDF rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        const appNameIn = document.getElementById('app-name');
+        const appSubIn = document.getElementById('app-sub');
+        const accentColorIn = document.getElementById('accent-color');
+        const colsSelect = document.getElementById('columns-count');
+
+        const phTitle = document.getElementById('ph-title');
+        const phSub = document.getElementById('ph-sub');
+        const phBorder = document.getElementById('ph-border');
+        const previewGrid = document.getElementById('preview-grid');
+        const shortcutsList = document.getElementById('shortcuts-list');
+
+        let shortcutsData = [
+            { keys: 'Ctrl+Shift+P', desc: 'Command Palette' },
+            { keys: 'Ctrl+P', desc: 'Quick Open, Go to File' },
+            { keys: 'Shift+Alt+Down', desc: 'Copy Line Down' },
+            { keys: 'Ctrl+/', desc: 'Toggle Line Comment' },
+            { keys: 'Ctrl+F', desc: 'Find' },
+            { keys: 'Ctrl+H', desc: 'Replace' }
+        ];
+
+        function renderEditor() {
+            shortcutsList.innerHTML = '';
+            shortcutsData.forEach((sc, idx) => {
+                const div = document.createElement('div');
+                div.className = 'shortcut-item';
+                div.innerHTML = `
+                    <input type="text" placeholder="Description" value="${sc.desc}" data-target="desc" data-idx="${idx}" style="flex:2">
+                    <input type="text" placeholder="Keys (e.g. Ctrl+C)" value="${sc.keys}" data-target="keys" data-idx="${idx}" style="flex:1">
+                    <button class="btn-remove" data-idx="${idx}">×</button>
+                `;
+                shortcutsList.appendChild(div);
+            });
+
+            // Bind inputs
+            document.querySelectorAll('.shortcut-item input').forEach(inp => {
+                inp.addEventListener('input', (e) => {
+                    const idx = e.target.dataset.idx;
+                    const target = e.target.dataset.target;
+                    shortcutsData[idx][target] = e.target.value;
+                    updatePreview();
+
+                    // Trigger 3D Keyboard
+                    if (target === 'keys' && window.triggerKeyHighlight) {
+                        window.triggerKeyHighlight(e.target.value);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = e.target.dataset.idx;
+                    shortcutsData.splice(idx, 1);
+                    renderEditor();
+                    updatePreview();
+                });
+            });
+        }
+
+        function formatKeys(keysStr) {
+            // Split by +, space, or comma but keep delimiters if possible? 
+            // Simple approach: split by +, then wrap in <kbd>
+            const parts = keysStr.split('+');
+            let html = '';
+            parts.forEach((p, i) => {
+                html += `<span class="kbd-key">${p.trim()}</span>`;
+                if (i < parts.length - 1) html += `<span class="kbd-plus">+</span>`;
+            });
+            return html;
+        }
+
+        function updatePreview() {
+            phTitle.textContent = appNameIn.value || 'Cheatsheet';
+            phSub.textContent = appSubIn.value;
+            phTitle.style.color = accentColorIn.value;
+            phBorder.style.borderBottomColor = accentColorIn.value;
+
+            previewGrid.style.gridTemplateColumns = `repeat(${colsSelect.value}, 1fr)`;
+
+            previewGrid.innerHTML = '';
+            shortcutsData.forEach(sc => {
+                const div = document.createElement('div');
+                div.className = 'preview-shortcut';
+                div.innerHTML = `
+                    <div class="preview-desc">${sc.desc || 'Action'}</div>
+                    <div class="preview-keys">${formatKeys(sc.keys || 'Keys')}</div>
+                `;
+                // Add tiny border logic
+                div.style.borderBottomColor = accentColorIn.value + '44'; // 44 opacity hex
+                previewGrid.appendChild(div);
+            });
+        }
+
+        document.getElementById('btn-add-row').addEventListener('click', () => {
+            shortcutsData.push({ keys: '', desc: '' });
+            renderEditor();
+            updatePreview();
+
+            // scroll editor list to bottom
+            const cp = document.querySelector('.controls-panel');
+            cp.scrollTop = cp.scrollHeight;
+        });
+
+        [appNameIn, appSubIn, accentColorIn, colsSelect].forEach(el => {
+            el.addEventListener('input', updatePreview);
+        });
+
+        // PDF Export
+        document.getElementById('btn-export-pdf').addEventListener('click', async () => {
+            const el = document.getElementById('preview-panel');
+            const { jsPDF } = window.jspdf;
+
+            // To get accurate PDF capturing standard fonts and flexbox styling, html2canvas is reliable.
+            // Temporarily disable scrollbars/scaling issues
+            const originalHeight = el.style.height;
+            el.style.height = 'auto'; // ensure full content 
+
+            // Optional: Show loading state
+            document.body.style.cursor = 'wait';
+
+            try {
+                const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+                const imgData = canvas.toDataURL('image/png');
+
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'px',
+                    format: [canvas.width / 2, canvas.height / 2]
+                });
+
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+                pdf.save(`${appNameIn.value.replace(/\s+/g, '_')}_Cheatsheet.pdf`);
+            } catch (err) {
+                console.error(err);
+                alert("Failed to export PDF.");
+            } finally {
+                el.style.height = originalHeight;
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        // Init UI
+        renderEditor();
+        updatePreview();
+
+
+        // 3D Visualization: A 3D Keyboard that highlights pressed keys
+        let scene, camera, renderer, kbGroup;
+        let keyMeshes = {}; // map of keyName -> mesh
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 8, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight.position.set(2, 10, 5);
+            scene.add(dirLight);
+
+            kbGroup = new THREE.Group();
+            scene.add(kbGroup);
+
+            // Shift whole scene left
+            scene.position.x = 2;
+            scene.position.y = -2;
+
+            // Build a very simplistic 60% mechanical keyboard look
+            const baseGeo = new THREE.BoxGeometry(14.5, 0.5, 5.5);
+            const baseMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            kbGroup.add(base);
+
+            // Rows of keys
+            const keyGeo = new THREE.BoxGeometry(0.8, 0.4, 0.8);
+
+            // Create a grid 14 columns, 5 rows
+            const startX = -6.5;
+            const startZ = -2;
+            const spacingX = 1;
+            const spacingZ = 1;
+
+            const keyboardLayout = [
+                ['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
+                ['Tab', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\\'],
+                ['Caps', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", 'Enter'],
+                ['Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'Shift'],
+                ['Ctrl', 'Win', 'Alt', 'Space', 'Alt', 'Fn', 'Ctrl']
+            ];
+
+            let rowOffset = 0;
+            keyboardLayout.forEach((row, rIdx) => {
+                let currentX = startX + rowOffset;
+                row.forEach(keyName => {
+                    let wScale = 1;
+                    if (['Space'].includes(keyName)) wScale = 6.2;
+                    else if (['Backspace', 'Shift', 'Enter', 'Caps', 'Tab'].includes(keyName)) wScale = 1.6;
+                    else if (['Ctrl', 'Win', 'Alt', 'Fn'].includes(keyName)) wScale = 1.2;
+
+                    const g = new THREE.BoxGeometry(0.8 * wScale, 0.4, 0.8);
+                    // Use slightly beveled keys look by shifting up
+
+                    const mat = new THREE.MeshPhongMaterial({ color: 0x444444, shininess: 80 });
+                    const m = new THREE.Mesh(g, mat);
+
+                    // position: account for width scaling center point
+                    m.position.set(currentX + (0.8 * wScale) / 2 - 0.4, 0.4, startZ + rIdx * spacingZ);
+
+                    // Store base color
+                    m.userData = {
+                        baseColor: 0x444444,
+                        highlightColor: 0xffaa00,
+                        isHighlighted: false,
+                        targetY: 0.4
+                    };
+
+                    kbGroup.add(m);
+                    keyMeshes[keyName.toUpperCase()] = m;
+
+                    currentX += (0.8 * wScale) + 0.2; // advance X for next key
+                });
+                // slight stagger per row
+                if (rIdx === 0) rowOffset = 0.5;
+                if (rIdx === 1) rowOffset = 0.8;
+                if (rIdx === 2) rowOffset = 1.1;
+                if (rIdx === 3) rowOffset = 0.5; // spacebar row
+            });
+
+            kbGroup.rotation.x = 0.4; // Tilt towards camera
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.triggerKeyHighlight = (keysStr) => {
+            if (!scene) return;
+
+            // Reset all
+            Object.values(keyMeshes).forEach(m => {
+                m.material.color.setHex(m.userData.baseColor);
+                m.userData.isHighlighted = false;
+                m.userData.targetY = 0.4; // Default unpressed height
+            });
+
+            if (!keysStr) return;
+
+            // Highlight new
+            const parts = keysStr.toUpperCase().split('+').map(s => s.trim());
+
+            parts.forEach(p => {
+                // Map common keys to our layout
+                let search = p;
+                if (search === 'CONTROL') search = 'CTRL';
+                if (search === 'OPTION') search = 'ALT';
+                if (search === 'COMMAND' || search === 'CMD') search = 'WIN';
+
+                const m = keyMeshes[search];
+                if (m) {
+                    m.material.color.setHex(m.userData.highlightColor);
+                    m.userData.isHighlighted = true;
+                    m.userData.targetY = 0.2; // Pressed down
+                }
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (kbGroup) {
+                // slowly float keyboard
+                kbGroup.position.y = Math.sin(Date.now() * 0.001) * 0.2;
+                kbGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.1;
+
+                // Animate key presses
+                Object.values(keyMeshes).forEach(m => {
+                    m.position.y += (m.userData.targetY - m.position.y) * 0.2;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+
+</html>

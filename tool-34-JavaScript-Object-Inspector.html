@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 34 - JavaScript Object Inspector - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 350px 1fr; }
+        }
+        
+        textarea {
+            width: 100%;
+            height: 500px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .tree-container {
+            width: 100%;
+            height: 500px;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            outline: none;
+        }
+
+        .search-box:focus {
+            border-color: var(--primary-color);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Tree Styles */
+        .tree-node {
+            margin-left: 20px;
+            line-height: 1.6;
+        }
+
+        .tree-toggle {
+            cursor: pointer;
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: bold;
+            user-select: none;
+        }
+
+        .tree-key {
+            color: #d19a66; /* orange */
+            font-weight: bold;
+        }
+
+        .tree-value.string { color: #98c379; } /* green */
+        .tree-value.number { color: #d19a66; } /* orange */
+        .tree-value.boolean { color: #c678dd; } /* purple */
+        .tree-value.null { color: #5c6370; } /* grey */
+        
+        .path-copy {
+            opacity: 0;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: opacity 0.2s;
+            text-decoration: underline;
+        }
+        
+        .tree-row:hover .path-copy {
+            opacity: 1;
+        }
+        
+        .tree-children {
+            display: block;
+        }
+        .tree-children.collapsed {
+            display: none;
+        }
+
+        .highlight-search {
+            background-color: rgba(255, 255, 0, 0.3);
+            border-radius: 3px;
+        }
+        
+        .error-message {
+            color: #ff5555;
+            background: rgba(255, 85, 85, 0.1);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            margin-top: 0.5rem;
+            display: none;
+            font-family: var(--font-mono);
+        }
+        
+        .copy-toast {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--primary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>34. JavaScript Object Inspector</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <input type="text" class="search-box" id="search-box" placeholder="Search keys or values...">
+                
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">JSON / JS Object Text</label>
+                            <button class="btn btn-sm" id="format-btn">Format Text</button>
+                        </div>
+                        <textarea id="obj-input" placeholder="Paste JSON or JS Object text here...">{
+  "user": {
+    "id": 10293,
+    "username": "coder_x",
+    "isActive": true,
+    "roles": ["admin", "editor"],
+    "profile": {
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "bio": "Loves coding and 3D graphics.",
+      "avatar": null
+    },
+    "settings": {
+      "theme": "dark",
+      "notifications": {
+        "email": true,
+        "push": false,
+        "sms": false
+      }
+    }
+  },
+  "metadata": {
+    "version": 1.4,
+    "lastLogin": "2023-10-25T14:32:00Z"
+  }
+}</textarea>
+                        <div id="error-msg" class="error-message"></div>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">Interactive Explorer</label>
+                            <button class="btn btn-sm btn-primary" id="expand-all-btn">Expand All</button>
+                        </div>
+                        <div class="tree-container" id="tree-container">
+                            <!-- Tree generated here -->
+                            <div id="toast" class="copy-toast">Copied path!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const objInput = document.getElementById('obj-input');
+        const treeContainer = document.getElementById('tree-container');
+        const searchBox = document.getElementById('search-box');
+        const errorMsg = document.getElementById('error-msg');
+        const formatBtn = document.getElementById('format-btn');
+        const expandAllBtn = document.getElementById('expand-all-btn');
+        const toast = document.getElementById('toast');
+
+        let parsedObject = null;
+        let maxDepthGlobal = 0;
+
+        const parseInput = () => {
+            const val = objInput.value.trim();
+            errorMsg.style.display = 'none';
+
+            if(!val) {
+                treeContainer.innerHTML = '';
+                treeContainer.appendChild(toast);
+                parsedObject = null;
+                if(window.update3DCubes) window.update3DCubes(0);
+                return;
+            }
+
+            try {
+                // Try JSON parse first
+                parsedObject = JSON.parse(val);
+                renderTree();
+            } catch(e) {
+                // Not strict JSON, try relaxed eval
+                try {
+                    // Safe-ish eval for JS object notation
+                    const fn = new Function(`return ${val};`);
+                    parsedObject = fn();
+                    renderTree();
+                } catch(err) {
+                    errorMsg.textContent = "Parse Error: " + err.message;
+                    errorMsg.style.display = 'block';
+                    treeContainer.innerHTML = '';
+                    treeContainer.appendChild(toast);
+                    parsedObject = null;
+                }
+            }
+        };
+
+        const getType = (value) => {
+            if (value === null) return 'null';
+            if (Array.isArray(value)) return 'array';
+            return typeof value;
+        };
+
+        const renderTree = () => {
+            const searchTerm = searchBox.value.toLowerCase();
+            treeContainer.innerHTML = '';
+            treeContainer.appendChild(toast); // Keep toast
+            maxDepthGlobal = 0;
+
+            if(!parsedObject) return;
+
+            const root = document.createElement('div');
+            root.className = 'tree-node';
+            buildNode(parsedObject, 'root', 'root', root, searchTerm, 1);
+            treeContainer.appendChild(root);
+
+            if(window.update3DCubes) window.update3DCubes(maxDepthGlobal);
+        };
+
+        const highlight = (text, term) => {
+            if(!term) return text;
+            const idx = String(text).toLowerCase().indexOf(term);
+            if(idx === -1) return text;
+            return String(text).substring(0, idx) + `<span class="highlight-search">${String(text).substring(idx, idx + term.length)}</span>` + String(text).substring(idx + term.length);
+        };
+
+        const buildNode = (value, key, path, parentEl, searchTerm, depth) => {
+            if(depth > maxDepthGlobal) maxDepthGlobal = depth;
+
+            const type = getType(value);
+            const rEl = document.createElement('div');
+            rEl.className = 'tree-row';
+
+            const matchKey = key !== 'root' && String(key).toLowerCase().includes(searchTerm);
+            const matchVal = type !== 'object' && type !== 'array' && String(value).toLowerCase().includes(searchTerm);
+            
+            let isExpanded = searchTerm !== '' && (matchKey || matchVal);
+
+            if (type === 'object' || type === 'array') {
+                const isArray = type === 'array';
+                const keys = Object.keys(value);
+                const isEmpty = keys.length === 0;
+
+                const toggle = document.createElement('span');
+                toggle.className = 'tree-toggle';
+                toggle.textContent = isEmpty ? '' : '-';
+
+                const keySpan = document.createElement('span');
+                keySpan.className = 'tree-key';
+                keySpan.innerHTML = key === 'root' ? (isArray ? 'Array' : 'Object') : `"${highlight(key, searchTerm)}": `;
+
+                const preview = document.createElement('span');
+                preview.style.color = 'var(--text-secondary)';
+                preview.textContent = isArray ? ` [${keys.length}]` : ` {${keys.length}}`;
+
+                let copyPath = document.createElement('span');
+                copyPath.className = 'path-copy';
+                copyPath.textContent = 'copy path';
+                copyPath.onclick = () => copyText(path);
+
+                rEl.appendChild(toggle);
+                rEl.appendChild(keySpan);
+                rEl.appendChild(preview);
+                if(key !== 'root') rEl.appendChild(copyPath);
+                
+                parentEl.appendChild(rEl);
+
+                if (!isEmpty) {
+                    const childrenWrap = document.createElement('div');
+                    childrenWrap.className = 'tree-children';
+
+                    let childMatches = false;
+
+                    keys.forEach(k => {
+                        let childPath = path === 'root' ? k : `${path}["${k}"]`;
+                        if(path !== 'root' && /^[a-zA-Z_$][a-zA-Z_$0-9]*$/.test(k)) {
+                            childPath = `${path}.${k}`;
+                        }
+                        const nodeContainer = document.createElement('div');
+                        nodeContainer.className = 'tree-node';
+                        
+                        const res = buildNode(value[k], k, childPath, nodeContainer, searchTerm, depth + 1);
+                        if(res) childMatches = true;
+                        
+                        childrenWrap.appendChild(nodeContainer);
+                    });
+
+                    parentEl.appendChild(childrenWrap);
+
+                    if(searchTerm !== '' && !childMatches && !matchKey) {
+                        parentEl.style.display = 'none';
+                        return false;
+                    }
+
+                    if(searchTerm === '' || childMatches) {
+                        isExpanded = true;
+                    } else {
+                        isExpanded = false;
+                        toggle.textContent = '+';
+                        childrenWrap.classList.add('collapsed');
+                    }
+
+                    toggle.onclick = () => {
+                        const collapsed = childrenWrap.classList.toggle('collapsed');
+                        toggle.textContent = collapsed ? '+' : '-';
+                    };
+                } else {
+                    if(searchTerm !== '' && !matchKey) {
+                        parentEl.style.display = 'none';
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                if(searchTerm !== '' && !matchKey && !matchVal) {
+                    parentEl.style.display = 'none';
+                    return false;
+                }
+
+                const keySpan = document.createElement('span');
+                keySpan.className = 'tree-key';
+                keySpan.innerHTML = `"${highlight(key, searchTerm)}": `;
+
+                const valSpan = document.createElement('span');
+                valSpan.className = `tree-value ${type}`;
+                let strVal = value;
+                if(type === 'string') strVal = `"${String(value)}"`;
+                valSpan.innerHTML = highlight(strVal, searchTerm);
+
+                let copyPath = document.createElement('span');
+                copyPath.className = 'path-copy';
+                copyPath.textContent = 'copy path';
+                copyPath.onclick = () => copyText(path);
+
+                rEl.appendChild(document.createTextNode('  '));
+                rEl.appendChild(keySpan);
+                rEl.appendChild(valSpan);
+                rEl.appendChild(copyPath);
+                parentEl.appendChild(rEl);
+
+                return true;
+            }
+        };
+
+        const copyText = (text) => {
+            navigator.clipboard.writeText(text);
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        };
+
+        objInput.addEventListener('input', parseInput);
+        searchBox.addEventListener('input', renderTree);
+
+        formatBtn.addEventListener('click', () => {
+            if(parsedObject) {
+                objInput.value = JSON.stringify(parsedObject, null, 2);
+            }
+        });
+
+        expandAllBtn.addEventListener('click', () => {
+            const toggles = document.querySelectorAll('.tree-toggle');
+            const wrappers = document.querySelectorAll('.tree-children');
+            
+            const isExpanding = expandAllBtn.textContent === 'Expand All';
+            
+            toggles.forEach(t => { if(t.textContent === '+' || t.textContent === '-') t.textContent = isExpanding ? '-' : '+'; });
+            wrappers.forEach(w => {
+                if(isExpanding) w.classList.remove('collapsed');
+                else w.classList.add('collapsed');
+            });
+            
+            expandAllBtn.textContent = isExpanding ? 'Collapse All' : 'Expand All';
+        });
+
+        document.addEventListener('DOMContentLoaded', parseInput);
+
+        // 3D Visualization: A nested cube structure with transparent layers
+        let scene, camera, renderer, cubesGroup;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(-6, 4, 8);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            cubesGroup = new THREE.Group();
+            scene.add(cubesGroup);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        const cubeColors = [0x5555ff, 0x55ff55, 0xff5555, 0xffff55, 0xff55ff];
+
+        window.update3DCubes = (depth) => {
+            if(!cubesGroup) return;
+
+            while(cubesGroup.children.length > 0) {
+                cubesGroup.remove(cubesGroup.children[0]);
+            }
+
+            if(depth === 0) return;
+
+            const maxLevels = Math.min(depth, 5);
+            
+            for(let i=0; i<maxLevels; i++) {
+                const size = 3 - (i * 0.5); // decreasing size
+                const geo = new THREE.BoxGeometry(size, size, size);
+                
+                // Outer cubes are wireframe or highly transparent
+                const matArgs = {
+                    color: cubeColors[i % cubeColors.length],
+                    transparent: true,
+                    opacity: 0.2 + (i * 0.15) // Inner cubes are more opaque
+                };
+
+                const mat = new THREE.MeshPhongMaterial(matArgs);
+                const cube = new THREE.Mesh(geo, mat);
+                
+                // Add wireframe edge to help visualize layers
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }));
+                cube.add(line);
+
+                cubesGroup.add(cube);
+            }
+            
+            cubesGroup.position.set(2, 0, 0);
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(cubesGroup && cubesGroup.children.length > 0) {
+                cubesGroup.rotation.y += 0.005;
+                cubesGroup.rotation.x += 0.002;
+                
+                // Make inner cubes rotate slightly faster
+                cubesGroup.children.forEach((c, idx) => {
+                    c.rotation.y = Math.sin(Date.now() * 0.001 * (idx+1)) * 0.5;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>

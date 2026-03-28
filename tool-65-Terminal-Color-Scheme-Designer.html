@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 65 - Terminal Color Scheme Designer - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (min-width: 900px) {
+            .split-view {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 50px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .slider {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        /* ANSI Color Matrix Grid */
+        .color-matrix {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            margin-top: 1rem;
+        }
+
+        .color-swatch {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+            z-index: 10;
+            border-color: #fff;
+        }
+
+        .swatch-label {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .color-swatch:hover .swatch-label {
+            opacity: 1;
+        }
+
+        /* Terminal Preview */
+        .terminal-preview {
+            background: #1e1e1e;
+            /* Default until customized */
+            color: #cccccc;
+            border-radius: var(--radius-md);
+            border: 1px solid #333;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .term-header {
+            background: #333;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .term-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .term-btn.red {
+            background: #ff5f56;
+        }
+
+        .term-btn.yel {
+            background: #ffbd2e;
+        }
+
+        .term-btn.grn {
+            background: #27c93f;
+        }
+
+        .term-title {
+            margin-left: 10px;
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        .term-body {
+            padding: 1.5rem;
+            line-height: 1.5;
+            min-height: 250px;
+        }
+
+        .export-btns {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>65. Terminal Color Scheme Designer</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <label>Base Hue (Seed)</label>
+                            <input type="color" id="base-color" value="#56b6c2">
+                        </div>
+
+                        <div class="control-group">
+                            <label>Global Saturation</label>
+                            <input type="range" class="slider" id="sat-slider" min="0" max="100" value="70">
+                        </div>
+
+                        <div class="control-group">
+                            <label>Global Lightness (Brights)</label>
+                            <input type="range" class="slider" id="light-slider" min="0" max="100" value="65">
+                        </div>
+
+                        <div class="control-group" style="margin-top:2rem;">
+                            <label>Background Contrast</label>
+                            <input type="range" class="slider" id="bg-slider" min="0" max="25" value="5">
+                        </div>
+
+                        <div style="margin-top:2rem;">
+                            <h4 style="margin-top:0; color:var(--text-secondary);">ANSI 16 Matrix</h4>
+                            <div class="color-matrix" id="ansi-matrix">
+                                <!-- Swatches injected -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview & Export -->
+                    <div>
+                        <h3 style="margin-top:0;">Live Terminal Preview</h3>
+                        <div class="terminal-preview" id="term-container">
+                            <div class="term-header">
+                                <div class="term-btn red"></div>
+                                <div class="term-btn yel"></div>
+                                <div class="term-btn grn"></div>
+                                <div class="term-title">user@devbox: ~</div>
+                            </div>
+                            <div class="term-body" id="term-body">
+                                <div><span style="color:var(--term-grn);">user@devbox</span>:<span
+                                        style="color:var(--term-blu);">~</span>$ ls -la</div>
+                                <div><span style="color:var(--term-blu); font-weight:bold;">drwxr-xr-x</span> 2 user
+                                    user <span style="color:var(--term-cyn);">4096</span> Mar 18 10:00 <span
+                                        style="color:var(--term-blu);">.</span></div>
+                                <div><span style="color:var(--term-mag);">drwxr-xr-x</span> 5 user user <span
+                                        style="color:var(--term-cyn);">4096</span> Mar 18 09:30 <span
+                                        style="color:var(--term-blu);">..</span></div>
+                                <div><span style="color:var(--term-wht);">-rw-r--r--</span> 1 user user <span
+                                        style="color:var(--term-cyn);">220</span> Mar 18 09:30 <span
+                                        style="color:var(--term-wht);">.bash_logout</span></div>
+                                <div><span style="color:var(--term-yel);">-rwxr-xr-x</span> 1 user user <span
+                                        style="color:var(--term-cyn);">3771</span> Mar 18 09:30 <span
+                                        style="color:var(--term-bln); font-weight:bold;">script.sh</span></div>
+                                <div><span style="color:var(--term-red);">-rw-r--r--</span> 1 user user <span
+                                        style="color:var(--term-cyn);">807</span> Mar 18 09:30 <span
+                                        style="color:var(--term-red);">error.log</span></div>
+                                <br>
+                                <div><span style="color:var(--term-grn);">user@devbox</span>:<span
+                                        style="color:var(--term-blu);">~</span>$ cat test.js</div>
+                                <div><span style="color:var(--term-mag);">const</span> <span
+                                        style="color:var(--term-yel);">init</span> = () <span
+                                        style="color:var(--term-mag);">=></span> {</div>
+                                <div> console.<span style="color:var(--term-blu);">log</span>(<span
+                                        style="color:var(--term-grn);">"Terminal Theme Loaded!"</span>);</div>
+                                <div>};</div>
+                                <br>
+                                <div><span
+                                        style="color:var(--term-blm); background:var(--term-wht); color:var(--term-blk);">
+                                        OVERWRITE </span> <span style="color:var(--term-grn);">user@devbox</span>:<span
+                                        style="color:var(--term-blu);">~</span>$ <span class="cursor"
+                                        style="background:var(--term-wht); color:var(--term-blk); display:inline-block; width:8px; height:15px; vertical-align:text-bottom; animation: blink 1s step-end infinite;"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="export-btns">
+                            <button class="btn btn-primary" onclick="exportTheme('vscode')">Export VS Code</button>
+                            <button class="btn" style="background:#555;" onclick="exportTheme('alacritty')">Export
+                                Alacritty</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <script>
+        const baseColorIn = document.getElementById('base-color');
+        const satSlider = document.getElementById('sat-slider');
+        const lightSlider = document.getElementById('light-slider');
+        const bgSlider = document.getElementById('bg-slider');
+
+        const ansiMatrix = document.getElementById('ansi-matrix');
+        const termContainer = document.getElementById('term-container');
+        const termBody = document.getElementById('term-body');
+
+        // Color Math Utils
+        function hexToHSL(H) {
+            let r = 0, g = 0, b = 0;
+            if (H.length == 4) {
+                r = "0x" + H[1] + H[1];
+                g = "0x" + H[2] + H[2];
+                b = "0x" + H[3] + H[3];
+            } else if (H.length == 7) {
+                r = "0x" + H[1] + H[2];
+                g = "0x" + H[3] + H[4];
+                b = "0x" + H[5] + H[6];
+            }
+            r /= 255; g /= 255; b /= 255;
+            let cmin = Math.min(r, g, b),
+                cmax = Math.max(r, g, b),
+                delta = cmax - cmin,
+                h = 0, s = 0, l = 0;
+
+            if (delta == 0) h = 0;
+            else if (cmax == r) h = ((g - b) / delta) % 6;
+            else if (cmax == g) h = (b - r) / delta + 2;
+            else h = (r - g) / delta + 4;
+
+            h = Math.round(h * 60);
+            if (h < 0) h += 360;
+            l = (cmax + cmin) / 2;
+            s = delta == 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+            s = +(s * 100).toFixed(1);
+            l = +(l * 100).toFixed(1);
+
+            return { h, s, l };
+        }
+
+        function hslToHex(h, s, l) {
+            s /= 100; l /= 100;
+            let c = (1 - Math.abs(2 * l - 1)) * s,
+                x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+                m = l - c / 2,
+                r = 0, g = 0, b = 0;
+            if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+            else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+            else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+            else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+            else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+            else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
+
+            r = Math.round((r + m) * 255).toString(16);
+            g = Math.round((g + m) * 255).toString(16);
+            b = Math.round((b + m) * 255).toString(16);
+
+            if (r.length == 1) r = "0" + r;
+            if (g.length == 1) g = "0" + g;
+            if (b.length == 1) b = "0" + b;
+            return "#" + r + g + b;
+        }
+
+        let currentScheme = {};
+
+        function generateScheme() {
+            const baseHSL = hexToHSL(baseColorIn.value);
+            const S = parseInt(satSlider.value);
+            const L = parseInt(lightSlider.value); // Normal bright
+            const L_dim = L - 15 > 10 ? L - 15 : 10; // Normal dull
+            const L_bg = parseInt(bgSlider.value); // Dark BG
+
+            currentScheme = {
+                bg: hslToHex(baseHSL.h, 15, L_bg), // BG slightly tinted
+                fg: hslToHex(baseHSL.h, 10, 85),
+                cursor: hslToHex(baseHSL.h, S, 60),
+
+                // Normal ANSI
+                black: hslToHex(baseHSL.h, 10, L_bg + 10),
+                red: hslToHex(0, S, L_dim),
+                green: hslToHex(120, S, L_dim),
+                yellow: hslToHex(60, S, L_dim),
+                blue: hslToHex(240, S, L_dim),
+                magenta: hslToHex(300, S, L_dim),
+                cyan: hslToHex(180, S, L_dim),
+                white: hslToHex(baseHSL.h, 10, L_dim + 20),
+
+                // Bright ANSI
+                br_black: hslToHex(baseHSL.h, 10, L_bg + 20),
+                br_red: hslToHex(0, S, L),
+                br_green: hslToHex(120, S, L),
+                br_yellow: hslToHex(60, S, L),
+                br_blue: hslToHex(240, S, L),
+                br_magenta: hslToHex(300, S, L),
+                br_cyan: hslToHex(180, S, L),
+                br_white: hslToHex(baseHSL.h, 10, 95)
+            };
+
+            updateUI();
+
+            // Pulse 3D Terminal Keys
+            if (window.pulseTerminal) window.pulseTerminal(currentScheme);
+        }
+
+        function updateUI() {
+            // Update terminal CSS Variables
+            termContainer.style.backgroundColor = currentScheme.bg;
+            termContainer.style.color = currentScheme.fg;
+
+            const styleBlock = `
+                ${currentScheme.black}
+                ${currentScheme.red}
+                ${currentScheme.green}
+                ${currentScheme.yellow}
+                ${currentScheme.blue}
+                ${currentScheme.magenta}
+                ${currentScheme.cyan}
+                ${currentScheme.white}
+                ${currentScheme.br_black}
+                ${currentScheme.br_red}
+                ${currentScheme.br_green}
+                ${currentScheme.br_yellow}
+                ${currentScheme.br_blue}
+                ${currentScheme.br_magenta}
+                ${currentScheme.br_cyan}
+                ${currentScheme.br_white}
+            `;
+
+            // Apply via inline style vars on term-body
+            termBody.style.setProperty('--term-blk', currentScheme.black);
+            termBody.style.setProperty('--term-red', currentScheme.red);
+            termBody.style.setProperty('--term-grn', currentScheme.green);
+            termBody.style.setProperty('--term-yel', currentScheme.yellow);
+            termBody.style.setProperty('--term-blu', currentScheme.blue);
+            termBody.style.setProperty('--term-mag', currentScheme.magenta);
+            termBody.style.setProperty('--term-cyn', currentScheme.cyan);
+            termBody.style.setProperty('--term-wht', currentScheme.white);
+            termBody.style.setProperty('--term-bln', currentScheme.br_blue); // Bright blue mapping
+            termBody.style.setProperty('--term-blm', currentScheme.br_magenta); // Bright magenta 
+
+            renderMatrix();
+        }
+
+        function renderMatrix() {
+            ansiMatrix.innerHTML = '';
+
+            const keys = [
+                'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
+                'br_black', 'br_red', 'br_green', 'br_yellow', 'br_blue', 'br_magenta', 'br_cyan', 'br_white'
+            ];
+
+            const labels = [
+                'BLK', 'RED', 'GRN', 'YEL', 'BLU', 'MAG', 'CYN', 'WHT',
+                'BBLK', 'BRED', 'BGRN', 'BYEL', 'BBLU', 'BMAG', 'BCYN', 'BWHT'
+            ];
+
+            keys.forEach((k, idx) => {
+                const hex = currentScheme[k];
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = hex;
+                swatch.title = hex;
+
+                swatch.innerHTML = `<span class="swatch-label">${labels[idx]}</span>`;
+                ansiMatrix.appendChild(swatch);
+            });
+        }
+
+        window.exportTheme = (type) => {
+            let configStr = '';
+            let ext = '';
+
+            if (type === 'vscode') {
+                const vsTheme = {
+                    "name": "Custom ANSI Theme",
+                    "colors": {
+                        "terminal.background": currentScheme.bg,
+                        "terminal.foreground": currentScheme.fg,
+                        "terminalCursor.background": currentScheme.cursor,
+                        "terminalCursor.foreground": currentScheme.bg,
+
+                        "terminal.ansiBlack": currentScheme.black,
+                        "terminal.ansiRed": currentScheme.red,
+                        "terminal.ansiGreen": currentScheme.green,
+                        "terminal.ansiYellow": currentScheme.yellow,
+                        "terminal.ansiBlue": currentScheme.blue,
+                        "terminal.ansiMagenta": currentScheme.magenta,
+                        "terminal.ansiCyan": currentScheme.cyan,
+                        "terminal.ansiWhite": currentScheme.white,
+
+                        "terminal.ansiBrightBlack": currentScheme.br_black,
+                        "terminal.ansiBrightRed": currentScheme.br_red,
+                        "terminal.ansiBrightGreen": currentScheme.br_green,
+                        "terminal.ansiBrightYellow": currentScheme.br_yellow,
+                        "terminal.ansiBrightBlue": currentScheme.br_blue,
+                        "terminal.ansiBrightMagenta": currentScheme.br_magenta,
+                        "terminal.ansiBrightCyan": currentScheme.br_cyan,
+                        "terminal.ansiBrightWhite": currentScheme.br_white
+                    }
+                };
+                configStr = JSON.stringify(vsTheme, null, 2);
+                ext = 'json';
+            }
+            else if (type === 'alacritty') {
+                configStr = `
+colors:
+  primary:
+    background: '${currentScheme.bg}'
+    foreground: '${currentScheme.fg}'
+  cursor:
+    text: '${currentScheme.bg}'
+    cursor: '${currentScheme.cursor}'
+  normal:
+    black:   '${currentScheme.black}'
+    red:     '${currentScheme.red}'
+    green:   '${currentScheme.green}'
+    yellow:  '${currentScheme.yellow}'
+    blue:    '${currentScheme.blue}'
+    magenta: '${currentScheme.magenta}'
+    cyan:    '${currentScheme.cyan}'
+    white:   '${currentScheme.white}'
+  bright:
+    black:   '${currentScheme.br_black}'
+    red:     '${currentScheme.br_red}'
+    green:   '${currentScheme.br_green}'
+    yellow:  '${currentScheme.br_yellow}'
+    blue:    '${currentScheme.br_blue}'
+    magenta: '${currentScheme.br_magenta}'
+    cyan:    '${currentScheme.br_cyan}'
+    white:   '${currentScheme.br_white}'
+                `.trim();
+                ext = 'yml';
+            }
+
+            const blob = new Blob([configStr], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `terminal-theme.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        // Event Listeners
+        baseColorIn.addEventListener('input', generateScheme);
+        satSlider.addEventListener('input', generateScheme);
+        lightSlider.addEventListener('input', generateScheme);
+        bgSlider.addEventListener('input', generateScheme);
+
+        // Init
+        generateScheme();
+
+
+        // 3D Visualization: A 3D terminal with glowing keys
+        let scene, camera, renderer, termGroup;
+        let keys = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 5, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+
+            termGroup = new THREE.Group();
+            scene.add(termGroup);
+
+            // Shift right to balance layout
+            scene.position.x = 2;
+
+            build3DTerminal();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function build3DTerminal() {
+            // Monitor casing
+            const casingGeo = new THREE.BoxGeometry(4.5, 3.5, 0.5);
+            const casingMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const casing = new THREE.Mesh(casingGeo, casingMat);
+            casing.position.y = 2.5;
+            termGroup.add(casing);
+
+            // Screen
+            const screenGeo = new THREE.BoxGeometry(4.0, 3.0, 0.51);
+            const screenMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const screen = new THREE.Mesh(screenGeo, screenMat);
+            screen.position.y = 2.5;
+            termGroup.add(screen);
+
+            // Keyboard base
+            const kbGeo = new THREE.BoxGeometry(5, 0.2, 2.5);
+            const kbMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+            const kb = new THREE.Mesh(kbGeo, kbMat);
+            kb.position.set(0, 0, 1.5);
+            kb.rotation.x = 0.1; // slight tilt
+            termGroup.add(kb);
+
+            // Keys
+            const keyGeo = new THREE.BoxGeometry(0.3, 0.15, 0.3);
+            const keyMat = new THREE.MeshPhongMaterial({ color: 0x333333, emissive: 0x000000 });
+
+            // Build a grid of keys
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 12; col++) {
+                    const k = new THREE.Mesh(keyGeo, keyMat.clone());
+                    k.position.set(
+                        (col * 0.38) - 2.1,
+                        0.1,
+                        (row * 0.4) - 0.6
+                    );
+                    kb.add(k);
+                    keys.push(k);
+                }
+            }
+
+            // Tilt whole group
+            termGroup.rotation.y = -0.3;
+        }
+
+        window.pulseTerminal = (schemeColors) => {
+            if (!keys.length) return;
+
+            // Map some scheme colors to emit on keys
+            const emitColors = [
+                new THREE.Color(schemeColors.cyan),
+                new THREE.Color(schemeColors.green),
+                new THREE.Color(schemeColors.magenta),
+                new THREE.Color(schemeColors.yellow)
+            ];
+
+            keys.forEach(k => {
+                // Randomly assign a glow
+                if (Math.random() > 0.8) {
+                    const col = emitColors[Math.floor(Math.random() * emitColors.length)];
+                    k.material.emissive.copy(col);
+                    k.material.emissiveIntensity = 1.0;
+                    k.position.y = 0.05; // depress key slightly
+
+                    setTimeout(() => {
+                        k.material.emissive.setHex(0x000000);
+                        k.position.y = 0.1; // release
+                    }, 400);
+                }
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (termGroup) {
+                // slow float 
+                termGroup.position.y = Math.sin(Date.now() * 0.002) * 0.1;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            setTimeout(() => { if (window.pulseTerminal) window.pulseTerminal(currentScheme); }, 500);
+        });
+
+    </script>
+    <style>
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
+</body>
+
+</html>

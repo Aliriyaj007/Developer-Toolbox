@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 48 - Date Difference Calculator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1.5fr; }
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="date"], input[type="time"] {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+        }
+
+        .date-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .date-row input[type="time"] { flex: 0.5; }
+        .date-row input[type="date"] { flex: 1; }
+
+        .results-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .result-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            text-align: center;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .result-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.05);
+            border-color: var(--primary-color);
+        }
+
+        .res-val {
+            font-size: 1.8rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .res-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .human-readable {
+            background: rgba(86, 182, 194, 0.1);
+            border: 1px solid rgba(86, 182, 194, 0.3);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            color: #56b6c2;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-top: 1rem;
+            border: 1px dashed var(--border-color);
+        }
+
+        /* Toggles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>48. Date Difference Calculator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <div>
+                        <div class="input-group">
+                            <label>Start Date</label>
+                            <div class="date-row">
+                                <input type="date" id="date-start">
+                                <input type="time" id="time-start" value="00:00">
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>End Date</label>
+                            <div class="date-row">
+                                <input type="date" id="date-end">
+                                <input type="time" id="time-end" value="00:00">
+                            </div>
+                        </div>
+
+                        <div class="control-row">
+                            <div style="display: flex; flex-direction: column;">
+                                <strong style="color:var(--text-primary)">Include End Date</strong>
+                                <span style="font-size:0.8rem; color:var(--text-secondary)">Adds 1 day to the total span</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="inclusive-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="control-row" style="margin-top: 0.5rem;">
+                            <button class="btn btn-sm" id="btn-today-start">Start = Today</button>
+                            <button class="btn btn-sm" id="btn-today-end">End = Today</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="human-readable" id="human-output">
+                            Select valid dates to see the difference.
+                        </div>
+
+                        <div class="results-matrix">
+                            <div class="result-card">
+                                <div class="res-val" id="res-years">-</div>
+                                <div class="res-label">Years</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="res-val" id="res-months">-</div>
+                                <div class="res-label">Months</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="res-val" id="res-weeks">-</div>
+                                <div class="res-label">Weeks</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="res-val" id="res-days">-</div>
+                                <div class="res-label">Days</div>
+                            </div>
+                            <div class="result-card" style="border-color: rgba(86,182,194,0.5);">
+                                <div class="res-val" id="res-workdays" style="color: #56b6c2;">-</div>
+                                <div class="res-label">Business Days</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="res-val" id="res-hours">-</div>
+                                <div class="res-label">Hours</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="res-val" id="res-minutes">-</div>
+                                <div class="res-label">Minutes</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="res-val" id="res-seconds">-</div>
+                                <div class="res-label">Seconds</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/date-fns.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        const dateStart = document.getElementById('date-start');
+        const timeStart = document.getElementById('time-start');
+        const dateEnd = document.getElementById('date-end');
+        const timeEnd = document.getElementById('time-end');
+        
+        const inclusiveToggle = document.getElementById('inclusive-toggle');
+        const humanOutput = document.getElementById('human-output');
+
+        const fields = {
+            years: document.getElementById('res-years'),
+            months: document.getElementById('res-months'),
+            weeks: document.getElementById('res-weeks'),
+            days: document.getElementById('res-days'),
+            workdays: document.getElementById('res-workdays'),
+            hours: document.getElementById('res-hours'),
+            minutes: document.getElementById('res-minutes'),
+            seconds: document.getElementById('res-seconds')
+        };
+
+        const formatNumber = (num) => new Intl.NumberFormat().format(num);
+
+        const initDates = () => {
+            const now = new Date();
+            // Default Start: 1st of current month
+            const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            dateStart.value = dateFns.format(defaultStart, 'yyyy-MM-dd');
+            // Default End: Today
+            dateEnd.value = dateFns.format(now, 'yyyy-MM-dd');
+            calculateDiff();
+        };
+
+        const calculateDiff = () => {
+            if(!dateStart.value || !dateEnd.value) return;
+
+            // Parse strings
+            let start = dateFns.parseISO(`${dateStart.value}T${timeStart.value}`);
+            let end = dateFns.parseISO(`${dateEnd.value}T${timeEnd.value}`);
+
+            // If invalid dates
+            if(!dateFns.isValid(start) || !dateFns.isValid(end)) {
+                humanOutput.textContent = "Invalid dates provided.";
+                Object.values(fields).forEach(f => f.textContent = '-');
+                return;
+            }
+
+            // If reverse
+            const isReverse = dateFns.isAfter(start, end);
+            if(isReverse) {
+                const temp = start;
+                start = end;
+                end = temp;
+            }
+
+            if(inclusiveToggle.checked) {
+                end = dateFns.addDays(end, 1);
+            }
+
+            // Calculations
+            const years = dateFns.differenceInYears(end, start);
+            const months = dateFns.differenceInMonths(end, start);
+            const weeks = dateFns.differenceInWeeks(end, start);
+            const days = dateFns.differenceInDays(end, start);
+            const workdays = dateFns.differenceInBusinessDays(end, start);
+            const hours = dateFns.differenceInHours(end, start);
+            const minutes = dateFns.differenceInMinutes(end, start);
+            const seconds = dateFns.differenceInSeconds(end, start);
+
+            fields.years.textContent = formatNumber(years);
+            fields.months.textContent = formatNumber(months);
+            fields.weeks.textContent = formatNumber(weeks);
+            fields.days.textContent = formatNumber(days);
+            fields.workdays.textContent = formatNumber(workdays);
+            fields.hours.textContent = formatNumber(hours);
+            fields.minutes.textContent = formatNumber(minutes);
+            fields.seconds.textContent = formatNumber(seconds);
+
+            // Distance in words
+            let distance = dateFns.formatDistance(start, end);
+            if(inclusiveToggle.checked && days === 1) distance = "1 day"; // override edge case
+            
+            humanOutput.innerHTML = `
+                The timeline spans exactly <br>
+                <span style="font-size: 1.5rem; font-weight: bold;">${distance}</span><br>
+                <small style="color:var(--text-secondary)">${isReverse ? '(Note: Start date was chronologically after End date)' : ''}</small>
+            `;
+
+            // Trigger Calendar 3D Flip
+            if(window.triggerCalendarFlip) window.triggerCalendarFlip(days);
+        };
+
+        [dateStart, timeStart, dateEnd, timeEnd, inclusiveToggle].forEach(el => {
+            el.addEventListener('input', calculateDiff);
+            el.addEventListener('change', calculateDiff);
+        });
+
+        document.getElementById('btn-today-start').addEventListener('click', () => {
+            dateStart.value = dateFns.format(new Date(), 'yyyy-MM-dd');
+            timeStart.value = "00:00";
+            calculateDiff();
+        });
+
+        document.getElementById('btn-today-end').addEventListener('click', () => {
+            dateEnd.value = dateFns.format(new Date(), 'yyyy-MM-dd');
+            timeEnd.value = "00:00";
+            calculateDiff();
+        });
+
+
+        // 3D Visualization: A perpetual calendar with pages flipping
+        let scene, camera, renderer, calendarGroup;
+        let pages = [];
+        let flipQueue = 0;
+        let activeFlip = null; // currently flipping page
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            // Slight shadows
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 5);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            calendarGroup = new THREE.Group();
+            scene.add(calendarGroup);
+
+            // Calendar Base / Backboard
+            const baseGeo = new THREE.BoxGeometry(4, 5, 0.2);
+            const baseMat = new THREE.MeshPhongMaterial({ color: 0x223344 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.z = -0.1;
+            calendarGroup.add(base);
+
+            // Calendar Rings
+            const ringGeo = new THREE.TorusGeometry(0.3, 0.05, 16, 32);
+            const ringMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 100 });
+            for(let i=-1; i<=1; i+=2) {
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.position.set(i * 1.2, 2.5, 0.1);
+                ring.rotation.y = Math.PI / 2;
+                calendarGroup.add(ring);
+            }
+
+            // Pre-generate some pages
+            for(let i=0; i<3; i++) {
+                createPage(i);
+            }
+
+            calendarGroup.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function createPage(offsetZ) {
+            // Page uses a plane, pivots from top edge
+            const pageGeo = new THREE.PlaneGeometry(3.6, 4.4);
+            const pageMat = new THREE.MeshPhongMaterial({ 
+                color: 0xffffff, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 1
+            });
+            const mesh = new THREE.Mesh(pageGeo, pageMat);
+            
+            // To pivot from top, we need to create a group and offset mesh down inside group
+            const pivot = new THREE.Group();
+            pivot.position.set(0, 2.3, offsetZ * 0.01 + 0.1); // top hinge position
+
+            mesh.position.y = -2.2; // shift mesh down so its top aligns with group origin
+            pivot.add(mesh);
+            
+            calendarGroup.add(pivot);
+            pages.unshift({ group: pivot, mesh: mesh }); // Add to front of array (visually back)
+        }
+
+        window.triggerCalendarFlip = (daysDiff) => {
+            // Cap visual flips
+            const visualFlips = Math.min(daysDiff, 10); // Don't flip 365 times visually
+            flipQueue = visualFlips;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(calendarGroup) {
+                calendarGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+                calendarGroup.rotation.x = Math.sin(Date.now() * 0.0015) * 0.05;
+
+                // Handle flipping animation
+                if(!activeFlip && flipQueue > 0 && pages.length > 1) {
+                    activeFlip = pages.pop();
+                    flipQueue--;
+                }
+
+                if(activeFlip) {
+                    // Rotate on X axis upwards (flip the page)
+                    activeFlip.group.rotation.x += 0.15;
+                    
+                    // Fade out as it flips over
+                    if(activeFlip.group.rotation.x > Math.PI / 2) {
+                        activeFlip.mesh.material.opacity -= 0.1;
+                    }
+
+                    if(activeFlip.group.rotation.x >= Math.PI) {
+                        // Finished flip
+                        calendarGroup.remove(activeFlip.group);
+                        
+                        // Create a new page at the back to replenish
+                        createPage(pages.length);
+
+                        activeFlip = null;
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            if(window.dateFns) {
+                initDates();
+            } else {
+                // Wait for CDN script
+                setTimeout(initDates, 500);
+            }
+        });
+    </script>
+</body>
+</html>

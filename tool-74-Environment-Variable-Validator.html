@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 74 - Environment Variable Validator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+
+        .controls-panel {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 800px;
+        }
+
+        .code-area {
+            background: var(--bg-main);
+            color: #7ee787;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            resize: vertical;
+            outline: none;
+            white-space: pre;
+            min-height: 150px;
+        }
+
+        .btn-action {
+            background: var(--primary-color);
+            color: #000; border: none; padding: 1rem; border-radius: var(--radius-sm); cursor: pointer; font-weight: bold; font-size: 1rem; width: 100%;
+            transition: all 0.2s;
+        }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-add { background: rgba(255,255,255,0.1); color: #fff; padding: 0.5rem; border: 1px dashed var(--border-color); cursor:pointer;}
+        .btn-add:hover { background: rgba(255,255,255,0.2); }
+
+        .schema-builder {
+            display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; max-height: 250px; border: 1px solid var(--border-color); padding: 0.5rem; background: rgba(0,0,0,0.2);
+        }
+        .schema-row {
+            display: flex; gap: 0.5rem; align-items: center; background: rgba(0,0,0,0.5); padding: 0.5rem; border: 1px solid #333;
+        }
+        .schema-input { width: 120px; font-family: var(--font-mono); font-size: 0.8rem; background: #000; border: 1px solid #444; color: #fff; padding: 4px; }
+        .schema-select { background: #000; border: 1px solid #444; color: #fff; font-size: 0.8rem; padding: 4px; }
+        .schema-req { display: flex; align-items: center; font-size: 0.75rem; gap: 4px; color: #aaa; }
+        .schema-del { background: transparent; color: #ff5555; border: none; cursor: pointer; font-size: 1rem; margin-left: auto;}
+
+        .result-panel {
+            background: rgba(86,182,194,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+
+        .status-banner {
+            background: #2a2a35; padding: 1rem; text-align: center; border-radius: var(--radius-sm); font-weight: bold; font-size: 1.2rem;
+            color: #7ee787; border: 1px solid #7ee787;
+        }
+        .status-banner.fail { color: #ff5555; border-color: #ff5555; background: rgba(255,85,85,0.1); }
+
+        table.val-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .val-table th { text-align: left; padding: 8px; border-bottom: 2px solid #555; color: var(--text-secondary); }
+        .val-table td { padding: 8px; border-bottom: 1px solid #333; }
+        .td-name { font-family: var(--font-mono); font-weight: bold; }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: #333; }
+        .badge.pass { background: #1e4d2b; color: #7ee787; }
+        .badge.fail { background: #4d1e1e; color: #ff5555; }
+        .badge.warn { background: #4d4d1e; color: #ffaa00; }
+        .badge.type { background: #2b3a4d; color: #bb86fc; }
+
+        .coercion-box {
+            background: #000; font-family: var(--font-mono); font-size: 0.85rem; color: #ddd; padding: 1rem; border: 1px solid #333; white-space: pre-wrap;
+        }
+
+        /* 3D Canvas wrapper */
+        .graph-container {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 250px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+            margin-top: 1rem;
+            flex-shrink: 0;
+        }
+
+    </style>
+</head>
+<body class="theme-dark">
+    
+    <main class="main-content" style="padding-top:2rem;">
+        <div class="container" style="max-width: 1400px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>74. Environment Variable Validator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="split-view">
+                    
+                    <!-- Left: Input -->
+                    <div class="controls-panel">
+                        <h3 style="margin:0; color:var(--primary-color);">Schema Builder</h3>
+                        
+                        <div class="schema-builder" id="schema-builder">
+                            <!-- Rows -->
+                        </div>
+                        <button class="btn-add" id="btn-add-schema">+ Add Expected Variable</button>
+
+                        <hr style="border-color:#333; margin: 0.5rem 0;">
+
+                        <h3 style="margin:0; color:var(--primary-color);">Paste .env Content</h3>
+                        <textarea class="code-area" id="env-input" spellcheck="false">PORT=8080
+DATABASE_URL=postgres://user:pass@localhost:5432/db
+DEBUG_MODE=true
+API_KEY=</textarea>
+
+                        <button class="btn-action" id="btn-validate">Validate Config</button>
+
+                        <!-- 3D Visualization -->
+                        <div class="graph-container" id="graph-container">
+                            <!-- 3D Dashboard Gauge Panel -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Results -->
+                    <div class="result-panel">
+                        <div class="status-banner" id="status-banner">Ready to Validate</div>
+
+                        <h3 style="margin:1rem 0 0; color:var(--text-main);">Validation Matrix</h3>
+                        <table class="val-table">
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Status</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="val-tbody">
+                                <tr><td colspan="3" style="text-align:center; color:#555;">No validation run.</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h3 style="margin:1rem 0 0; color:var(--text-main);">Type Coercion Preview (JSON)</h3>
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.5rem;">If exported as a typed Javascript config object:</div>
+                        <div class="coercion-box" id="coercion-box">{}</div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        const schemaBuilder = document.getElementById('schema-builder');
+        const btnAddSchema = document.getElementById('btn-add-schema');
+        const envInput = document.getElementById('env-input');
+        const btnValidate = document.getElementById('btn-validate');
+        const statusBanner = document.getElementById('status-banner');
+        const valTbody = document.getElementById('val-tbody');
+        const coercionBox = document.getElementById('coercion-box');
+
+        // Initial Schema
+        const initialSchema = [
+            { key: 'PORT', type: 'number', req: true },
+            { key: 'DATABASE_URL', type: 'url', req: true },
+            { key: 'DEBUG_MODE', type: 'boolean', req: false },
+            { key: 'API_KEY', type: 'string', req: true }
+        ];
+
+        function renderSchemaRows() {
+            schemaBuilder.innerHTML = '';
+            initialSchema.forEach((s, idx) => {
+                const row = document.createElement('div');
+                row.className = 'schema-row';
+                
+                row.innerHTML = `
+                    <input type="text" class="schema-input inp-key" value="${s.key}" placeholder="VAR_NAME">
+                    <select class="schema-select inp-type">
+                        <option value="string" ${s.type==='string'?'selected':''}>String</option>
+                        <option value="number" ${s.type==='number'?'selected':''}>Number</option>
+                        <option value="boolean" ${s.type==='boolean'?'selected':''}>Boolean (true/false)</option>
+                        <option value="url" ${s.type==='url'?'selected':''}>URL</option>
+                    </select>
+                    <label class="schema-req"><input type="checkbox" class="inp-req" ${s.req?'checked':''}> Required</label>
+                    <button class="schema-del" data-idx="${idx}">×</button>
+                `;
+                schemaBuilder.appendChild(row);
+            });
+
+            document.querySelectorAll('.schema-del').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    initialSchema.splice(e.target.dataset.idx, 1);
+                    renderSchemaRows();
+                });
+            });
+
+            document.querySelectorAll('.inp-key, .inp-type, .inp-req').forEach(inp => {
+                inp.addEventListener('change', syncSchemaState);
+            });
+        }
+
+        function syncSchemaState() {
+            const rows = schemaBuilder.querySelectorAll('.schema-row');
+            initialSchema.length = 0; // clear
+            rows.forEach(r => {
+                const key = r.querySelector('.inp-key').value.trim();
+                const type = r.querySelector('.inp-type').value;
+                const req = r.querySelector('.inp-req').checked;
+                if(key) initialSchema.push({ key, type, req });
+            });
+        }
+
+        btnAddSchema.addEventListener('click', () => {
+            initialSchema.push({ key: 'NEW_VAR', type: 'string', req: false });
+            renderSchemaRows();
+        });
+
+        // Parse ENV
+        function parseEnvStr(str) {
+            const lines = str.split('\n');
+            const env = {};
+            lines.forEach(l => {
+                l = l.trim();
+                if(!l || l.startsWith('#')) return;
+                const eqIdx = l.indexOf('=');
+                if(eqIdx > 0) {
+                    const key = l.slice(0, eqIdx).trim();
+                    let val = l.slice(eqIdx+1).trim();
+                    // strip quotes if wrapped
+                    if((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                        val = val.slice(1, -1);
+                    }
+                    env[key] = val;
+                }
+            });
+            return env;
+        }
+
+        function validate() {
+            syncSchemaState();
+            const rawEnv = parseEnvStr(envInput.value);
+            const results = [];
+            let allValid = true;
+            const coercedObject = {};
+
+            // Check against Schema
+            initialSchema.forEach(s => {
+                const rawVal = rawEnv[s.key];
+                const res = { key: s.key, status: 'pass', reason: '', type: s.type };
+                
+                if(rawVal === undefined || rawVal === '') {
+                    if(s.req) {
+                        res.status = 'fail'; res.reason = 'Missing required variable';
+                        allValid = false;
+                    } else {
+                        res.status = 'warn'; res.reason = 'Missing optional variable';
+                    }
+                } else {
+                    // Type Checking & Coercion
+                    if(s.type === 'number') {
+                        const num = Number(rawVal);
+                        if(isNaN(num)) {
+                            res.status = 'fail'; res.reason = `"${rawVal}" is not a valid number`;
+                            allValid = false;
+                        } else {
+                            res.reason = 'Valid number';
+                            coercedObject[s.key] = num;
+                        }
+                    } else if(s.type === 'boolean') {
+                        const lower = rawVal.toLowerCase();
+                        if(lower === 'true' || lower === '1' || lower === 'yes') {
+                            res.reason = 'Coerced to true'; coercedObject[s.key] = true;
+                        } else if(lower === 'false' || lower === '0' || lower === 'no') {
+                            res.reason = 'Coerced to false'; coercedObject[s.key] = false;
+                        } else {
+                            res.status = 'fail'; res.reason = `"${rawVal}" is not explicitly boolean`;
+                            allValid = false;
+                        }
+                    } else if(s.type === 'url') {
+                        try {
+                            new URL(rawVal);
+                            res.reason = 'Valid URL format';
+                            coercedObject[s.key] = rawVal;
+                        } catch(e) {
+                            res.status = 'fail'; res.reason = `"${rawVal}" is not a valid URL structure`;
+                            allValid = false;
+                        }
+                    } else {
+                        // string
+                        res.reason = 'Valid string';
+                        coercedObject[s.key] = rawVal;
+                    }
+                }
+                results.push(res);
+            });
+
+            // Check unmapped variables (Warnings)
+            Object.keys(rawEnv).forEach(k => {
+                if(!initialSchema.find(s => s.key === k)) {
+                    results.push({ key: k, status: 'warn', reason: 'Unmapped/Unknown variable', type: 'unknown' });
+                    coercedObject[k] = rawEnv[k]; // passthrough
+                }
+            });
+
+            // UI Render
+            if(allValid) {
+                statusBanner.textContent = 'All Variables Passed Validation ✓';
+                statusBanner.className = 'status-banner';
+            } else {
+                statusBanner.textContent = 'Validation Failed — Check Errors ✗';
+                statusBanner.className = 'status-banner fail';
+            }
+
+            valTbody.innerHTML = '';
+            results.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="td-name">${r.key} <span class="badge type">${r.type}</span></td>
+                    <td><span class="badge ${r.status}">${r.status.toUpperCase()}</span></td>
+                    <td><span style="color:${r.status==='fail'?'#ff5555':'inherit'}">${r.reason}</span></td>
+                `;
+                valTbody.appendChild(tr);
+            });
+
+            coercionBox.textContent = JSON.stringify(coercedObject, null, 2);
+
+            // 3D Update
+            triggerGaugeAnim(allValid ? 1 : 0);
+        }
+
+        btnValidate.addEventListener('click', validate);
+
+        // 3D Visuals (Control Panel Gauges)
+        let scene, camera, renderer, needleMesh;
+        let gaugeTarget = 0;
+        let gaugeValue = 0;
+        let pLights = [];
+        
+        function init3D() {
+            const container = document.getElementById('graph-container');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, cw / ch, 1, 100);
+            camera.position.set(0, 0, 10);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(cw, ch);
+            container.appendChild(renderer.domElement);
+
+            const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dLight.position.set(5, 5, 5);
+            scene.add(dLight);
+            
+            const am = new THREE.AmbientLight(0x222233);
+            scene.add(am);
+
+            // Back Panel
+            const panelGeo = new THREE.BoxGeometry(10, 6, 1);
+            const panelMat = new THREE.MeshPhongMaterial({ color: 0x111115 });
+            const panel = new THREE.Mesh(panelGeo, panelMat);
+            scene.add(panel);
+
+            // Gauge Face
+            const faceGeo = new THREE.CylinderGeometry(2, 2, 0.2, 32);
+            faceGeo.rotateX(Math.PI/2);
+            const faceMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const face = new THREE.Mesh(faceGeo, faceMat);
+            face.position.set(0,0,0.6);
+            scene.add(face);
+
+            // Green/Red arc blocks (simulated)
+            const redBox = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 0.3), new THREE.MeshBasicMaterial({color: 0xff5555}));
+            redBox.position.set(-1, 1, 0.7);
+            redBox.rotation.z = Math.PI/4;
+            scene.add(redBox);
+
+            const grnBox = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 0.3), new THREE.MeshBasicMaterial({color: 0x7ee787}));
+            grnBox.position.set(1, 1, 0.7);
+            grnBox.rotation.z = -Math.PI/4;
+            scene.add(grnBox);
+
+            // Needle Pivot Group
+            const pivot = new THREE.Group();
+            pivot.position.set(0,-1,0.8);
+            scene.add(pivot);
+
+            // Needle
+            const nGeo = new THREE.BoxGeometry(0.1, 2.8, 0.1);
+            const nMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+            needleMesh = new THREE.Mesh(nGeo, nMat);
+            needleMesh.position.y = 1.4; // pivot offset
+            pivot.add(needleMesh);
+
+            // Center cap
+            const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.4), new THREE.MeshPhongMaterial({color:0x444444}));
+            cap.rotation.x = Math.PI/2;
+            pivot.add(cap);
+
+            // Warning/Success Lights
+            const l1 = new THREE.PointLight(0xff5555, 0, 5); l1.position.set(-3,2,1); pLights.push(l1); scene.add(l1);
+            const l2 = new THREE.PointLight(0x7ee787, 0, 5); l2.position.set(3,2,1); pLights.push(l2); scene.add(l2);
+
+            const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.3), new THREE.MeshBasicMaterial({color: 0x550000}));
+            b1.position.set(-3,2,1); scene.add(b1);
+            const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.3), new THREE.MeshBasicMaterial({color: 0x005500}));
+            b2.position.set(3,2,1); scene.add(b2);
+
+
+            window.addEventListener('resize', () => {
+                if(!container) return;
+                const rw = container.clientWidth;
+                const rh = container.clientHeight;
+                camera.aspect = rw / rh;
+                camera.updateProjectionMatrix();
+                renderer.setSize(rw, rh);
+            });
+
+            // Save references for animation
+            scene.userData = { pivot, b1, b2, l1, l2 };
+
+            animate3D();
+        }
+
+        function triggerGaugeAnim(successFlag) {
+            // success = 1, fail = 0 (-1 to 1 range for math)
+            gaugeTarget = successFlag === 1 ? -1 : 1; 
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Lerp gauge
+            gaugeValue += (gaugeTarget - gaugeValue) * 0.05;
+            
+            // Map value (-1 to 1) to angle. -1 is +PI/4 (right), 1 is -PI/4 (left)
+            scene.userData.pivot.rotation.z = gaugeValue * (Math.PI/4) * -1; // -1 -> PI/4 -> points Right (Green)
+
+            // Lights flash if pegged
+            if(gaugeValue < -0.9) {
+                // Success
+                scene.userData.b2.material.color.setHex(0x7ee787);
+                scene.userData.l2.intensity = 2;
+                scene.userData.b1.material.color.setHex(0x220000);
+                scene.userData.l1.intensity = 0;
+            } else if(gaugeValue > 0.9) {
+                // Fail
+                scene.userData.b1.material.color.setHex(Math.sin(Date.now()*0.01) > 0 ? 0xff5555 : 0x220000);
+                scene.userData.l1.intensity = Math.sin(Date.now()*0.01) > 0 ? 3 : 0;
+                scene.userData.b2.material.color.setHex(0x002200);
+                scene.userData.l2.intensity = 0;
+            } else {
+                // Neutral
+                scene.userData.b1.material.color.setHex(0x220000);
+                scene.userData.l1.intensity = 0;
+                scene.userData.b2.material.color.setHex(0x002200);
+                scene.userData.l2.intensity = 0;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSchemaRows();
+            init3D();
+            validate();
+        });
+
+    </script>
+</body>
+</html>

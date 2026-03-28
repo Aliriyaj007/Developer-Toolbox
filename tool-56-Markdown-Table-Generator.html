@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 56 - Markdown Table Generator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            background: rgba(0,0,0,0.4);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .toolbar .input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .toolbar input[type="number"] {
+            width: 70px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            min-height: 200px;
+        }
+
+        .editor-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .editor-table th, .editor-table td {
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+        }
+
+        .editor-table input {
+            width: 100%;
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            padding: 0.8rem;
+            font-family: var(--font-main);
+            min-width: 120px;
+        }
+        .editor-table input:focus {
+            outline: none;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .editor-table th {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .editor-table th input {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .align-controls {
+            display: flex;
+            justify-content: space-around;
+            padding: 0.2rem;
+            background: rgba(0,0,0,0.5);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .align-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .align-btn.active { color: var(--primary-color); font-weight: bold; }
+        .align-btn:hover { color: white; }
+
+        .markdown-output {
+            background: var(--bg-main);
+            color: #7ee787;
+            padding: 1.5rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            border: 1px solid var(--border-color);
+            white-space: pre;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px; right: 10px;
+        }
+
+        .row-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            gap: 0.5rem;
+        }
+        
+    </style>
+</head>
+<body class="theme-dark">
+    <!-- Background Canvas -->
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    
+    <main class="main-content">
+        <div class="container" style="max-width: 1200px;">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>56. Markdown Table Generator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                
+                <div class="toolbar">
+                    <div class="input-group">
+                        <label>Rows:</label>
+                        <input type="number" id="inp-rows" value="3" min="1" max="50">
+                    </div>
+                    <div class="input-group">
+                        <label>Cols:</label>
+                        <input type="number" id="inp-cols" value="3" min="1" max="20">
+                    </div>
+                    <button class="btn btn-sm btn-primary" id="btn-build">Update Grind</button>
+                    
+                    <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 0.5rem;"></div>
+                    
+                    <button class="btn btn-sm" id="btn-clear">🗑️ Clear</button>
+                    <button class="btn btn-sm" id="btn-import-csv" onclick="document.getElementById('csv-file').click()">📥 Import CSV</button>
+                    <input type="file" id="csv-file" accept=".csv" style="display:none;">
+                </div>
+
+                <div class="table-container">
+                    <table class="editor-table" id="editor-table">
+                        <!-- Injected -->
+                    </table>
+                </div>
+
+                <h3 style="margin-top: 2rem;">Markdown Output</h3>
+                <div class="markdown-output">
+<button class="btn btn-sm btn-primary copy-btn" id="btn-copy">Copy Table</button>
+<div id="md-result">Loading...</div>
+                </div>
+                
+                <div style="margin-top: 1rem; display: flex; gap: 1rem; align-items:center;">
+                    <label style="color:var(--text-secondary);"><input type="checkbox" id="chk-compact"> Compact Mode (no padding)</label>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    
+    <script>
+        const editorTable = document.getElementById('editor-table');
+        const mdResult = document.getElementById('md-result');
+        const inpRows = document.getElementById('inp-rows');
+        const inpCols = document.getElementById('inp-cols');
+        const chkCompact = document.getElementById('chk-compact');
+
+        let tableData = {
+            rows: 3,
+            cols: 3,
+            alignments: ['left', 'center', 'right'],
+            cells: [
+                ['Header 1', 'Header 2', 'Header 3'], // row 0 is header
+                ['Row 1 Col 1', 'Row 1 Col 2', 'Row 1 Col 3'],
+                ['Row 2 Col 1', 'Row 2 Col 2', 'Row 2 Col 3'],
+                ['Row 3 Col 1', 'Row 3 Col 2', 'Row 3 Col 3']
+            ]
+        };
+
+        function renderTableUI() {
+            editorTable.innerHTML = '';
+            
+            // Render Header
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+            
+            for(let c=0; c<tableData.cols; c++) {
+                const th = document.createElement('th');
+                
+                // Alignment controls
+                const alignDiv = document.createElement('div');
+                alignDiv.className = 'align-controls';
+                
+                const aligns = ['left', 'center', 'right'];
+                const icons = ['⬅️', '↕️', '➡️']; // visual representations
+                const currAlign = tableData.alignments[c] || 'left';
+
+                aligns.forEach((al, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = `align-btn ${currAlign === al ? 'active' : ''}`;
+                    btn.textContent = icons[i];
+                    btn.title = `Align ${al}`;
+                    btn.onclick = () => {
+                        tableData.alignments[c] = al;
+                        renderTableUI();
+                        updateMarkdown();
+                    };
+                    alignDiv.appendChild(btn);
+                });
+
+                const input = document.createElement('input');
+                input.value = tableData.cells[0] && tableData.cells[0][c] ? tableData.cells[0][c] : `Header ${c+1}`;
+                input.oninput = (e) => {
+                    if(!tableData.cells[0]) tableData.cells[0] = [];
+                    tableData.cells[0][c] = e.target.value;
+                    updateMarkdown();
+                };
+
+                th.appendChild(alignDiv);
+                th.appendChild(input);
+                trHead.appendChild(th);
+            }
+            // Add row action col
+            const thAction = document.createElement('th');
+            thAction.style.width = '60px';
+            thAction.innerHTML = `<button class="btn btn-sm" onclick="addCol()" title="Add Column">➕</button>`;
+            trHead.appendChild(thAction);
+            thead.appendChild(trHead);
+            editorTable.appendChild(thead);
+
+            // Render Body
+            const tbody = document.createElement('tbody');
+            for(let r=1; r<=tableData.rows; r++) {
+                const tr = document.createElement('tr');
+                for(let c=0; c<tableData.cols; c++) {
+                    const td = document.createElement('td');
+                    const input = document.createElement('input');
+                    input.value = tableData.cells[r] && tableData.cells[r][c] ? tableData.cells[r][c] : '';
+                    input.oninput = (e) => {
+                        if(!tableData.cells[r]) tableData.cells[r] = [];
+                        tableData.cells[r][c] = e.target.value;
+                        updateMarkdown();
+                        // 3D bounce
+                        if(window.trigger3DBounce) window.trigger3DBounce(r-1, c);
+                    };
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                }
+                
+                const tdAction = document.createElement('td');
+                tdAction.className = 'row-controls';
+                tdAction.innerHTML = `<button class="btn btn-sm" style="padding:0.2rem; color:#ff5555" onclick="rmRow(${r})" title="Remove Row">➖</button>`;
+                tr.appendChild(tdAction);
+
+                tbody.appendChild(tr);
+            }
+            
+            // Add row button
+            const trAdd = document.createElement('tr');
+            const tdAdd = document.createElement('td');
+            tdAdd.colSpan = tableData.cols + 1;
+            tdAdd.style.textAlign = 'center';
+            tdAdd.style.padding = '0.5rem';
+            tdAdd.innerHTML = `<button class="btn btn-sm" onclick="addRow()">➕ Add Row</button>`;
+            trAdd.appendChild(tdAdd);
+            tbody.appendChild(trAdd);
+
+            editorTable.appendChild(tbody);
+            
+            // Sync inputs
+            inpRows.value = tableData.rows;
+            inpCols.value = tableData.cols;
+
+            // Trigger 3D sync
+            if(window.init3DGrid) window.init3DGrid();
+        }
+
+        function updateMarkdown() {
+            const compact = chkCompact.checked;
+            
+            // Calculate column widths for padding
+            let colWidths = new Array(tableData.cols).fill(0);
+            if(!compact) {
+                for(let r=0; r<=tableData.rows; r++) {
+                    for(let c=0; c<tableData.cols; c++) {
+                        const val = tableData.cells[r] && tableData.cells[r][c] ? tableData.cells[r][c].trim() : '';
+                        if(val.length > colWidths[c]) colWidths[c] = val.length;
+                    }
+                }
+                // Minimum width of 3 for alignment chars "---"
+                colWidths = colWidths.map(w => Math.max(w, 3));
+            }
+
+            let md = '';
+
+            const padCell = (content, colIdx) => {
+                if(compact) return ` ${content} `;
+                const width = colWidths[colIdx];
+                const spacesStr = ' '.repeat(Math.max(0, width - content.length));
+                // Basic left align padding for visually pleasing output
+                return ` ${content}${spacesStr} `;
+            };
+
+            for(let r=0; r<=tableData.rows; r++) {
+                if(r === 1) {
+                    // Separator row
+                    md += '|';
+                    for(let c=0; c<tableData.cols; c++) {
+                        const align = tableData.alignments[c] || 'left';
+                        const w = compact ? 3 : colWidths[c];
+                        let hyphens = '-'.repeat(w);
+                        
+                        if(align === 'left') md += ` :${hyphens.substring(1)} |`;
+                        else if(align === 'right') md += ` ${hyphens.substring(1)}: |`;
+                        else if(align === 'center') md += ` :${hyphens.substring(2)}: |`;
+                    }
+                    md += '\n';
+                }
+
+                md += '|';
+                for(let c=0; c<tableData.cols; c++) {
+                    const val = tableData.cells[r] && tableData.cells[r][c] ? tableData.cells[r][c].replace(/\|/g, '\\|') : '';
+                    md += `${padCell(val, c)}|`;
+                }
+                md += '\n';
+            }
+
+            mdResult.textContent = md;
+        }
+
+        // Actions
+        window.addRow = () => {
+            tableData.rows++;
+            tableData.cells.push(new Array(tableData.cols).fill(''));
+            renderTableUI();
+            updateMarkdown();
+        };
+
+        window.rmRow = (idx) => {
+            if(tableData.rows <= 1) return;
+            tableData.rows--;
+            tableData.cells.splice(idx, 1);
+            renderTableUI();
+            updateMarkdown();
+        };
+
+        window.addCol = () => {
+            tableData.cols++;
+            tableData.alignments.push('left');
+            // update cells
+            for(let r=0; r<=tableData.rows; r++) {
+                if(!tableData.cells[r]) tableData.cells[r] = [];
+                tableData.cells[r].push(r===0 ? `Header ${tableData.cols}` : '');
+            }
+            renderTableUI();
+            updateMarkdown();
+        };
+
+        document.getElementById('btn-build').addEventListener('click', () => {
+            const newRows = parseInt(inpRows.value);
+            const newCols = parseInt(inpCols.value);
+            if(newRows>0 && newCols>0) {
+                tableData.rows = newRows;
+                tableData.cols = newCols;
+                // Basic array resizing logic omitted for brevity, let's keep it simple
+                renderTableUI();
+                updateMarkdown();
+            }
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            tableData.cells = [
+                ['Header 1', 'Header 2', 'Header 3'],
+                ['', '', ''],
+                ['', '', '']
+            ];
+            tableData.rows = 2; tableData.cols = 3;
+            renderTableUI();
+            updateMarkdown();
+        });
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            navigator.clipboard.writeText(mdResult.textContent);
+            window.showToast("Markdown Copied!");
+        });
+
+        chkCompact.addEventListener('change', updateMarkdown);
+
+        // CSV Import
+        document.getElementById('csv-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                const rows = text.split('\n').filter(r=>r.trim());
+                if(rows.length > 0) {
+                    const parsed = rows.map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+                    tableData.cols = parsed[0].length;
+                    tableData.rows = parsed.length - 1;
+                    tableData.cells = parsed;
+                    tableData.alignments = new Array(tableData.cols).fill('left');
+                    renderTableUI();
+                    updateMarkdown();
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Init
+        renderTableUI();
+        updateMarkdown();
+
+
+        // 3D Visualization: A grid of 3D cubes representing table cells
+        let scene, camera, renderer, gridGroup;
+        let cellMeshes = [];
+
+        function setup3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, -6, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(2, 5, 5);
+            scene.add(dirLight);
+
+            gridGroup = new THREE.Group();
+            scene.add(gridGroup);
+
+            // Shift up and right to match UI layout
+            scene.position.x = 2;
+            scene.position.y = 2;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        window.init3DGrid = () => {
+            if(!gridGroup) return;
+
+            // Clear old
+            cellMeshes.forEach(m => gridGroup.remove(m));
+            cellMeshes = [];
+
+            const rows = tableData.rows; // not including header in body count
+            const cols = tableData.cols;
+            const totalRows = rows + 1; // plus header
+            
+            if(totalRows > 30 || cols > 20) return; // limit for perf
+
+            const size = 1;
+            const gap = 0.2;
+            
+            const startX = -((cols * (size+gap)) / 2);
+            const startY = ((totalRows * (size+gap)) / 2);
+
+            for(let r=0; r<totalRows; r++) {
+                // Header gets different color
+                const color = r === 0 ? 0x56b6c2 : 0x223344;
+                const height = r === 0 ? 0.4 : 0.2;
+
+                for(let c=0; c<cols; c++) {
+                    const geo = new THREE.BoxGeometry(size, size, height);
+                    const mat = new THREE.MeshPhongMaterial({ color: color, shininess: 50 });
+                    const mesh = new THREE.Mesh(geo, mat);
+
+                    mesh.position.set(startX + c*(size+gap), startY - r*(size+gap), 0);
+                    
+                    mesh.userData = {
+                        baseZ: 0,
+                        targetZ: 0,
+                        rStr: r, cStr: c // to map back later
+                    };
+
+                    gridGroup.add(mesh);
+                    cellMeshes.push(mesh);
+                }
+            }
+            
+            // Tilt for isomorphic view
+            gridGroup.rotation.x = -Math.PI / 4;
+            gridGroup.rotation.z = -Math.PI / 12;
+        };
+
+        window.trigger3DBounce = (rowIdx, colIdx) => {
+            // rowIdx here from body input is 0-indexed for body, so it translates to r=rowIdx+1 in 3D
+            const targetR = rowIdx + 1;
+            const mesh = cellMeshes.find(m => m.userData.rStr === targetR && m.userData.cStr === colIdx);
+            
+            if(mesh) {
+                mesh.userData.targetZ = 0.5; // Bounce up
+                setTimeout(() => { mesh.userData.targetZ = 0; }, 150); // Fall back down
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(gridGroup) {
+                // slow float
+                gridGroup.position.y = Math.sin(Date.now() * 0.001) * 0.2 + 2;
+
+                // Bounce animations
+                cellMeshes.forEach(m => {
+                    m.position.z += (m.userData.targetZ - m.position.z) * 0.3;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', setup3D);
+
+    </script>
+</body>
+</html>

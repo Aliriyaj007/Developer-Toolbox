@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 5 - JWT Debugger Validator - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .layout-split {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 900px) {
+            .layout-split {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea.token-input {
+            width: 100%;
+            height: 250px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            resize: vertical;
+            word-break: break-all;
+        }
+
+        textarea.token-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        /* Color Coding */
+        .color-header {
+            color: #ff5252;
+        }
+
+        .color-payload {
+            color: #BB86FC;
+        }
+
+        .color-signature {
+            color: #33d9b2;
+        }
+
+        /* Decoded Sections */
+        .decoded-section {
+            margin-bottom: 1.5rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .decoded-header {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .decoded-header.h-header {
+            background: rgba(255, 82, 82, 0.1);
+            color: #ff5252;
+        }
+
+        .decoded-header.h-payload {
+            background: rgba(187, 134, 252, 0.1);
+            color: #BB86FC;
+        }
+
+        .decoded-header.h-signature {
+            background: rgba(51, 217, 178, 0.1);
+            color: #33d9b2;
+        }
+
+        .decoded-body {
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--text-secondary);
+        }
+
+        /* Status Banner */
+        .status-banner {
+            padding: 0.8rem 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-valid {
+            background: rgba(51, 217, 178, 0.1);
+            color: #33d9b2;
+            border: 1px solid #33d9b2;
+        }
+
+        .status-invalid {
+            background: rgba(255, 82, 82, 0.1);
+            color: #ff5252;
+            border: 1px solid #ff5252;
+        }
+
+        .status-neutral {
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .time-badge {
+            display: inline-block;
+            background: var(--bg-surface);
+            padding: 0.1rem 0.4rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 3D Container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container relative">
+
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>5. JWT Debugger Validator</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div id="token-status" class="status-banner status-neutral">
+                Wait for token input...
+            </div>
+
+            <div class="layout-split">
+
+                <!-- Input Panel -->
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <h3>Encoded Token</h3>
+                        <div class="flex gap-2">
+                            <button class="btn btn-primary" id="btn-demo"
+                                style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Demo Token</button>
+                            <button class="btn" id="btn-clear"
+                                style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Clear</button>
+                        </div>
+                    </div>
+
+                    <p class="text-secondary mb-3" style="font-size: 0.85rem;">
+                        Paste a JWT. It will automatically be split into <span class="color-header">Header</span>, <span
+                            class="color-payload">Payload</span>, and <span class="color-signature">Signature</span>.
+                    </p>
+
+                    <textarea id="token-input" class="token-input"
+                        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+
+                    <div class="mt-4 form-group">
+                        <label>Verify Signature (Secret/Key)</label>
+                        <input type="text" id="secret-input" placeholder="your-256-bit-secret" style="width: 100%;"
+                            disabled>
+                        <p class="text-secondary mt-1" style="font-size: 0.75rem;">* Client-side only. Pure UI decoded
+                            simulation. Full verification requires crypto library.</p>
+                    </div>
+                </div>
+
+                <!-- Decoded Panel -->
+                <div class="glass-panel">
+                    <h3>Decoded</h3>
+
+                    <!-- Header -->
+                    <div class="decoded-section">
+                        <div class="decoded-header h-header">
+                            <span>Header</span>
+                            <span>Algorithm & Token Type</span>
+                        </div>
+                        <div class="decoded-body" id="out-header">{}</div>
+                    </div>
+
+                    <!-- Payload -->
+                    <div class="decoded-section">
+                        <div class="decoded-header h-payload">
+                            <span>Payload</span>
+                            <span>Data</span>
+                        </div>
+                        <div class="decoded-body" id="out-payload">{}</div>
+                    </div>
+
+                    <!-- Signature -->
+                    <div class="decoded-section">
+                        <div class="decoded-header h-signature">
+                            <span>Signature</span>
+                        </div>
+                        <div class="decoded-body" id="out-signature" style="word-break: break-all;"></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script>
+        // DOM
+        const tokenInput = document.getElementById('token-input');
+        const outHeader = document.getElementById('out-header');
+        const outPayload = document.getElementById('out-payload');
+        const outSignature = document.getElementById('out-signature');
+        const statusBanner = document.getElementById('token-status');
+        const btnClear = document.getElementById('btn-clear');
+        const btnDemo = document.getElementById('btn-demo');
+
+        // Helpers
+        const b64DecodeUnicode = (str) => {
+            // Decoding base64 to utf8 properly
+            try {
+                return decodeURIComponent(atob(str).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            } catch (e) {
+                return null;
+            }
+        };
+
+        const syntaxHighlightJSON = (jsonObj) => {
+            if (typeof jsonObj !== 'string') {
+                jsonObj = JSON.stringify(jsonObj, undefined, 2);
+            }
+            return jsonObj.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // Basic format
+        };
+
+        const formatTime = (ts) => {
+            if (!ts) return '';
+            const d = new Date(ts * 1000);
+            return `<span class="time-badge" title="${d.toISOString()}">${d.toLocaleString()}</span>`;
+        };
+
+        // Logic
+        const processToken = () => {
+            const token = tokenInput.value.trim();
+
+            if (!token) {
+                outHeader.textContent = '{}';
+                outPayload.textContent = '{}';
+                outSignature.textContent = '';
+                statusBanner.className = 'status-banner status-neutral';
+                statusBanner.textContent = 'Wait for token input...';
+                if (window.trigger3DState) window.trigger3DState('idle');
+                return;
+            }
+
+            const parts = token.split('.');
+
+            if (parts.length !== 3) {
+                outHeader.textContent = 'Invalid format';
+                outPayload.textContent = 'Invalid format';
+                outSignature.textContent = 'Invalid format';
+                statusBanner.className = 'status-banner status-invalid';
+                statusBanner.textContent = 'INVALID: JWT must have 3 parts separated by dots.';
+                if (window.trigger3DState) window.trigger3DState('error');
+                return;
+            }
+
+            try {
+                // Fix base64 padding
+                const headerRaw = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+                const payloadRaw = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+
+                const decodedHeader = JSON.parse(b64DecodeUnicode(headerRaw));
+                const decodedPayload = JSON.parse(b64DecodeUnicode(payloadRaw));
+
+                outHeader.textContent = JSON.stringify(decodedHeader, null, 2);
+
+                // Enhance payload with time
+                let payloadDisplay = JSON.stringify(decodedPayload, null, 2);
+
+                // Very basic time injection for exp/iat (hacky for demo display)
+                if (decodedPayload.exp) payloadDisplay = payloadDisplay.replace(`"exp": ${decodedPayload.exp}`, `"exp": ${decodedPayload.exp} ${formatTime(decodedPayload.exp)}`);
+                if (decodedPayload.iat) payloadDisplay = payloadDisplay.replace(`"iat": ${decodedPayload.iat}`, `"iat": ${decodedPayload.iat} ${formatTime(decodedPayload.iat)}`);
+                if (decodedPayload.nbf) payloadDisplay = payloadDisplay.replace(`"nbf": ${decodedPayload.nbf}`, `"nbf": ${decodedPayload.nbf} ${formatTime(decodedPayload.nbf)}`);
+
+                outPayload.innerHTML = payloadDisplay;
+                outSignature.textContent = parts[2];
+
+                // Check Expiration purely on frontend
+                let statMsg = 'DECODED: Successfully parsed JWT structure.';
+                let statClass = 'status-valid';
+
+                if (decodedPayload.exp) {
+                    const now = Math.floor(Date.now() / 1000);
+                    if (decodedPayload.exp < now) {
+                        statMsg = 'EXPIRED: Token expiration time (exp) is in the past.';
+                        statClass = 'status-invalid';
+                    }
+                }
+
+                statusBanner.className = `status-banner ${statClass}`;
+                statusBanner.textContent = statMsg;
+
+                if (window.trigger3DState) window.trigger3DState(statClass === 'status-valid' ? 'decoded' : 'expired');
+
+            } catch (e) {
+                outHeader.textContent = 'Error parsing';
+                outPayload.textContent = 'Error parsing';
+                outSignature.textContent = parts[2] || '';
+                statusBanner.className = 'status-banner status-invalid';
+                statusBanner.textContent = 'ERROR: Failed to decode base64 or parse JSON.';
+                if (window.trigger3DState) window.trigger3DState('error');
+            }
+        };
+
+        // Events
+        tokenInput.addEventListener('input', processToken);
+
+        btnClear.addEventListener('click', () => {
+            tokenInput.value = '';
+            processToken();
+        });
+
+        btnDemo.addEventListener('click', () => {
+            // Header: {"alg":"HS256","typ":"JWT"}
+            // Payload: {"sub":"1234567890","name":"John Doe","iat":1516239022, "exp": 2524608000} (exp in 2050)
+            const demoToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjI1MjQ2MDgwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+            tokenInput.value = demoToken;
+            processToken();
+        });
+
+    </script>
+
+    <!-- Three.js Scene: Rotating segmented cylinder -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script>
+        let scene, camera, renderer, cylGroup;
+        let pHeader, pPayload, pSign; // parts
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            if (!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 12;
+            camera.position.y = 2; // looking slightly down
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5, 5, 5);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+            cylGroup = new THREE.Group();
+            scene.add(cylGroup);
+
+            // create 3 parts of cylinder
+            const r = 1.5;
+            const geoH = new THREE.CylinderGeometry(r, r, 1, 32);
+            const geoP = new THREE.CylinderGeometry(r, r, 2.5, 32);
+            const geoS = new THREE.CylinderGeometry(r, r, 1, 32);
+
+            const matH = new THREE.MeshPhongMaterial({ color: 0xff5252, transparent: true, opacity: 0.8 }); // red
+            const matP = new THREE.MeshPhongMaterial({ color: 0xBB86FC, transparent: true, opacity: 0.8 }); // purple
+            const matS = new THREE.MeshPhongMaterial({ color: 0x33d9b2, transparent: true, opacity: 0.8 }); // green
+
+            pHeader = new THREE.Mesh(geoH, matH);
+            pPayload = new THREE.Mesh(geoP, matP);
+            pSign = new THREE.Mesh(geoS, matS);
+
+            // stack them, initially close
+            pHeader.position.y = 1.8;
+            pPayload.position.y = 0;
+            pSign.position.y = -1.8;
+
+            cylGroup.add(pHeader);
+            cylGroup.add(pPayload);
+            cylGroup.add(pSign);
+
+            // Tilt to see layers
+            cylGroup.rotation.z = Math.PI / 8;
+            cylGroup.rotation.x = Math.PI / 8;
+
+            // Move to side
+            cylGroup.position.x = -4;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        };
+
+        let activeState = 'idle';
+
+        window.trigger3DState = (state) => {
+            if (!scene || state === activeState) return;
+            activeState = state;
+
+            if (state === 'decoded') {
+                // expand and spin
+                gsap.to(pHeader.position, { y: 2.5, duration: 1, ease: 'power2.out' });
+                gsap.to(pSign.position, { y: -2.5, duration: 1, ease: 'power2.out' });
+
+                // correct colors
+                gsap.to(pHeader.material, { color: 0xff5252, opacity: 0.8 });
+                gsap.to(pPayload.material, { color: 0xBB86FC, opacity: 0.8 });
+                gsap.to(pSign.material, { color: 0x33d9b2, opacity: 0.8 });
+            }
+            else if (state === 'idle') {
+                // compress together and dim
+                gsap.to(pHeader.position, { y: 1.8, duration: 1 });
+                gsap.to(pSign.position, { y: -1.8, duration: 1 });
+
+                gsap.to(pHeader.material, { color: 0x555555, opacity: 0.3 });
+                gsap.to(pPayload.material, { color: 0x555555, opacity: 0.3 });
+                gsap.to(pSign.material, { color: 0x555555, opacity: 0.3 });
+            }
+            else if (state === 'error' || state === 'expired') {
+                // shake and turn red/orange
+                gsap.to(pHeader.position, { y: 2.5, duration: 0.5 });
+                gsap.to(pSign.position, { y: -2.5, duration: 0.5 });
+
+                const errColor = state === 'error' ? 0xff0000 : 0xffa502;
+
+                gsap.to([pHeader.material, pPayload.material, pSign.material], { color: errColor, opacity: 0.9, duration: 0.3 });
+
+                // Shake overall group
+                gsap.to(cylGroup.position, { x: -3.8, yoyo: true, repeat: 5, duration: 0.05, onComplete: () => gsap.to(cylGroup.position, { x: -4 }) });
+            }
+        };
+
+        const animate = () => {
+            requestAnimationFrame(animate);
+            if (cylGroup) {
+                // Always rotate
+                const speed = activeState === 'decoded' ? 0.02 : 0.005;
+                pHeader.rotation.y -= speed; // counter rotation
+                pPayload.rotation.y += speed;
+                pSign.rotation.y -= speed;
+
+                cylGroup.position.y = Math.sin(Date.now() * 0.001) * 0.5;
+            }
+            renderer.render(scene, camera);
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            if (window.trigger3DState) window.trigger3DState('idle'); // init dim state
+        });
+    </script>
+</body>
+
+</html>

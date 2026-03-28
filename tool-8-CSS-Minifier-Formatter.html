@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 8 - CSS Minifier Formatter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .css-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            min-height: 600px;
+        }
+
+        @media (min-width: 900px) {
+            .css-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 100%;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        textarea {
+            flex: 1;
+            width: 100%;
+            height: 400px;
+            resize: none;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.2);
+        }
+
+        .textarea-error {
+            border-color: #ff5252;
+            box-shadow: 0 0 0 2px rgba(255, 82, 82, 0.2);
+        }
+
+        .btn-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            color: var(--accent-primary);
+            font-weight: bold;
+        }
+
+        .savings-good {
+            color: #33d9b2;
+        }
+
+        .savings-none {
+            color: var(--text-secondary);
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="theme-dark">
+    <div id="canvas-container"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>8. CSS Minifier Formatter</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Compress CSS for production or beautify
+                        it for readability.</p>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="css-grid">
+                <!-- Input Panel -->
+                <div class="glass-panel panel-container">
+                    <div class="panel-header">
+                        <h3>Input CSS</h3>
+                        <div class="btn-controls">
+                            <button id="btn-clear" class="btn">Clear</button>
+                            <button id="btn-paste" class="btn">Paste</button>
+                            <button id="btn-format" class="btn btn-primary"
+                                style="background:#03DAC6; color:#000;">Format / Beautify</button>
+                        </div>
+                    </div>
+                    <textarea id="css-input" placeholder="Paste your raw or minified CSS here...
+                    
+body { 
+   background-color: #000; 
+color : #fff;
+    }
+"></textarea>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="glass-panel panel-container">
+                    <div class="panel-header">
+                        <h3>Output CSS</h3>
+                        <div class="btn-controls">
+                            <button id="btn-minify" class="btn btn-primary">Minify / Compress</button>
+                            <button id="btn-copy" class="btn">Copy</button>
+                        </div>
+                    </div>
+                    <textarea id="css-output" readonly placeholder="Processed CSS will appear here..."></textarea>
+
+                    <div class="stats-panel">
+                        <div class="stat-item">
+                            <div class="stat-label">Original Size</div>
+                            <div class="stat-value" id="stat-orig">0 B</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">New Size</div>
+                            <div class="stat-value" id="stat-new">0 B</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Savings</div>
+                            <div class="stat-value savings-none" id="stat-savings">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <!-- Three.js and GSAP for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="assets/core.js"></script>
+
+    <script>
+        // --- Core Formatting / Minifying Logic ---
+        const inputArea = document.getElementById('css-input');
+        const outputArea = document.getElementById('css-output');
+        const origSize = document.getElementById('stat-orig');
+        const newSize = document.getElementById('stat-new');
+        const savingsEl = document.getElementById('stat-savings');
+
+        // Simple Format
+        function formatCSS(css) {
+            // Very basic formatter. For production, ideally use prettier standalone
+            let formatted = css;
+            formatted = formatted.replace(/\s+/g, ' '); // collapse all whitespace
+            formatted = formatted.replace(/;\s*/g, ';\n    '); // newline after semicolon, indent
+            formatted = formatted.replace(/{\s*/g, ' {\n    '); // space before brace, newline, indent
+            formatted = formatted.replace(/}\s*/g, '}\n\n'); // newline after closing brace
+            // fix edge cases
+            formatted = formatted.replace(/\n    }/g, '\n}');
+            return formatted.trim();
+        }
+
+        // Simple Minify
+        function minifyCSS(css) {
+            let minified = css;
+
+            // Remove comments
+            minified = minified.replace(/\/\*[\s\S]*?\*\//g, '');
+
+            // Remove whitespace around simple tokens
+            minified = minified.replace(/\s*([\{\}\:\;\,])\s*/g, '$1');
+
+            // Remove space around operators (except inside strings/calc - risky but works for basic css)
+            minified = minified.replace(/\s+(!important)/ig, '$1');
+
+            // Remove last semicolon before closing brace
+            minified = minified.replace(/;}/g, '}');
+
+            // Collapse whitespace
+            minified = minified.replace(/\s+/g, ' ');
+
+            return minified.trim();
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function updateStats(oldText, newText) {
+            const oldLen = new Blob([oldText]).size;
+            const newLen = new Blob([newText]).size;
+
+            origSize.textContent = formatBytes(oldLen);
+            newSize.textContent = formatBytes(newLen);
+
+            if (oldLen > 0 && newLen < oldLen) {
+                const savings = ((oldLen - newLen) / oldLen * 100).toFixed(1);
+                savingsEl.textContent = `${savings}% (${formatBytes(oldLen - newLen)})`;
+                savingsEl.className = 'stat-value savings-good';
+            } else if (oldLen > 0 && newLen > oldLen) {
+                const increase = ((newLen - oldLen) / oldLen * 100).toFixed(1);
+                savingsEl.textContent = `+${increase}%`;
+                savingsEl.className = 'stat-value score-inline'; // red
+            } else {
+                savingsEl.textContent = '0%';
+                savingsEl.className = 'stat-value savings-none';
+            }
+        }
+
+        document.getElementById('btn-format').addEventListener('click', () => {
+            const val = inputArea.value;
+            if (!val) return;
+            const formatted = formatCSS(val);
+            outputArea.value = formatted;
+            updateStats(val, formatted);
+            if (window.triggerCube) window.triggerCube('expand');
+        });
+
+        document.getElementById('btn-minify').addEventListener('click', () => {
+            const val = inputArea.value;
+            if (!val) return;
+            const minified = minifyCSS(val);
+            outputArea.value = minified;
+            updateStats(val, minified);
+            if (window.triggerCube) window.triggerCube('compress');
+        });
+
+        // Setup common Buttons
+        const setupBtn = (id, action, targetInput) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.addEventListener('click', async () => {
+                const originalText = btn.textContent;
+                if (action === 'clear') {
+                    inputArea.value = '';
+                    outputArea.value = '';
+                    origSize.textContent = '0 B';
+                    newSize.textContent = '0 B';
+                    savingsEl.textContent = '0%';
+                    savingsEl.className = 'stat-value savings-none';
+                    if (window.triggerCube) window.triggerCube('reset');
+                } else if (action === 'paste') {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        targetInput.value = text;
+                    } catch (err) {
+                        console.error('Failed to read clipboard', err);
+                    }
+                } else if (action === 'copy') {
+                    if (!targetInput.value) return;
+                    navigator.clipboard.writeText(targetInput.value);
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = originalText, 1500);
+                }
+            });
+        };
+
+        setupBtn('btn-clear', 'clear', inputArea);
+        setupBtn('btn-paste', 'paste', inputArea);
+        setupBtn('btn-copy', 'copy', outputArea);
+
+        // --- 3D Background Setup (Collapsible Wirecube) ---
+        let scene, camera, renderer, cubeGroup;
+
+        window.triggerCube = (action) => {
+            if (!cubeGroup) return;
+
+            gsap.killTweensOf(cubeGroup.scale);
+
+            if (action === 'compress') {
+                gsap.to(cubeGroup.scale, {
+                    x: 0.2, y: 0.2, z: 0.2,
+                    duration: 0.8,
+                    ease: "back.inOut(1.7)"
+                });
+            } else if (action === 'expand') {
+                gsap.to(cubeGroup.scale, {
+                    x: 1.5, y: 1.5, z: 1.5,
+                    duration: 0.8,
+                    ease: "back.out(1.7)"
+                });
+            } else {
+                // reset
+                gsap.to(cubeGroup.scale, {
+                    x: 1, y: 1, z: 1,
+                    duration: 0.5,
+                    ease: "power2.out"
+                });
+            }
+        };
+
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 10;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            cubeGroup = new THREE.Group();
+
+            // Create a compound cube of many small wireframe boxes
+            const boxCount = 3;
+            const offset = 1.2;
+
+            const matCSS = new THREE.LineBasicMaterial({ color: 0x03DAC6, transparent: true, opacity: 0.6 });
+            const matHTML = new THREE.LineBasicMaterial({ color: 0xBB86FC, transparent: true, opacity: 0.4 });
+
+            const geo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
+
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -1; z <= 1; z++) {
+                        const isCenter = (x === 0 && y === 0 && z === 0);
+                        const mat = isCenter ? matHTML : matCSS;
+                        const line = new THREE.LineSegments(geo, mat);
+                        line.position.set(x * offset, y * offset, z * offset);
+                        cubeGroup.add(line);
+                    }
+                }
+            }
+
+            // Tilt to look dynamic
+            cubeGroup.rotation.x = Math.PI / 4;
+            cubeGroup.rotation.y = Math.PI / 4;
+
+            scene.add(cubeGroup);
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Constant slow rotation
+                cubeGroup.rotation.x += 0.002;
+                cubeGroup.rotation.y += 0.003;
+
+                // Gentle bob
+                cubeGroup.position.y = Math.sin(Date.now() * 0.001) * 0.5;
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        };
+
+        if (document.getElementById('canvas-container')) {
+            init3D();
+        }
+    </script>
+</body>
+
+</html>

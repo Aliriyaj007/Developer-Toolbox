@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool 31 - CSV to JSON Converter - Developer Toolbox</title>
+    <link rel="stylesheet" href="assets/core.css">
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        @media (min-width: 900px) {
+            .split-view { grid-template-columns: 1fr 1fr; }
+        }
+        
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: var(--text-secondary);
+        }
+
+        select, input[type="text"] {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-main);
+        }
+        
+        input[type="checkbox"] {
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <div class="tool-canvas-container" id="canvas-container"></div>
+    <main class="main-content">
+        <div class="container">
+            <div class="tool-header">
+                <div>
+                    <a href="index.html" class="back-link">← Back to Toolbox</a>
+                    <h1>31. CSV to JSON Converter</h1>
+                </div>
+                <div>
+                    <select id="theme-select" aria-label="Select Theme">
+                        <option value="dark">Dark Theme</option>
+                        <option value="light">Light Theme</option>
+                        <option value="solarized">Solarized</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="highcontrast">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="delimiter">Delimiter:</label>
+                        <select id="delimiter">
+                            <option value="auto">Auto-Detect</option>
+                            <option value=",">Comma (,)</option>
+                            <option value=";">Semicolon (;)</option>
+                            <option value="\t">Tab (\t)</option>
+                            <option value="|">Pipe (|)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group" style="cursor: pointer;" onclick="document.getElementById('has-header').click()">
+                        <input type="checkbox" id="has-header" checked onclick="event.stopPropagation()">
+                        <label style="cursor: pointer;">First row is header</label>
+                    </div>
+
+                    <div class="control-group" style="cursor: pointer;" onclick="document.getElementById('format-json').click()">
+                        <input type="checkbox" id="format-json" checked onclick="event.stopPropagation()">
+                        <label style="cursor: pointer;">Format Output</label>
+                    </div>
+                </div>
+
+                <div class="split-view">
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">CSV Input</label>
+                            <button class="btn btn-sm" id="clear-btn">Clear</button>
+                        </div>
+                        <textarea id="csv-input" placeholder="Paste your CSV data here...">id,name,age,email,"address, full"
+1,John Doe,28,john@example.com,"123 Main St, New York, NY 10001"
+2,Jane Smith,34,jane@example.com,"456 Market St, San Francisco, CA 94104"
+3,Bob Johnson,42,bob@example.com,"789 Broadway, Seattle, WA 98101"
+4,"Emily, Rose",25,emily@example.com,"321 Elm St, Chicago, IL 60601"</textarea>
+                    </div>
+                    
+                    <div>
+                        <div class="toolbar">
+                            <label style="font-weight: bold; color: var(--text-secondary);">JSON Output</label>
+                            <button class="btn btn-sm btn-primary" id="copy-btn">Copy JSON</button>
+                        </div>
+                        <textarea id="json-output" readonly placeholder="JSON output will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="global-footer">
+        <div class="container">
+            Made with ❤️ by <a href="https://github.com/Aliriyaj007" target="_blank">Aliriyaj007</a>
+        </div>
+    </footer>
+
+    <script src="assets/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const csvInput = document.getElementById('csv-input');
+            const jsonOutput = document.getElementById('json-output');
+            const delimiterSelect = document.getElementById('delimiter');
+            const hasHeaderCheck = document.getElementById('has-header');
+            const formatJsonCheck = document.getElementById('format-json');
+            const copyBtn = document.getElementById('copy-btn');
+            const clearBtn = document.getElementById('clear-btn');
+
+            let parsedRows = 0;
+
+            const updateOutput = () => {
+                const csvStr = csvInput.value.trim();
+                if (!csvStr) {
+                    jsonOutput.value = '';
+                    parsedRows = 0;
+                    if(window.update3DShape) window.update3DShape(0);
+                    return;
+                }
+
+                let delimiter = delimiterSelect.value;
+                if(delimiter === 'auto') delimiter = ''; // PapaParse autodetects when empty or undefined
+                else if(delimiter === '\\t') delimiter = '\t';
+
+                Papa.parse(csvStr, {
+                    delimiter: delimiter,
+                    header: hasHeaderCheck.checked,
+                    skipEmptyLines: true,
+                    dynamicTyping: true, // auto-convert numbers and booleans
+                    complete: function(results) {
+                        if(results.errors && results.errors.length > 0 && results.data.length === 0) {
+                            jsonOutput.value = "Error parsing CSV:\n" + results.errors.map(e => e.message).join('\n');
+                            return;
+                        }
+                        
+                        const space = formatJsonCheck.checked ? 2 : 0;
+                        jsonOutput.value = JSON.stringify(results.data, null, space);
+                        
+                        parsedRows = results.data.length;
+                        if(window.update3DShape) window.update3DShape(parsedRows);
+                    }
+                });
+            };
+
+            [csvInput, delimiterSelect, hasHeaderCheck, formatJsonCheck].forEach(el => {
+                el.addEventListener('input', updateOutput);
+            });
+
+            copyBtn.addEventListener('click', () => {
+                if(!jsonOutput.value) return;
+                navigator.clipboard.writeText(jsonOutput.value);
+                const og = copyBtn.textContent;
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => copyBtn.textContent = og, 1500);
+            });
+
+            clearBtn.addEventListener('click', () => {
+                csvInput.value = '';
+                updateOutput();
+            });
+
+            // Initial Parse
+            updateOutput();
+        });
+
+        // 3D Visualization: A spreadsheet transforming into a cube
+        let scene, camera, renderer, sheetGroup, cubeMesh;
+        let isCube = false; // toggle state
+        let cells = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if(!container || !window.THREE) return;
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(-6, 4, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            sheetGroup = new THREE.Group();
+            scene.add(sheetGroup);
+
+            // create a flat grid (spreadsheet)
+            const rows = 4;
+            const cols = 4;
+            const geo = new THREE.BoxGeometry(0.8, 0.1, 0.8);
+            
+            for(let r=0; r<rows; r++) {
+                for(let c=0; c<cols; c++) {
+                    const mat = new THREE.MeshPhongMaterial({ 
+                        color: r === 0 ? 0x2288ff : 0xaaaaaa, // Header row
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const cell = new THREE.Mesh(geo, mat);
+                    
+                    // Center grid
+                    const x = (c - cols/2 + 0.5) * 0.9;
+                    const z = (r - rows/2 + 0.5) * 0.9;
+                    
+                    cell.position.set(x, 0, z);
+                    
+                    // store flat positions
+                    cell.userData = {
+                        flatX: x,
+                        flatY: 0,
+                        flatZ: z,
+                        cubeX: (c - cols/2 + 0.5) * 0.9,
+                        cubeY: (r - rows/2 + 0.5) * 0.9,
+                        cubeZ: 0
+                    };
+                    
+                    sheetGroup.add(cell);
+                    cells.push(cell);
+                }
+            }
+            
+            sheetGroup.position.set(3, 0, 0);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Start morphing interval
+            setInterval(() => {
+                isCube = !isCube;
+            }, 3000);
+
+            animate();
+        }
+
+        window.update3DShape = (rowCount) => {
+            if(!sheetGroup) return;
+            // modify colors or something based on data size if we want
+            // for now, morphing is the main unique feature.
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(sheetGroup) {
+                // Morph cells
+                cells.forEach(cell => {
+                    const targetX = isCube ? cell.userData.cubeX : cell.userData.flatX;
+                    const targetY = isCube ? cell.userData.cubeY : cell.userData.flatY;
+                    const targetZ = isCube ? cell.userData.cubeZ : cell.userData.flatZ;
+                    
+                    cell.position.x += (targetX - cell.position.x) * 0.05;
+                    cell.position.y += (targetY - cell.position.y) * 0.05;
+                    cell.position.z += (targetZ - cell.position.z) * 0.05;
+                    
+                    // Rotation mapping
+                    const targetRotX = isCube ? Math.PI/2 : 0;
+                    cell.rotation.x += (targetRotX - cell.rotation.x) * 0.05;
+                });
+
+                sheetGroup.rotation.y += 0.005;
+                sheetGroup.position.y = Math.sin(Date.now() * 0.002) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('DOMContentLoaded', init3D);
+    </script>
+</body>
+</html>
