@@ -3,7 +3,7 @@ const TOOLS_DATA = [
     "id": 1,
     "name": "JSON Formatter Validator",
     "file": "tool-1-JSON-Formatter-Validator.html",
-    "description": "A powerful developer utility for JSON Formatter Validator.",
+    "description": "Validate, beautify, and minify JSON data with instant error highlighting and 3D visualization.",
     "keywords": [
       "json",
       "formatter",
@@ -14,7 +14,7 @@ const TOOLS_DATA = [
     "id": 2,
     "name": "Base64 Encoder Decoder",
     "file": "tool-2-Base64-Encoder-Decoder.html",
-    "description": "A powerful developer utility for Base64 Encoder Decoder.",
+    "description": "Convert text or files to Base64 strings and back with real-time preview and structural analysis.",
     "keywords": [
       "base64",
       "encoder",
@@ -25,7 +25,7 @@ const TOOLS_DATA = [
     "id": 3,
     "name": "URL Encoder Decoder",
     "file": "tool-3-URL-Encoder-Decoder.html",
-    "description": "A powerful developer utility for URL Encoder Decoder.",
+    "description": "Professional tool to url encoder decoder with ease and precision.",
     "keywords": [
       "url",
       "encoder",
@@ -36,7 +36,7 @@ const TOOLS_DATA = [
     "id": 4,
     "name": "Regex Tester Builder",
     "file": "tool-4-Regex-Tester-Builder.html",
-    "description": "A powerful developer utility for Regex Tester Builder.",
+    "description": "Build and test complex regular expressions with live matching, explanations, and visual mapping.",
     "keywords": [
       "regex",
       "tester",
@@ -47,7 +47,7 @@ const TOOLS_DATA = [
     "id": 5,
     "name": "JWT Debugger Validator",
     "file": "tool-5-JWT-Debugger-Validator.html",
-    "description": "A powerful developer utility for JWT Debugger Validator.",
+    "description": "Decode and verify JSON Web Tokens instantly with header, payload, and signature inspection.",
     "keywords": [
       "jwt",
       "debugger",
@@ -68,7 +68,7 @@ const TOOLS_DATA = [
     "id": 7,
     "name": "HTML Entity Encoder Decoder",
     "file": "tool-7-HTML-Entity-Encoder-Decoder.html",
-    "description": "A powerful developer utility for HTML Entity Encoder Decoder.",
+    "description": "Professional tool to html entity encoder decoder with ease and precision.",
     "keywords": [
       "html",
       "entity",
@@ -80,7 +80,7 @@ const TOOLS_DATA = [
     "id": 8,
     "name": "CSS Minifier Formatter",
     "file": "tool-8-CSS-Minifier-Formatter.html",
-    "description": "A powerful developer utility for CSS Minifier Formatter.",
+    "description": "Professional tool to css minifier formatter with ease and precision.",
     "keywords": [
       "css",
       "minifier",
@@ -91,7 +91,7 @@ const TOOLS_DATA = [
     "id": 9,
     "name": "JavaScript Minifier Beautifier",
     "file": "tool-9-JavaScript-Minifier-Beautifier.html",
-    "description": "A powerful developer utility for JavaScript Minifier Beautifier.",
+    "description": "Professional tool to javascript minifier beautifier with ease and precision.",
     "keywords": [
       "javascript",
       "minifier",
@@ -102,7 +102,7 @@ const TOOLS_DATA = [
     "id": 10,
     "name": "Diff Checker",
     "file": "tool-10-Diff-Checker.html",
-    "description": "UI - Original Text / Modified Text / Diff View / Navigation buttons.. 3D - Two parallel walls with glowing bricks where differences occur.",
+    "description": "Compare two sets of text or code to find differences with line-by-line highlighting.",
     "keywords": [
       "diff",
       "checker"
@@ -124,7 +124,7 @@ const TOOLS_DATA = [
     "id": 12,
     "name": "SQL Formatter Analyzer",
     "file": "tool-12-SQL-Formatter-Analyzer.html",
-    "description": "A powerful developer utility for SQL Formatter Analyzer.",
+    "description": "Professional tool to sql formatter analyzer with ease and precision.",
     "keywords": [
       "sql",
       "formatter",
@@ -135,7 +135,7 @@ const TOOLS_DATA = [
     "id": 13,
     "name": "Markdown Preview Editor",
     "file": "tool-13-Markdown-Preview-Editor.html",
-    "description": "A powerful developer utility for Markdown Preview Editor.",
+    "description": "Edit Markdown with a live side-by-side preview and HTML export capabilities.",
     "keywords": [
       "markdown",
       "preview",
@@ -156,7 +156,7 @@ const TOOLS_DATA = [
     "id": 15,
     "name": "Color Picker Converter",
     "file": "tool-15-Color-Picker-Converter.html",
-    "description": "A powerful developer utility for Color Picker Converter.",
+    "description": "Professional tool to color picker converter with ease and precision.",
     "keywords": [
       "color",
       "picker",
@@ -177,7 +177,7 @@ const TOOLS_DATA = [
     "id": 17,
     "name": "HTML Preview Sandbox",
     "file": "tool-17-HTML-Preview-Sandbox.html",
-    "description": "A powerful developer utility for HTML Preview Sandbox.",
+    "description": "Professional tool to html preview sandbox with ease and precision.",
     "keywords": [
       "html",
       "preview",
@@ -233,7 +233,7 @@ const TOOLS_DATA = [
     "id": 22,
     "name": "Epoch Human Date Converter",
     "file": "tool-22-Epoch-Human-Date-Converter.html",
-    "description": "A powerful developer utility for Epoch Human Date Converter.",
+    "description": "Professional tool to epoch human date converter with ease and precision.",
     "keywords": [
       "epoch",
       "human",
@@ -292,7 +292,7 @@ const TOOLS_DATA = [
     "id": 27,
     "name": "Text Diff Checker",
     "file": "tool-27-Text-Diff-Checker.html",
-    "description": "UI - Original / Modified / Diff Output / Toggle view mode.. 3D - Two blocks with protruding bricks where differences exist.",
+    "description": "Compare two sets of text or code to find differences with line-by-line highlighting.",
     "keywords": [
       "text",
       "diff",
@@ -348,7 +348,7 @@ const TOOLS_DATA = [
     "id": 32,
     "name": "HTML to Markdown Converter",
     "file": "tool-32-HTML-to-Markdown-Converter.html",
-    "description": "UI - HTML Input / Markdown Output / Copy Button / Sample Presets.. 3D - A document folding into a book.",
+    "description": "Edit Markdown with a live side-by-side preview and HTML export capabilities.",
     "keywords": [
       "html",
       "to",
@@ -360,7 +360,7 @@ const TOOLS_DATA = [
     "id": 33,
     "name": "XML Formatter Validator",
     "file": "tool-33-XML-Formatter-Validator.html",
-    "description": "A powerful developer utility for XML Formatter Validator.",
+    "description": "Professional tool to xml formatter validator with ease and precision.",
     "keywords": [
       "xml",
       "formatter",
@@ -382,7 +382,7 @@ const TOOLS_DATA = [
     "id": 35,
     "name": "SSL TLS Certificate Decoder",
     "file": "tool-35-SSL-TLS-Certificate-Decoder.html",
-    "description": "A powerful developer utility for SSL TLS Certificate Decoder.",
+    "description": "Professional tool to ssl tls certificate decoder with ease and precision.",
     "keywords": [
       "ssl",
       "tls",
@@ -406,7 +406,7 @@ const TOOLS_DATA = [
     "id": 37,
     "name": "HTML Escape Unescape Tool",
     "file": "tool-37-HTML-Escape-Unescape-Tool.html",
-    "description": "A powerful developer utility for HTML Escape Unescape Tool.",
+    "description": "Professional tool to html escape unescape tool with ease and precision.",
     "keywords": [
       "html",
       "escape",
@@ -418,7 +418,7 @@ const TOOLS_DATA = [
     "id": 38,
     "name": "Base64 Image Encoder",
     "file": "tool-38-Base64-Image-Encoder.html",
-    "description": "UI - Image Upload / Preview / Base64 Output / Data URL / Copy buttons.. 3D - A picture frame that encodes itself into a string.",
+    "description": "Convert text or files to Base64 strings and back with real-time preview and structural analysis.",
     "keywords": [
       "base64",
       "image",
@@ -452,7 +452,7 @@ const TOOLS_DATA = [
     "id": 41,
     "name": "HTML Formatter Beautifier",
     "file": "tool-41-HTML-Formatter-Beautifier.html",
-    "description": "A powerful developer utility for HTML Formatter Beautifier.",
+    "description": "Professional tool to html formatter beautifier with ease and precision.",
     "keywords": [
       "html",
       "formatter",
@@ -475,7 +475,7 @@ const TOOLS_DATA = [
     "id": 43,
     "name": "YAML Validator Linter",
     "file": "tool-43-YAML-Validator-Linter.html",
-    "description": "A powerful developer utility for YAML Validator Linter.",
+    "description": "Professional tool to yaml validator linter with ease and precision.",
     "keywords": [
       "yaml",
       "validator",
@@ -530,7 +530,7 @@ const TOOLS_DATA = [
     "id": 48,
     "name": "Date Difference Calculator",
     "file": "tool-48-Date-Difference-Calculator.html",
-    "description": "UI - Date Pickers / Results Matrix / Unit Toggles / Business Day Calculator.. 3D - A perpetual calendar with pages flipping.",
+    "description": "Compare two sets of text or code to find differences with line-by-line highlighting.",
     "keywords": [
       "date",
       "difference",
@@ -552,7 +552,7 @@ const TOOLS_DATA = [
     "id": 50,
     "name": "Color Accessibility Grid",
     "file": "tool-50-Color-Accessibility-Grid.html",
-    "description": "A powerful developer utility for Color Accessibility Grid.",
+    "description": "Professional tool to color accessibility grid with ease and precision.",
     "keywords": [
       "color",
       "accessibility",
@@ -618,7 +618,7 @@ const TOOLS_DATA = [
     "id": 56,
     "name": "Markdown Table Generator",
     "file": "tool-56-Markdown-Table-Generator.html",
-    "description": "UI - Table Builder Grid / Markdown Preview / CSV Import/Export / Alignment Controls.. 3D - A 3D grid of cells that you can edit.",
+    "description": "Edit Markdown with a live side-by-side preview and HTML export capabilities.",
     "keywords": [
       "markdown",
       "table",
@@ -676,7 +676,7 @@ const TOOLS_DATA = [
     "id": 61,
     "name": "Cookie Consent Generator",
     "file": "tool-61-Cookie-Consent-Generator.html",
-    "description": "A powerful developer utility for Cookie Consent Generator.",
+    "description": "Professional tool to cookie consent generator with ease and precision.",
     "keywords": [
       "cookie",
       "consent",
@@ -698,7 +698,7 @@ const TOOLS_DATA = [
     "id": 63,
     "name": "PR Template Builder",
     "file": "tool-63-PR-Template-Builder.html",
-    "description": "A powerful developer utility for PR Template Builder.",
+    "description": "Professional tool to pr template builder with ease and precision.",
     "keywords": [
       "pr",
       "template",
@@ -801,7 +801,7 @@ const TOOLS_DATA = [
     "id": 72,
     "name": "Webhook Tester Client Side",
     "file": "tool-72-Webhook-Tester-Client-Side.html",
-    "description": "A powerful developer utility for Webhook Tester Client Side.",
+    "description": "Professional tool to webhook tester client side with ease and precision.",
     "keywords": [
       "webhook",
       "tester",
@@ -907,7 +907,7 @@ const TOOLS_DATA = [
     "id": 81,
     "name": "Dockerfile Linter Optimizer",
     "file": "tool-81-Dockerfile-Linter-Optimizer.html",
-    "description": "A powerful developer utility for Dockerfile Linter Optimizer.",
+    "description": "Professional tool to dockerfile linter optimizer with ease and precision.",
     "keywords": [
       "dockerfile",
       "linter",
@@ -964,7 +964,7 @@ const TOOLS_DATA = [
     "id": 86,
     "name": "Sass SCSS to CSS Playground",
     "file": "tool-86-Sass-SCSS-to-CSS-Playground.html",
-    "description": "A powerful developer utility for Sass SCSS to CSS Playground.",
+    "description": "Professional tool to sass scss to css playground with ease and precision.",
     "keywords": [
       "sass",
       "scss",
@@ -977,7 +977,7 @@ const TOOLS_DATA = [
     "id": 87,
     "name": "IP Address Calculator Subnetting",
     "file": "tool-87-IP-Address-Calculator-Subnetting.html",
-    "description": "A powerful developer utility for IP Address Calculator Subnetting.",
+    "description": "Professional tool to ip address calculator subnetting with ease and precision.",
     "keywords": [
       "ip",
       "address",
@@ -989,7 +989,7 @@ const TOOLS_DATA = [
     "id": 88,
     "name": "Color Contrast Checker WCAG",
     "file": "tool-88-Color-Contrast-Checker-WCAG.html",
-    "description": "A powerful developer utility for Color Contrast Checker WCAG.",
+    "description": "Professional tool to color contrast checker wcag with ease and precision.",
     "keywords": [
       "color",
       "contrast",
@@ -1001,7 +1001,7 @@ const TOOLS_DATA = [
     "id": 89,
     "name": "Keycode Event Explorer",
     "file": "tool-89-Keycode-Event-Explorer.html",
-    "description": "A powerful developer utility for Keycode Event Explorer.",
+    "description": "Professional tool to keycode event explorer with ease and precision.",
     "keywords": [
       "keycode",
       "event",
@@ -1036,7 +1036,7 @@ const TOOLS_DATA = [
     "id": 92,
     "name": "ASCII Art Generator",
     "file": "tool-92-ASCII-Art-Generator.html",
-    "description": "A powerful developer utility for ASCII Art Generator.",
+    "description": "Quickly convert text into stylized ASCII art patterns with various font options.",
     "keywords": [
       "ascii",
       "art",
@@ -1058,7 +1058,7 @@ const TOOLS_DATA = [
     "id": 94,
     "name": "React Vue Svelte Snippet Generator",
     "file": "tool-94-React-Vue-Svelte-Snippet-Generator.html",
-    "description": "A powerful developer utility for React Vue Svelte Snippet Generator.",
+    "description": "Professional tool to react vue svelte snippet generator with ease and precision.",
     "keywords": [
       "react",
       "vue",
@@ -1071,7 +1071,7 @@ const TOOLS_DATA = [
     "id": 95,
     "name": "JSON Web Key JWK Generator",
     "file": "tool-95-JSON-Web-Key-JWK-Generator.html",
-    "description": "A powerful developer utility for JSON Web Key JWK Generator.",
+    "description": "Professional tool to json web key jwk generator with ease and precision.",
     "keywords": [
       "json",
       "web",
