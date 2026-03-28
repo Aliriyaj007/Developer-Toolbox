@@ -598,7 +598,7 @@
                 a.style.animationDelay = (index * 0.05) + 's';
 
                 let icon = tool.icon || '⚡';
-                let desc = tool.desc || 'A specialized developer utility.';
+                let desc = tool.description || 'A specialized developer utility.';
                 let isFav = favs.includes(tool.id);
                 let toolTags = tags[tool.id] || [];
 
@@ -611,14 +611,14 @@
                             <button class="action-btn ${isFav ? 'fav-active' : ''}" onclick="window.toggleFav(event, ${tool.id})" title="Favorite">★</button>
                         </div>
                     </div>
-                    <div>
-                        <div class="tool-title">${tool.name}</div>
+                    <div style="margin-bottom: 0.5rem;">
+                        <h3 class="tool-title" style="margin:0; font-size:1.2rem;">${tool.name}</h3>
                         <div class="tags-container">
                             ${tagsHTML}
                             <button class="add-tag-btn" onclick="window.addTag(event, ${tool.id})">+ Tag</button>
                         </div>
                     </div>
-                    <div class="tool-desc">${desc}</div>
+                    <p class="tool-desc" style="margin:0;">${desc}</p>
                     <div class="quick-preview">// Load ${tool.name}() module...<br/>> ready.</div>
                 `;
                 fragment.appendChild(a);
